@@ -7,12 +7,12 @@
 
 ## ⚡ 零、一键脚本（推荐）
 
-如果你只想**最快上线**，用仓库自带的 `install.sh`：
+如果你只想**最快上线**，用仓库自带的 `manage.sh`：
 
 ```bash
 # 服务器上执行（或者 scp 上去再跑）
-curl -fsSL https://raw.githubusercontent.com/LJW0401/blog-server/main/deploy/install.sh -o install.sh
-sudo bash install.sh install
+curl -fsSL https://raw.githubusercontent.com/LJW0401/blog-server/main/deploy/manage.sh -o manage.sh
+sudo bash manage.sh install
 ```
 
 脚本会自动：
@@ -27,23 +27,33 @@ sudo bash install.sh install
 其它常用：
 
 ```bash
-sudo bash install.sh update       # 升级到最新 release（失败自动回滚）
-sudo bash install.sh status       # 服务状态 + 最近 20 条日志
-sudo bash install.sh uninstall    # 卸载（默认先把数据 tar 到 /tmp）
-sudo bash install.sh help         # 参数、环境变量说明
+# 生命周期
+sudo bash manage.sh update       # 升级到最新 release（失败自动回滚）
+sudo bash manage.sh uninstall    # 卸载（默认保留数据；PURGE=1 彻底清理）
+
+# 服务控制（薄包装 systemctl，少打几个字）
+sudo bash manage.sh start        # 启动
+sudo bash manage.sh stop         # 停止
+sudo bash manage.sh restart      # 重启
+sudo bash manage.sh enable       # 开机自启
+sudo bash manage.sh disable      # 关闭开机自启
+sudo bash manage.sh status       # 状态 + 最近日志 + 二进制信息
+sudo bash manage.sh logs         # 实时日志（Ctrl+C 退出）
+sudo bash manage.sh logs 100     # 最近 100 行
+sudo bash manage.sh help         # 参数、环境变量说明
 ```
 
 环境变量（按需）：
 
 ```bash
 # 指定版本
-sudo RELEASE_TAG=v1.0.0 bash install.sh install
+sudo RELEASE_TAG=v1.0.0 bash manage.sh install
 
 # 已有反代，跳过 Caddy
-sudo NO_CADDY=1 bash install.sh install
+sudo NO_CADDY=1 bash manage.sh install
 
 # 换安装目录
-sudo INSTALL_DIR=/srv/blog bash install.sh install
+sudo INSTALL_DIR=/srv/blog bash manage.sh install
 ```
 
 **脚本不是魔法，而是把下面"手动"章节的每一步写成了自动化**。如果你想先理解再跑，直接读下面的手动流程。
