@@ -406,6 +406,35 @@ install_caddy() {
     fi
 }
 
+# 为 IP 生成带 IP SAN 的自签证书（Caddy 的 `tls internal` 对 IP 支持不稳：
+# 部分版本签出的 leaf 缺 SAN，或拒绝把 IP 当 SNI，导致 curl/浏览器报
+# tlsv1 alert internal error。手工 openssl 签一张显式 SAN 的证书，让
+# Caddy 直接加载最稳。)
+generate_selfsigned_cert() {
+    local ip="$1" cert_dir="/etc/caddy/certs"
+    local crt="$cert_dir/blog.crt" key="$cert_dir/blog.key"
+
+    mkdir -p "$cert_dir"
+    if [[ -f "$crt" && -f "$key" ]] \
+        && openssl x509 -in "$crt" -noout -ext subjectAltName 2>/dev/null \
+           | grep -q "IP Address:$ip"; then
+        info "自签证书已存在且包含 $ip，跳过"
+    else
+        info "生成带 IP SAN=$ip 的自签证书（10 年有效）"
+        openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+            -subj "/CN=$ip" \
+            -addext "subjectAltName=IP:$ip" \
+            -keyout "$key" -out "$crt" >/dev/null 2>&1 \
+            || die "openssl 签发失败（系统缺 openssl？）"
+    fi
+    chown caddy:caddy "$crt" "$key" 2>/dev/null || true
+    chmod 644 "$crt"; chmod 600 "$key"
+
+    # 通过全局输出变量传给调用方
+    SELF_SIGNED_CRT="$crt"
+    SELF_SIGNED_KEY="$key"
+}
+
 configure_caddy() {
     if [[ "${NO_CADDY:-0}" == "1" ]]; then
         return
@@ -441,8 +470,9 @@ configure_caddy() {
                 warn "IP 留空，跳过"
                 return
             fi
+            generate_selfsigned_cert "$domain"
             domain="https://$domain"
-            tls_mode="tls internal"
+            tls_mode="tls $SELF_SIGNED_CRT $SELF_SIGNED_KEY"
             warn "浏览器首次访问会提示'不安全连接'，点'继续访问'即可。日后买域名后重跑 install 覆盖 Caddyfile。"
             ;;
         *)
