@@ -1,0 +1,15 @@
+/blog-server
+/blog-server.sha256
+/cover.out
+/config.yaml
+/data.sqlite
+/data.sqlite-*
+/backups/
+/trash/
+/images/
+/content/docs/*.md
+/content/projects/*.md
+!/content/docs/.gitkeep
+!/content/projects/.gitkeep
+.DS_Store
+*.swp
