@@ -343,7 +343,11 @@ RestartSec=5s
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=true
+# ProtectHome=tmpfs (not =true): when INSTALL_DIR lives under /home (e.g.
+# /home/ubuntu/blog-site), =true masks the entire /home and systemd can't even
+# locate the binary at ExecStart. =tmpfs mounts /home as empty tmpfs; the
+# ReadWritePaths= below then bind-mounts the install dir back in.
+ProtectHome=tmpfs
 ReadWritePaths=$INSTALL_DIR
 ProtectKernelModules=true
 ProtectKernelTunables=true
