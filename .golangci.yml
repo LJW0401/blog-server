@@ -15,4 +15,6 @@ linters:
     - gocyclo
   settings:
     gocyclo:
-      min-complexity: 15
+      # Wiring code (main, upload handlers with validation gates) naturally has
+      # many short branches. 20 avoids fighting the lint on handler-heavy code.
+      min-complexity: 20

@@ -7,9 +7,12 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/penguin/blog-server/internal/content"
 	"github.com/penguin/blog-server/internal/render"
+	"github.com/penguin/blog-server/internal/settings"
 )
 
 // SiteSettings is the static/default view of the public site identity shown
@@ -53,21 +56,70 @@ type Handlers struct {
 	Content     *content.Store
 	Tpl         *render.Templates
 	GitHubCache CacheReader
+	SettingsDB  *settings.Store
 	Settings    func() SiteSettings
 	Logger      *slog.Logger
+
+	mu       sync.Mutex
+	cached   SiteSettings
+	cachedAt time.Time
 }
 
-// NewHandlers constructs a Handlers with safe defaults.
+// NewHandlers constructs a Handlers with safe defaults. Settings resolves to
+// DefaultSettings when SettingsDB is nil; otherwise it returns DB values
+// overriding defaults, cached for 30 seconds (per requirement 2.4.5).
 func NewHandlers(cs *content.Store, tpl *render.Templates, logger *slog.Logger) *Handlers {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Handlers{
-		Content:  cs,
-		Tpl:      tpl,
-		Logger:   logger,
-		Settings: DefaultSettings,
+	h := &Handlers{Content: cs, Tpl: tpl, Logger: logger}
+	h.Settings = h.resolveSettings
+	return h
+}
+
+// resolveSettings merges DefaultSettings with DB overrides, cached for 30s.
+func (h *Handlers) resolveSettings() SiteSettings {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if !h.cachedAt.IsZero() && time.Since(h.cachedAt) < 30*time.Second {
+		return h.cached
 	}
+	s := DefaultSettings()
+	if h.SettingsDB != nil {
+		kv := h.SettingsDB.All()
+		if v := kv["name"]; v != "" {
+			s.Name = v
+		}
+		if v := kv["tagline"]; v != "" {
+			s.Tagline = v
+		}
+		if v := kv["location"]; v != "" {
+			s.Location = v
+		}
+		if v := kv["direction"]; v != "" {
+			s.Direction = v
+		}
+		if v := kv["status"]; v != "" {
+			s.Status = v
+		}
+		if v := kv["qq_group"]; v != "" {
+			s.ContactQQ = v
+		}
+		// Overwrite media links from DB where present.
+		media := []struct{ Platform, Key string }{
+			{"B站", "media_bilibili"},
+			{"抖音", "media_douyin"},
+			{"小红书", "media_xiaohongshu"},
+		}
+		filled := []MediaLink{}
+		for _, m := range media {
+			filled = append(filled, MediaLink{Platform: m.Platform, URL: kv[m.Key]})
+		}
+		s.MediaLinks = filled
+	}
+	h.cached = s
+	h.cachedAt = time.Now()
+	return s
 }
 
 // --- Helpers ---------------------------------------------------------------

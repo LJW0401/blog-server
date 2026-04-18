@@ -1,0 +1,39 @@
+{{ define "title" }}基本信息 — Penguin{{ end }}
+{{ define "body_class" }}page-admin{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<div class="admin-shell">
+  <header class="admin-header">
+    <h1>基本信息 / 联系方式</h1>
+    <div class="admin-session"><a href="/manage">← 返回面板</a></div>
+  </header>
+
+  {{ if .Error }}<div class="form-err">{{ .Error }}</div>{{ end }}
+  {{ if .Info }}<div class="form-info">{{ .Info }}</div>{{ end }}
+
+  <form class="admin-section settings-form" method="POST" action="/manage/settings">
+    <input type="hidden" name="csrf" value="{{ .CSRF }}" />
+
+    <h2>主页卡片</h2>
+    <label><span>名字</span><input name="name" value="{{ index .Values "name" }}" /></label>
+    <label><span>Tagline<em>（必填）</em></span><input name="tagline" value="{{ index .Values "tagline" }}" required /></label>
+    <label><span>坐标</span><input name="location" value="{{ index .Values "location" }}" /></label>
+    <label><span>方向</span><input name="direction" value="{{ index .Values "direction" }}" /></label>
+    <label><span>现状</span><input name="status" value="{{ index .Values "status" }}" /></label>
+
+    <h2>联系 / 媒体</h2>
+    <label><span>QQ 群号</span><input name="qq_group" value="{{ index .Values "qq_group" }}" placeholder="5–12 位数字" /></label>
+    <label><span>B 站</span><input name="media_bilibili" value="{{ index .Values "media_bilibili" }}" placeholder="https://space.bilibili.com/..." /></label>
+    <label><span>抖音</span><input name="media_douyin" value="{{ index .Values "media_douyin" }}" placeholder="https://..." /></label>
+    <label><span>小红书</span><input name="media_xiaohongshu" value="{{ index .Values "media_xiaohongshu" }}" placeholder="https://..." /></label>
+
+    <div class="form-row">
+      <a class="btn btn-ghost" href="/manage">取消</a>
+      <button class="btn btn-primary" type="submit">保存</button>
+    </div>
+    <p class="note">前台读取带 30 秒 TTL 缓存；重启即时生效。</p>
+  </form>
+</div>
+{{ end }}
+{{ end }}

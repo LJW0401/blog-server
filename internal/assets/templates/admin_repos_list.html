@@ -1,0 +1,63 @@
+{{ define "title" }}项目管理 — Penguin{{ end }}
+{{ define "body_class" }}page-admin{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<div class="admin-shell">
+  <header class="admin-header">
+    <h1>项目管理</h1>
+    <div class="admin-session"><a href="/manage">← 返回面板</a></div>
+  </header>
+
+  {{ if .Error }}<div class="form-err">{{ .Error }}</div>{{ end }}
+  {{ if .Info }}<div class="form-info">{{ .Info }}</div>{{ end }}
+
+  <section class="admin-section">
+    <h2>新增项目</h2>
+    <form method="POST" action="/manage/repos/new" class="settings-form">
+      <input type="hidden" name="csrf" value="{{ .CSRF }}" />
+      <label><span>GitHub 仓库<em>（owner/name）</em></span><input name="repo" required placeholder="penguin/blog-server" /></label>
+      <label><span>slug<em>（URL 路径）</em></span><input name="slug" required placeholder="blog-server" /></label>
+      <label><span>展示名</span><input name="display_name" placeholder="默认使用 name 部分" /></label>
+      <label><span>中文简介</span><input name="display_desc" /></label>
+      <label><span>分类</span><input name="category" placeholder="后端服务 / 开发者工具 / ..." /></label>
+      <div class="form-row">
+        <span class="note">提交时服务端会调 GitHub API 校验仓库存在。</span>
+        <button class="btn btn-primary" type="submit">登记</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="admin-section">
+    <h2>已登记（{{ len .Projects }}）</h2>
+    {{ if .Projects }}
+    <table class="admin-table">
+      <thead>
+        <tr><th>状态</th><th>展示名</th><th>repo</th><th>slug</th><th>更新</th><th>操作</th></tr>
+      </thead>
+      <tbody>
+        {{ range .Projects }}
+        <tr>
+          <td><span class="status-badge status-{{ .Status }}">{{ .Status }}</span></td>
+          <td><a href="/projects/{{ .Slug }}">{{ .DisplayName }}</a></td>
+          <td><code>{{ .Repo }}</code></td>
+          <td><code>{{ .Slug }}</code></td>
+          <td>{{ formatDate .Updated "2006-01-02" }}</td>
+          <td>
+            <a href="/manage/projects/{{ .Slug }}/edit">编辑</a>
+            <form method="POST" action="/manage/projects/{{ .Slug }}/delete" style="display:inline;" onsubmit="return confirm('确定删除项目 {{ .DisplayName }}？MD 文件进 trash/，GitHub 缓存清零。');">
+              <input type="hidden" name="csrf" value="{{ $.CSRF }}" />
+              <button class="link-danger" type="submit">删除</button>
+            </form>
+          </td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    {{ else }}
+    <p class="note">暂无项目。</p>
+    {{ end }}
+  </section>
+</div>
+{{ end }}
+{{ end }}

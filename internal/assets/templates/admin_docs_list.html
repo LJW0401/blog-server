@@ -1,0 +1,48 @@
+{{ define "title" }}文档管理 — Penguin{{ end }}
+{{ define "body_class" }}page-admin{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<div class="admin-shell">
+  <header class="admin-header">
+    <h1>文档管理</h1>
+    <div class="admin-session">
+      <a href="/manage">← 返回面板</a>
+      <a class="btn btn-primary" href="{{ .BasePath }}/new">{{ .NewLabel }}</a>
+    </div>
+  </header>
+
+  <section class="admin-section">
+    {{ if .Docs }}
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>状态</th><th>标题</th><th>Slug</th><th>分类</th><th>更新</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range .Docs }}
+        <tr>
+          <td><span class="status-badge status-{{ .Status }}">{{ .Status }}</span></td>
+          <td><a href="/docs/{{ .Slug }}">{{ .Title }}</a></td>
+          <td><code>{{ .Slug }}</code></td>
+          <td>{{ .Category }}</td>
+          <td>{{ formatDate .Updated "2006-01-02" }}</td>
+          <td>
+            <a href="/manage/docs/{{ .Slug }}/edit">编辑</a>
+            <form method="POST" action="/manage/docs/{{ .Slug }}/delete" style="display:inline;" onsubmit="return confirm('确定删除《{{ .Title }}》？软删到 trash/');">
+              <input type="hidden" name="csrf" value="{{ $.CSRF }}" />
+              <button class="link-danger" type="submit">删除</button>
+            </form>
+          </td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    {{ else }}
+    <p class="note">暂无文档，<a href="{{ .BasePath }}/new">立即新建</a>。</p>
+    {{ end }}
+  </section>
+</div>
+{{ end }}
+{{ end }}

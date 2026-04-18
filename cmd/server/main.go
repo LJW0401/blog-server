@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/penguin/blog-server/internal/middleware"
 	"github.com/penguin/blog-server/internal/public"
 	"github.com/penguin/blog-server/internal/render"
+	"github.com/penguin/blog-server/internal/settings"
 	"github.com/penguin/blog-server/internal/storage"
 )
 
@@ -79,8 +81,11 @@ func main() {
 	)
 	syncStop := syncer.Start(rootCtx)
 
+	settingsStore := settings.New(store.DB)
+
 	ph := public.NewHandlers(cstore, tpl, logger)
 	ph.GitHubCache = ghCache
+	ph.SettingsDB = settingsStore
 
 	// Auth + admin wiring
 	sessionSecret, err := auth.LoadOrCreateSecret(store.DB)
@@ -90,6 +95,13 @@ func main() {
 	}
 	authStore := auth.NewStore(store.DB, sessionSecret)
 	adminH := admin.New(authStore, cfg, *cfgPath, tpl, logger)
+	docsAdmin := &admin.DocHandlers{Parent: adminH, Content: cstore, DataDir: cfg.DataDir}
+	imagesAdmin := &admin.ImageHandlers{Parent: adminH, DataDir: cfg.DataDir}
+	settingsAdmin := &admin.SettingsHandlers{Parent: adminH, Settings: settingsStore}
+	projectsAdmin := &admin.ProjectHandlers{
+		Parent: adminH, Content: cstore, DataDir: cfg.DataDir,
+		GitHubClient: ghClient, GitHubCache: ghCache,
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/__healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -120,18 +132,13 @@ func main() {
 	})
 	mux.HandleFunc("/manage/logout", adminH.Logout)
 
-	protected := http.NewServeMux()
-	protected.HandleFunc("/manage", adminH.Dashboard)
-	protected.HandleFunc("/manage/", adminH.Dashboard)
-	protected.HandleFunc("/manage/password", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			adminH.PasswordSubmit(w, r)
-			return
-		}
-		adminH.PasswordPage(w, r)
-	})
-	mux.Handle("/manage", middleware.AuthGate(authStore)(protected))
-	mux.Handle("/manage/password", middleware.AuthGate(authStore)(protected))
+	protected := buildAdminMux(adminH, docsAdmin, imagesAdmin, settingsAdmin, projectsAdmin)
+	// /images/* static file serving (uploaded content).
+	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(filepath.Join(cfg.DataDir, "images")))))
+
+	gate := middleware.AuthGate(authStore)(protected)
+	mux.Handle("/manage", gate)
+	mux.Handle("/manage/", gate)
 
 	chain := middleware.Chain(
 		middleware.PanicRecover(logger),

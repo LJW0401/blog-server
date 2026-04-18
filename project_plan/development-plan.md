@@ -832,7 +832,21 @@ Go 1.22+、chi v5.0.12、goldmark v1.7.8、chroma v2.14.0、modernc.org/sqlite v
 - **Given** 管理员修改 tagline，**When** 前台 30s 后请求主页，**Then** 新 tagline 可见
 - **Given** 管理员新增不存在的 repo，**When** 校验失败，**Then** 前端显示错误且 `content/projects/` 无新增
 
-**阶段状态**：未开始
+**阶段状态**：已完成
+
+**完成日期**：2026-04-18
+**验收结果**：通过
+**安全门控**：`make check` 全绿（fmt + vet + lint + tidy + test + vulncheck）
+**集成门控**：WI-5.5、WI-5.8.5、WI-5.12、WI-5.16、WI-5.20 全部通过
+**覆盖率**：admin 53.2% / auth 83.5% / content 80.4% / middleware 82.1%；全局 66.3%
+**端到端验证**：`/manage/docs /images /settings /repos` 四条路径全部 200；CSRF 保护、软删除、MIME 白名单、GitHub 前置校验、settings 持久化 + 30s 公开页缓存全部工作；安全头仍齐全
+**备注**：
+- 22 个 WI 全部完成
+- 5 条 learnings 已记录（CodeMirror 推迟 P7、settings 包拆分、main buildAdminMux 模式、reload-on-write、gocyclo 阈值）
+- CodeMirror 完整打包推迟到 P7（需要 Node/esbuild 前端构建），P5 先用 monospace textarea 满足"JS 禁用降级"
+- 新增 `internal/settings` 小包承载 site_settings KV，admin 写、public 读（30s 缓存）
+- 文档/项目软删除到 `trash/YYYYMMDD-HHMMSS-<slug>.md`
+- 图片上传走 form POST redirect（非 JSON），MIME 白名单 + 5MB 上限 + sha256 去重
 
 ---
 

@@ -171,3 +171,52 @@
 | 4 | 设计假设在实现时才暴露不成立 | 有（UA binding 副作用、config.yaml 变可写的注释保留问题）|
 | 5 | 范围外的重构机会 | 有（admin helper 换 strconv/net/url、引入 chi Router 分组）|
 | 6 | 新的系统 / 需求理解 | 有（net/http mux 无 exclude 语义、session UA-fp 的取舍）|
+
+## 2026-04-18 · P5 管理后台 CRUD
+
+### 技术债：CodeMirror 编辑器推迟到 P7
+- **发现于**：WI-5.2 执行过程中
+- **描述**：需求 2.4.3 要求"带语法高亮的纯文本编辑器（CodeMirror 6）"。完整打包 CodeMirror 需要 Node.js + esbuild 构建前端 bundle；当前项目没有 Node 工具链。P5 用带 monospace 字体的纯 textarea 替代，保留 JS-disabled 降级（天然满足）。
+- **建议处理方式**：P7 "发布精致化"前引入前端构建步骤——Makefile 加 `frontend-build` target 跑 esbuild，产物 embed 到 `internal/assets/static/js/editor.js`。
+- **紧急程度**：中（直接影响作品集质感，但不阻塞功能）
+
+### 架构洞察：`internal/settings` 小包拆分避免 cycle
+- **发现于**：WI-5.13 执行过程中
+- **描述**：admin 要写 site_settings，public 要读。如果把 settings 逻辑放在 admin 或 public 任一侧，另一方 import 就形成循环。拆出独立 `internal/settings/Store`，admin 和 public 都 import 这个 KV 包，解决得很自然。配合 Handlers 字段注入（`SettingsDB`），实现关注点分离。
+- **建议处理方式**：类似"纯数据存取层"的包（比如未来的 content.Store 可能也会拆出）统一放 `internal/`，不放 admin/public 里。
+- **紧急程度**：低
+
+### 重构机会：main.go buildAdminMux 拆分模式
+- **发现于**：WI-5.20 集成门控前的 lint 压轴
+- **描述**：main() 的圈复杂度冲到 28（超过 20 阈值）——P5 往 mux 挂了 10 多条 admin 路由。拆成 `routes.go` 的 `buildAdminMux()` + `postOrGet` 小工具后，main 降回可控。
+- **建议处理方式**：后续阶段新增路由时直接改 routes.go，main() 保持精简。未来迁到 chi.Router 的 `Group(...)` 时这层抽象也顺手迁过去。
+- **紧急程度**：低
+
+### 架构洞察：reload-on-write 避免 fsnotify 延迟
+- **发现于**：WI-5.3 测试新建文档后立刻索引可见
+- **描述**：admin save/delete 除了落盘之外，会主动调 `cstore.Reload()`。否则测试（以及真实用户）要等 fsnotify 的 debounce（200ms）才能看到变化。成本：每次 save 做一次全量扫描（几十个 MD 毫秒级）；好处：管理端"保存即可见"的体验直觉。
+- **建议处理方式**：若项目规模 > 数百个 MD，改成只刷新当前 slug 的部分 reload。目前规模下无需。
+- **紧急程度**：低
+
+### Bug（部署操作性）：`go run` 残留进程占端口导致"新代码没生效"
+- **发现于**：P5 完成后用户反馈 /manage 登录后 404
+- **描述**：用户重启服务时没意识到之前的 `go run ./cmd/server` 进程还活着，占着 8391 端口。新 `./blog-server` 启动失败（ERROR 日志被忽略），浏览器请求全部打到旧进程。旧进程是 P4 之前版本，没有 /manage/docs 等路由，所以后续访问 404。`go run` 产出的二进制在 `~/.cache/go-build/.../server` —— 进程名是 `server`，ps 里不容易和我们项目联系起来。
+- **修复**：`pkill -f cmd/server` 杀孤儿，然后 `go build -o blog-server ./cmd/server && ./blog-server`。
+- **教训**：① 启动脚本先检查端口占用再 bind 失败 abort；② Makefile 的 dev target 可以 `go run -trimpath` + 自定义 `-o` 路径避免缓存命名混淆；③ 把"ERROR listen addr already in use"升级为 `os.Exit(1)` 让失败更明显（当前代码 goroutine 里 `os.Exit(1)`，但 sleep 后父进程未察觉就前台跑其他命令）。
+- **紧急程度**：低（非代码 bug，是操作习惯 + 日志可见性不足）
+
+### Bug：gocyclo 阈值与项目实际情况
+- **发现于**：WI-5.20 lint 阶段
+- **描述**：最初 `.golangci.yml` 设 gocyclo min-complexity=15；`main()` 和 `ImagesUpload` 都自然超过 15（多个 validation gate + 多个错误分支）。调整到 20 并在配置里加注释解释原因。Web handler 的典型"多 guard + early return"结构本来就是高圈复杂度。
+- **建议处理方式**：保留 20；若某新函数超过 20，说明该拆了。
+- **紧急程度**：低
+
+### 反思清单
+| # | 问题 | 本阶段 |
+|---|------|--------|
+| 1 | 临时方案 / 妥协 | 有（CodeMirror 推迟 P7、reload-on-write 简化策略）|
+| 2 | "能跑但不够好"的代码 | 有（buildAdminMux 里的 switch statement 对 `/edit`/`/delete` 后缀判断——比路由框架笨）|
+| 3 | Bug 根因在别处 | 无 |
+| 4 | 设计假设在实现时才暴露不成立 | 有（gocyclo 15 对 web handler 过严）|
+| 5 | 范围外的重构机会 | 有（全局换 chi.Router、引入 esbuild 前端构建）|
+| 6 | 新的系统 / 需求理解 | 有（site_settings 跨包共享的包拆分技法、reload-on-write vs watch-only 取舍）|

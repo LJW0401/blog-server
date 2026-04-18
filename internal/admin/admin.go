@@ -181,15 +181,15 @@ func (h *Handlers) PasswordSubmit(w http.ResponseWriter, r *http.Request) {
 	confirm := r.Form.Get("confirm")
 
 	if err := auth.VerifyPassword(h.Config.AdminPasswordBcrypt, oldPw); err != nil {
-		http.Redirect(w, r, "/manage/password?e="+url("旧密码错误"), http.StatusSeeOther)
+		http.Redirect(w, r, "/manage/password?e="+urlq("旧密码错误"), http.StatusSeeOther)
 		return
 	}
 	if len(newPw) < 8 {
-		http.Redirect(w, r, "/manage/password?e="+url("新密码至少 8 位"), http.StatusSeeOther)
+		http.Redirect(w, r, "/manage/password?e="+urlq("新密码至少 8 位"), http.StatusSeeOther)
 		return
 	}
 	if newPw != confirm {
-		http.Redirect(w, r, "/manage/password?e="+url("两次输入不一致"), http.StatusSeeOther)
+		http.Redirect(w, r, "/manage/password?e="+urlq("两次输入不一致"), http.StatusSeeOther)
 		return
 	}
 	hash, err := auth.HashPassword(newPw)
@@ -207,19 +207,19 @@ func (h *Handlers) PasswordSubmit(w http.ResponseWriter, r *http.Request) {
 		h.Config.AdminPasswordBcrypt = prevHash
 		h.Config.PasswordChangedAt = prevChanged
 		h.Logger.Error("admin.password.save", slog.String("err", err.Error()))
-		http.Redirect(w, r, "/manage/password?e="+url("保存失败，请重试"), http.StatusSeeOther)
+		http.Redirect(w, r, "/manage/password?e="+urlq("保存失败，请重试"), http.StatusSeeOther)
 		return
 	}
 	h.Logger.Info("admin.password.changed", slog.String("user", sess.Username))
-	http.Redirect(w, r, "/manage?m="+url("密码已更新"), http.StatusSeeOther)
+	http.Redirect(w, r, "/manage?m="+urlq("密码已更新"), http.StatusSeeOther)
 }
 
 // --- Helpers ---------------------------------------------------------------
 
 func redirectWithError(w http.ResponseWriter, r *http.Request, msg, next string) {
-	target := "/manage/login?e=" + url(msg)
+	target := "/manage/login?e=" + urlq(msg)
 	if next != "" {
-		target += "&next=" + url(next)
+		target += "&next=" + urlq(next)
 	}
 	http.Redirect(w, r, target, http.StatusSeeOther)
 }
@@ -232,15 +232,9 @@ func nextFrom(r *http.Request) string {
 	return "/manage"
 }
 
-// url is a tiny alias to keep redirect lines shorter; callers pass raw text.
-func url(s string) string {
-	return urlEscape(s)
-}
-
-// Local URL-encoder (avoids import churn).
-func urlEscape(s string) string {
-	return template.URLQueryEscaper(s)
-}
+// urlq escapes a string for use as a URL query value; tiny wrapper to keep
+// redirect-building lines short.
+func urlq(s string) string { return template.URLQueryEscaper(s) }
 
 func itoa(n int) string {
 	if n == 0 {
