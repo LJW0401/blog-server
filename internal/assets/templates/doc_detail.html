@@ -1,0 +1,35 @@
+{{ define "title" }}{{ .Data.Doc.Title }} — Penguin{{ end }}
+{{ define "body_class" }}page-doc-detail{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<article class="doc-detail">
+  {{ if eq (printf "%s" .Doc.Status) "draft" }}
+  <div class="draft-banner">草稿预览 — 尚未公开</div>
+  {{ end }}
+  {{ if eq (printf "%s" .Doc.Status) "archived" }}
+  <div class="archived-banner">已归档</div>
+  {{ end }}
+
+  <header class="doc-header">
+    <div class="kicker">{{ .Doc.Category }}</div>
+    <h1>{{ .Doc.Title }}</h1>
+    <div class="meta">
+      <span>{{ formatDate .Doc.Updated "2006-01-02" }} 更新</span>
+      <span class="dot-sep">·</span>
+      <span>{{ readingTime .Doc.Body }} 分钟阅读</span>
+      {{ range .Doc.Tags }}<span class="tag-mini">{{ . }}</span>{{ end }}
+    </div>
+  </header>
+
+  <section class="doc-body">
+    {{ markdown .Doc.Body }}
+  </section>
+
+  <nav class="doc-nav">
+    {{ if .Prev }}<a class="prev" href="/docs/{{ .Prev.Slug }}">‹ {{ .Prev.Title }}</a>{{ end }}
+    {{ if .Next }}<a class="next" href="/docs/{{ .Next.Slug }}">{{ .Next.Title }} ›</a>{{ end }}
+  </nav>
+</article>
+{{ end }}
+{{ end }}

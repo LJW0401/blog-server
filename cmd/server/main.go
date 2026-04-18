@@ -1,7 +1,5 @@
-// Command blog-server is the HTTP service entry point.
-// In phase 1 it wires the middleware chain and serves a placeholder handler
-// so the security baseline can be verified end-to-end. Real content/admin
-// handlers land in later phases.
+// Command blog-server is the HTTP service entry point. Wires config, content,
+// render and middleware stacks and serves the public routes.
 package main
 
 import (
@@ -15,8 +13,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/penguin/blog-server/internal/assets"
 	"github.com/penguin/blog-server/internal/config"
+	"github.com/penguin/blog-server/internal/content"
 	"github.com/penguin/blog-server/internal/middleware"
+	"github.com/penguin/blog-server/internal/public"
+	"github.com/penguin/blog-server/internal/render"
 	"github.com/penguin/blog-server/internal/storage"
 )
 
@@ -39,15 +41,41 @@ func main() {
 		os.Exit(1)
 	}
 	if errors.Is(err, storage.ErrCorruptDB) {
-		logger.Warn("storage.open", slog.String("note", "db was corrupt and rebuilt; older file quarantined"))
+		logger.Warn("storage.open", slog.String("note", "db was corrupt and rebuilt"))
 	}
 	defer func() { _ = store.Close() }()
+
+	cstore := content.New(cfg.DataDir, logger)
+	if err := cstore.Reload(); err != nil {
+		logger.Error("content.reload", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
+	rootCtx, stopWatch := context.WithCancel(context.Background())
+	watchCancel, _ := cstore.Watch(rootCtx, 200*time.Millisecond)
+
+	tpl, err := render.NewTemplates(assets.Templates(), render.NewMarkdown())
+	if err != nil {
+		logger.Error("render.templates", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
+
+	ph := public.NewHandlers(cstore, tpl, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/__healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte("ok"))
 	})
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.Static()))))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		ph.Home(w, r)
+	})
+	mux.HandleFunc("/docs", ph.DocsList)
+	mux.HandleFunc("/docs/", ph.DocDetail)
 
 	chain := middleware.Chain(
 		middleware.PanicRecover(logger),
@@ -75,6 +103,8 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 	logger.Info("shutdown")
+	watchCancel()
+	stopWatch()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(ctx)

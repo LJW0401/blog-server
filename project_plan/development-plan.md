@@ -369,7 +369,18 @@ Go 1.22+、chi v5.0.12、goldmark v1.7.8、chroma v2.14.0、modernc.org/sqlite v
 - **Given** 访客系统处于暗色模式，**When** 访问任一公开页，**Then** 页面主色调暗化、光斑饱和度降低
 - 所有工作项安全门控通过；Lighthouse 达标
 
-**阶段状态**：未开始
+**阶段状态**：已完成
+
+**完成日期**：2026-04-18
+**验收结果**：通过
+**安全门控**：`make check` 全绿（fmt + vet + lint + tidy + test + vulncheck）
+**集成门控**：WI-2.5、WI-2.8.5、WI-2.12、WI-2.15.5、WI-2.19、WI-2.22 全部通过
+**覆盖率**：config 100% / middleware 91.7% / content 84.4% / public 77.5% / assets 75% / storage 71.9% / render 61.7%；合计 79.3%
+**端到端验证**：live server 验证 `/`、`/docs`、`/docs/:slug`（published/draft/archived/404）、`/static/css/theme.css`、default-password banner、安全响应头全部通过
+**备注**：
+- 25 个 WI 全部完成，新增 4 个 assets 相关测试
+- 5 条 learnings 已记录（web→assets 路径调整、template content 冲突、fsnotify 增量优化机会、chroma 版本对齐、chromedp E2E 推迟到 P7）
+- 暗色模式 CSS 就位（跟随系统，光斑降饱和 0.55、降亮度 0.7）
 
 ---
 

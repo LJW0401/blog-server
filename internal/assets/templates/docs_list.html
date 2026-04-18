@@ -1,0 +1,80 @@
+{{ define "title" }}文档 — Penguin{{ end }}
+{{ define "body_class" }}page-docs{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<div class="orbs" aria-hidden="true">
+  <div class="orb orb-a"></div>
+  <div class="orb orb-b"></div>
+  <div class="orb orb-c"></div>
+  <div class="orb orb-d"></div>
+</div>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-label">导航</div>
+    <ul class="side-nav">
+      <li><a href="/docs" class="{{ if eq .View "all" }}active{{ end }}">文档主页 <span class="count">{{ .TotalPublished }}</span></a></li>
+      <li><a href="/docs?view=category" class="{{ if eq .View "category" }}active{{ end }}">目录 <span class="count">{{ len .Categories }}</span></a></li>
+      <li><a href="/docs?view=tag" class="{{ if eq .View "tag" }}active{{ end }}">标签 <span class="count">{{ len .AllTags }}</span></a></li>
+      <li><a href="/docs?view=archive" class="{{ if eq .View "archive" }}active{{ end }}">归档 <span class="count">{{ len .Years }}</span></a></li>
+    </ul>
+
+    <div class="side-label">标签</div>
+    <div class="tag-list" style="margin-bottom:36px;">
+      {{ range .AllTags }}
+      <a class="tag {{ if .Active }}active{{ end }}" href="{{ .HREF }}">{{ .Name }}<span class="num">{{ .Count }}</span></a>
+      {{ end }}
+    </div>
+
+    <div class="side-label">归档</div>
+    <ul class="archive-list">
+      {{ range .Years }}
+      <li><a href="?year={{ .Year }}">{{ .Year }}<span class="ar-count">{{ .Count }}</span></a></li>
+      {{ end }}
+    </ul>
+  </aside>
+
+  <main class="main">
+    <div class="page-head">
+      <div class="kicker">Writing</div>
+      <h1>文档。</h1>
+      <p class="sub">关于工程、工具、写作与思考的笔记，按更新时间倒序排列。</p>
+    </div>
+
+    <div class="toolbar">
+      <div class="left">共 <strong>{{ .ResultCount }}</strong> 篇 · 当前：<strong>{{ .ViewLabel }}</strong></div>
+    </div>
+
+    <div class="doc-list">
+      {{ range .Docs }}
+      <a class="doc-row" href="/docs/{{ .Slug }}">
+        <div>
+          <div class="title">{{ .Title }}</div>
+          <div class="excerpt">{{ .Excerpt }}</div>
+          <div class="meta">
+            {{ range .Tags }}<span class="tag-mini">{{ . }}</span>{{ end }}
+            <span>{{ readingTime .Body }} 分钟阅读</span>
+            <span class="dot-sep">·</span>
+            <span>{{ formatDate .Updated "2006-01-02" }}</span>
+          </div>
+        </div>
+        <div class="date"><div class="d">{{ formatDate .Updated "02" }}</div><div class="my">{{ upper (formatDate .Updated "Jan 2006") }}</div></div>
+      </a>
+      {{ else }}
+      <div class="doc-row doc-row-empty">暂无内容</div>
+      {{ end }}
+    </div>
+
+    {{ if .Pager.Show }}
+    <div class="pager">
+      {{ if .Pager.HasPrev }}<a href="?page={{ .Pager.Prev }}">‹ 上一页</a>{{ end }}
+      {{ range .Pager.Pages }}
+        {{ if .Current }}<span class="current">{{ .N }}</span>{{ else }}<a href="?page={{ .N }}">{{ .N }}</a>{{ end }}
+      {{ end }}
+      {{ if .Pager.HasNext }}<a href="?page={{ .Pager.Next }}">下一页 ›</a>{{ end }}
+    </div>
+    {{ end }}
+  </main>
+</div>
+{{ end }}
+{{ end }}
