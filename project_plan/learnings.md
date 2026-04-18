@@ -392,3 +392,6 @@
 - **描述**：既有 projects_test.go 未覆盖 "sidebar 链接保留其它 filter" 和 "pager 保留 filter" 的行为。本次新加了 pill 的覆盖，但 sidebar/pager 还是盲区
 - **建议处理方式**：配合上述 hrefBuilder 统一重构时一起补测
 - **紧急程度**：低
+
+- 2026-04-19 快速功能 home-doc-excerpt 完成，无 learnings（已执行反思清单）
+- 2026-04-19 快速功能 home-doc-title-bigger 完成，无 learnings（已执行反思清单）

@@ -120,8 +120,9 @@
       <div class="docs-list">
         {{ range .FeaturedDocs }}
         <a class="doc-item" href="/docs/{{ .Slug }}">
-          <div>
+          <div class="doc-text">
             <div class="doc-title">{{ .Title }}</div>
+            {{ if .Excerpt }}<div class="doc-excerpt">{{ .Excerpt }}</div>{{ end }}
             <div class="doc-meta">{{ .Category }} · {{ readingTime .Body }} 分钟阅读</div>
           </div>
           <div class="doc-arrow">›</div>
