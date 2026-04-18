@@ -6,11 +6,13 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"syscall"
 	"time"
 
@@ -29,12 +31,56 @@ import (
 	"github.com/penguin/blog-server/internal/storage"
 )
 
+// version is injected at build time via -ldflags="-X main.version=..."
+// (see Makefile's build target). Falls back to VCS info from debug.BuildInfo
+// when not injected (e.g. `go run`), and ultimately "dev".
+var version = ""
+
+func resolveVersion() string {
+	if version != "" {
+		return version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		// Prefer the module version if we were built as a proper module.
+		if v := info.Main.Version; v != "" && v != "(devel)" {
+			return v
+		}
+		// Otherwise fall back to VCS info (commit hash + dirty flag).
+		var rev, mod string
+		for _, s := range info.Settings {
+			switch s.Key {
+			case "vcs.revision":
+				if len(s.Value) >= 7 {
+					rev = s.Value[:7]
+				} else {
+					rev = s.Value
+				}
+			case "vcs.modified":
+				if s.Value == "true" {
+					mod = "-dirty"
+				}
+			}
+		}
+		if rev != "" {
+			return rev + mod
+		}
+	}
+	return "dev"
+}
+
 func main() {
 	cfgPath := flag.String("config", "config.yaml", "path to config.yaml")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(resolveVersion())
+		return
+	}
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
+	logger.Info("startup", slog.String("version", resolveVersion()))
 
 	cfg, err := config.Load(*cfgPath)
 	if err != nil {
@@ -113,9 +159,10 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+	healthzBody := fmt.Sprintf("ok blog-server %s\n", resolveVersion())
 	mux.HandleFunc("/__healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		_, _ = w.Write([]byte("ok"))
+		_, _ = w.Write([]byte(healthzBody))
 	})
 	mux.Handle("/static/", staticFileServer(assets.Static()))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

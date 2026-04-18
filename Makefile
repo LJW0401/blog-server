@@ -52,8 +52,14 @@ vulncheck:
 		echo "[WARN] govulncheck not installed, skipping"; \
 	fi
 
+# Version string injected into the binary at build time. Prefers git tag;
+# falls back to short sha + dirty marker; ultimately "dev" outside a git repo.
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS := -s -w -X main.version=$(VERSION)
+
 build:
-	CGO_ENABLED=0 $(GO) build -ldflags="-s -w" -o blog-server ./cmd/server
+	CGO_ENABLED=0 $(GO) build -ldflags="$(LDFLAGS)" -o blog-server ./cmd/server
+	@./blog-server -version | sed 's/^/[OK] built /'
 
 dev:
 	$(GO) run ./cmd/server

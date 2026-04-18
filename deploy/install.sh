@@ -453,6 +453,11 @@ cmd_update() {
 
     download_release
 
+    local old_ver new_ver
+    old_ver=$("$INSTALL_DIR/blog-server" -version 2>/dev/null || echo unknown)
+    new_ver=$("$DOWNLOAD_TMP/blog-server" -version 2>/dev/null || echo unknown)
+    info "版本：$old_ver → $new_ver"
+
     # 备份旧二进制
     local backup="$INSTALL_DIR/blog-server.prev"
     cp "$INSTALL_DIR/blog-server" "$backup"
@@ -465,7 +470,7 @@ cmd_update() {
     systemctl restart "$SERVICE_NAME.service"
     sleep 1
     if systemctl is-active --quiet "$SERVICE_NAME.service"; then
-        ok "升级到 $RESOLVED_TAG 完成"
+        ok "升级到 $RESOLVED_TAG ($new_ver) 完成"
         info "回滚：sudo cp $backup $INSTALL_DIR/blog-server && sudo systemctl restart $SERVICE_NAME"
     else
         err "新版本启动失败，自动回滚到旧版本"
@@ -485,13 +490,30 @@ cmd_status() {
     journalctl -u "$SERVICE_NAME" -n 20 --no-pager || true
     echo
     if [[ -f "$INSTALL_DIR/blog-server" ]]; then
-        local size mtime
+        local size mtime ver
         size=$(du -h "$INSTALL_DIR/blog-server" | cut -f1)
         mtime=$(stat -c '%y' "$INSTALL_DIR/blog-server" | cut -d. -f1)
-        echo "二进制：$INSTALL_DIR/blog-server  ($size, 更新于 $mtime)"
+        ver=$("$INSTALL_DIR/blog-server" -version 2>/dev/null || echo "unknown")
+        echo "=== 二进制 ==="
+        echo "  路径：$INSTALL_DIR/blog-server"
+        echo "  版本：$ver"
+        echo "  大小：$size"
+        echo "  mtime：$mtime"
     fi
+    # Ask the running service for its runtime-reported version via /__healthz.
+    local listen_addr listen_port
+    if [[ -f "$INSTALL_DIR/config.yaml" ]]; then
+        listen_addr=$(awk -F'"' '/listen_addr/{print $2; exit}' "$INSTALL_DIR/config.yaml" 2>/dev/null)
+        listen_port="${listen_addr##*:}"
+        if [[ -n "$listen_port" ]]; then
+            local healthz
+            healthz=$(curl -s --max-time 2 "http://127.0.0.1:$listen_port/__healthz" 2>/dev/null || true)
+            [[ -n "$healthz" ]] && echo "  运行中版本（来自 /__healthz）：${healthz}"
+        fi
+    fi
+    echo
     if [[ -d "$INSTALL_DIR/backups" ]]; then
-        echo "最新备份："
+        echo "=== 最新备份 ==="
         ls -lh "$INSTALL_DIR/backups/" 2>/dev/null | tail -5 || true
     fi
 }
