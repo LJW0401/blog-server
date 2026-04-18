@@ -1,0 +1,137 @@
+{{ define "title" }}Penguin — Personal{{ end }}
+{{ define "body_class" }}page-home{{ end }}
+{{ define "html_class" }}snap-y{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<section class="page page-1" id="home-top">
+  <div class="orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-6"></div>
+  </div>
+  <div class="hero">
+    <div class="hero-left">
+      <h1>你好，<br/>我是 {{ .Settings.Name }}。</h1>
+      <p class="tagline">{{ .Settings.Tagline }}</p>
+      <ul class="meta-list">
+        <li><span>坐标</span><span>{{ .Settings.Location }}</span></li>
+        <li><span>方向</span><span>{{ .Settings.Direction }}</span></li>
+        <li><span>现状</span><span>{{ .Settings.Status }}</span></li>
+      </ul>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="/projects">查看项目</a>
+        <a class="btn btn-ghost" href="#contact">联系我 ›</a>
+      </div>
+    </div>
+
+    <div class="hero-right">
+      <div class="panel-label">Recently Active</div>
+      <div class="repo-list">
+        {{ range .RecentRepos }}
+        <a class="repo-card" href="/projects/{{ .Entry.Slug }}">
+          <div class="top">
+            <div class="repo-name">{{ .Entry.DisplayName }}</div>
+            <div class="repo-time">
+              {{ if .Info }}{{ formatDate .Info.PushedAt "2006-01-02" }}{{ else }}{{ formatDate .Entry.Updated "2006-01-02" }}{{ end }}
+            </div>
+          </div>
+          <div class="repo-desc">{{ .Entry.DisplayDesc }}</div>
+          {{ if .Info }}<div class="repo-meta">★ {{ .Info.Stars }} · {{ .Info.Language }}</div>{{ end }}
+        </a>
+        {{ else }}
+        <div class="repo-card repo-card-empty">暂无活跃仓库</div>
+        {{ end }}
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">Scroll ↓</div>
+</section>
+
+<section class="page page-2" id="work">
+  <div class="orbs" aria-hidden="true">
+    <div class="orb orb-4"></div>
+    <div class="orb orb-5"></div>
+  </div>
+  <div class="page-2-inner">
+    <div id="about">
+      <div class="section-head">
+        <h2>关于我。</h2>
+        <a class="see-all" href="#contact">联系 ›</a>
+      </div>
+      <p class="about-bio">
+        {{ if .About.Bio }}{{ .About.Bio }}{{ else }}
+        一名长期专注于<strong>后端工程与开发者工具</strong>的开发者，相信好的代码和好的文字同样重要。
+        <span class="muted">业余时间用来写博客、打磨开源项目，并记录思考与方法。</span>
+        {{ end }}
+      </p>
+      <div class="about-grid">
+        <div class="about-card">
+          <div class="kicker">Stack</div>
+          <h4>技能栈</h4>
+          <div class="pills">
+            {{ range .About.Stack }}<span class="pill">{{ . }}</span>{{ end }}
+          </div>
+        </div>
+        <div class="about-card">
+          <div class="kicker">Experience</div>
+          <h4>经历</h4>
+          <ul>
+            {{ range .About.Experience }}<li><span>{{ .Title }}</span><span class="yr">{{ .Year }}</span></li>{{ end }}
+          </ul>
+        </div>
+        <div class="about-card">
+          <div class="kicker">Interests</div>
+          <h4>兴趣</h4>
+          <ul>
+            {{ range .About.Interests }}<li>{{ . }}</li>{{ end }}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-head">
+        <h2>主要开源项目。</h2>
+        <a class="see-all" href="/projects">查看全部 ›</a>
+      </div>
+      <div class="project-grid">
+        {{ range .FeaturedProjects }}
+        <a class="project-card" href="/projects/{{ .Slug }}">
+          <div>
+            <div class="kicker">{{ .Category }}</div>
+            <h3>{{ .DisplayName }}</h3>
+            <p>{{ .DisplayDesc }}</p>
+          </div>
+          <div class="arrow">›</div>
+        </a>
+        {{ else }}
+        <div class="project-card project-card-empty">暂无项目</div>
+        {{ end }}
+      </div>
+    </div>
+
+    <div id="writing">
+      <div class="section-head">
+        <h2>个人总结文档。</h2>
+        <a class="see-all" href="/docs">查看全部 ›</a>
+      </div>
+      <div class="docs-list">
+        {{ range .FeaturedDocs }}
+        <a class="doc-item" href="/docs/{{ .Slug }}">
+          <div>
+            <div class="doc-title">{{ .Title }}</div>
+            <div class="doc-meta">{{ .Category }} · {{ readingTime .Body }} 分钟阅读</div>
+          </div>
+          <div class="doc-arrow">›</div>
+        </a>
+        {{ else }}
+        <div class="doc-item doc-item-empty">暂无文档</div>
+        {{ end }}
+      </div>
+    </div>
+  </div>
+</section>
+{{ end }}
+{{ end }}

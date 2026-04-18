@@ -1,0 +1,39 @@
+[Unit]
+Description=blog-server — personal site
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=blog
+Group=blog
+WorkingDirectory=/opt/blog-server
+ExecStart=/opt/blog-server/blog-server -config /opt/blog-server/config.yaml
+Restart=on-failure
+RestartSec=5s
+# Don't fight systemd if startup keeps failing — bail after 5 quick restarts.
+StartLimitIntervalSec=30
+StartLimitBurst=5
+
+# Hardening — all reasonable for a small content service.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/blog-server
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# Logs go to journald → already captured for free.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,46 @@
+{{ define "title" }}图片管理 — Penguin{{ end }}
+{{ define "body_class" }}page-admin{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<div class="admin-shell">
+  <header class="admin-header">
+    <h1>图片管理</h1>
+    <div class="admin-session"><a href="/manage">← 返回面板</a></div>
+  </header>
+
+  {{ if .Error }}<div class="form-err">{{ .Error }}</div>{{ end }}
+  {{ if .Info }}<div class="form-info">{{ .Info }}</div>{{ end }}
+
+  <section class="admin-section">
+    <h2>上传</h2>
+    <form method="POST" action="/manage/images/upload" enctype="multipart/form-data" class="image-upload">
+      <input type="hidden" name="csrf" value="{{ .CSRF }}" />
+      <input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" required />
+      <button type="submit" class="btn btn-primary">上传</button>
+    </form>
+    <p class="note">限制：≤ 5MB；支持 PNG / JPEG / WebP / GIF / SVG。上传后从下方列表复制路径。</p>
+  </section>
+
+  <section class="admin-section">
+    <h2>已上传（{{ len .Files }}）</h2>
+    {{ if .Files }}
+    <table class="admin-table">
+      <thead><tr><th>预览</th><th>路径</th><th>大小</th></tr></thead>
+      <tbody>
+        {{ range .Files }}
+        <tr>
+          <td><img class="image-thumb" src="{{ .URL }}" alt="" loading="lazy" /></td>
+          <td><code>{{ .URL }}</code></td>
+          <td>{{ .Size }} B</td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    {{ else }}
+    <p class="note">暂无图片。</p>
+    {{ end }}
+  </section>
+</div>
+{{ end }}
+{{ end }}

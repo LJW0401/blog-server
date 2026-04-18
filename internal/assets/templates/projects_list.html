@@ -1,0 +1,111 @@
+{{ define "title" }}项目 — Penguin{{ end }}
+{{ define "body_class" }}page-projects{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<div class="orbs" aria-hidden="true">
+  <div class="orb orb-a"></div>
+  <div class="orb orb-b"></div>
+  <div class="orb orb-c"></div>
+  <div class="orb orb-d"></div>
+</div>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-label">分类</div>
+    <ul class="side-nav">
+      <li><a href="/projects" class="{{ if not .ViewLabel }}active{{ end }}">全部项目 <span class="count">{{ .ResultCount }}</span></a></li>
+      {{ range .Categories }}
+      <li><a href="{{ .HREF }}" class="{{ if .Active }}active{{ end }}">{{ .Name }} <span class="count">{{ .Count }}</span></a></li>
+      {{ end }}
+    </ul>
+
+    <div class="side-label">技术栈</div>
+    <div class="tag-list" style="margin-bottom:36px;">
+      {{ range .StackCloud }}
+      <a class="tag {{ if .Active }}active{{ end }}" href="{{ .HREF }}">{{ .Name }}<span class="num">{{ .Count }}</span></a>
+      {{ end }}
+    </div>
+
+    <div class="side-label">状态</div>
+    <ul class="status-list">
+      {{ range .Statuses }}
+      <li><a href="{{ .HREF }}" class="{{ if .Active }}active{{ end }}"><span class="sd" style="background:{{ .Color }}"></span>{{ .Name }}<span class="sc">{{ .Count }}</span></a></li>
+      {{ end }}
+    </ul>
+  </aside>
+
+  <main class="main">
+    <div class="page-head">
+      <div class="kicker">Projects</div>
+      <h1>项目。</h1>
+      <p class="sub">围绕工程化、开发者工具与内容系统的个人探索，从原型到长期维护。</p>
+    </div>
+
+    <div class="toolbar">
+      <div class="left">共 <strong>{{ .ResultCount }}</strong> 个 · 当前：<strong>{{ .ViewLabel }}</strong></div>
+    </div>
+
+    {{ if .Featured }}
+    <a class="featured" href="/projects/{{ .Featured.Entry.Slug }}">
+      <div>
+        <div class="kicker">Featured · {{ .Featured.Entry.Category }}</div>
+        <h2>{{ .Featured.Entry.DisplayName }}</h2>
+        <p>{{ .Featured.Entry.DisplayDesc }}</p>
+        <div class="pills">
+          {{ range .Featured.Entry.Stack }}<span class="pill">{{ . }}</span>{{ end }}
+        </div>
+      </div>
+      <div class="stats">
+        {{ if .Featured.Info }}
+        <div><div class="k">Stars</div><div class="v">{{ .Featured.Info.Stars }}</div></div>
+        <div><div class="k">Forks</div><div class="v">{{ .Featured.Info.Forks }}</div></div>
+        <div><div class="k">Language</div><div class="v">{{ .Featured.Info.Language }}</div></div>
+        <div><div class="k">Updated</div><div class="v">{{ .Featured.SyncLabel }}</div></div>
+        {{ else }}
+        <div><div class="k">Status</div><div class="v">正在首次同步</div></div>
+        {{ end }}
+      </div>
+    </a>
+    {{ end }}
+
+    <div class="proj-grid">
+      {{ range .Projects }}
+      <a class="proj" href="/projects/{{ .Entry.Slug }}">
+        <div class="top">
+          {{ if .Info }}<span class="lang">{{ .Info.Language }}</span>{{ else }}<span class="lang">—</span>{{ end }}
+          <span class="status">{{ .Entry.Status }}</span>
+        </div>
+        <h3>{{ .Entry.DisplayName }}</h3>
+        <p class="desc">{{ .Entry.DisplayDesc }}</p>
+        <div class="pills">
+          {{ range .Entry.Stack }}<span class="pill">{{ . }}</span>{{ end }}
+        </div>
+        <div class="bottom">
+          <div class="metrics">
+            {{ if .Info }}
+            <span>★ <b>{{ .Info.Stars }}</b></span>
+            <span>⑂ <b>{{ .Info.Forks }}</b></span>
+            {{ end }}
+            <span>{{ if .SyncStale }}同步异常{{ else }}同步于 {{ .SyncLabel }}{{ end }}</span>
+          </div>
+          <div class="arrow">›</div>
+        </div>
+      </a>
+      {{ else }}
+      <div class="proj proj-empty">暂无项目</div>
+      {{ end }}
+    </div>
+
+    {{ if .Pager.Show }}
+    <div class="pager">
+      {{ if .Pager.HasPrev }}<a href="?page={{ .Pager.Prev }}">‹ 上一页</a>{{ end }}
+      {{ range .Pager.Pages }}
+        {{ if .Current }}<span class="current">{{ .N }}</span>{{ else }}<a href="?page={{ .N }}">{{ .N }}</a>{{ end }}
+      {{ end }}
+      {{ if .Pager.HasNext }}<a href="?page={{ .Pager.Next }}">下一页 ›</a>{{ end }}
+    </div>
+    {{ end }}
+  </main>
+</div>
+{{ end }}
+{{ end }}

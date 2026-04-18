@@ -1,0 +1,21 @@
+# blog-server configuration example
+# Copy to config.yaml and edit for your environment. File permissions: 0600.
+
+listen_addr: "127.0.0.1:8080"
+
+admin_username: "admin"
+# bcrypt hash of the default password "666"; MUST be changed in production.
+# Generate with: htpasswd -bnBC 10 "" <password> | tr -d ':\n'
+admin_password_bcrypt: "$2a$10$rBeWrqm.s3cc5.uYjGZBAuiUtHrpLAZpErJSydgg9WIkl.toZ/whG"
+# Timestamp when the password was last changed. null means default password.
+password_changed_at: null
+
+# Directory holding content/, images/, backups/, data.sqlite, trash/
+data_dir: "."
+
+# Optional GitHub personal access token. When empty, API is used anonymously
+# (60 req/h). A token raises the limit to 5000 req/h.
+github_token: ""
+
+# Minutes between GitHub sync runs (default 30).
+github_sync_interval_min: 30
