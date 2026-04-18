@@ -13,7 +13,7 @@
   <aside class="sidebar">
     <div class="side-label">分类</div>
     <ul class="side-nav">
-      <li><a href="/projects" class="{{ if not .ViewLabel }}active{{ end }}">全部项目 <span class="count">{{ .ResultCount }}</span></a></li>
+      <li><a href="/projects" class="{{ if .NoFilter }}active{{ end }}">全部项目 <span class="count">{{ .ResultCount }}</span></a></li>
       {{ range .Categories }}
       <li><a href="{{ .HREF }}" class="{{ if .Active }}active{{ end }}">{{ .Name }} <span class="count">{{ .Count }}</span></a></li>
       {{ end }}

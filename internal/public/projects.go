@@ -41,6 +41,7 @@ type projectsListData struct {
 	Views2        []string      // placeholder
 	ResultCount   int
 	ViewLabel     string
+	NoFilter      bool // true → no category/stack/status filter is applied; used by template to highlight "全部项目"
 	Projects      []*ProjectView
 	Featured      *ProjectView
 	Categories    []categoryItem
@@ -89,9 +90,11 @@ func (h *Handlers) ProjectsList(w http.ResponseWriter, r *http.Request) {
 	featured := firstFeatured(slice, page)
 	cats, stacks, statuses := aggregateProjectFacets(all)
 
+	noFilter := wantCategory == "" && wantStatus == "" && len(wantStack) == 0
 	data := projectsListData{
 		ResultCount: len(views),
 		ViewLabel:   projectsViewLabel(wantCategory, wantStatus, wantStack),
+		NoFilter:    noFilter,
 		Projects:    slice,
 		Featured:    featured,
 		Categories:  buildCategoryItems(cats, wantCategory),

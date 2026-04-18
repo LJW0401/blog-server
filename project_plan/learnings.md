@@ -372,3 +372,23 @@
 - **紧急程度**：低
 
 - 2026-04-19 快速功能 drop-title-periods 完成，无 learnings（已执行反思清单）
+
+## 2026-04-19
+
+### 快速功能：projects-category-filter-ux — 上游 filter HREF 拼接不保留其它 query
+- **类型**：技术债
+- **描述**：`buildCategoryItems` / `buildStackItems` / `buildStatusItems` 生成 sidebar HREF 时都直接 `"/projects?category="+n` 拼接，**不保留当前请求的其它 filter 参数**。用户如果已有 `?status=active` 再点一个 category，status 就被覆盖丢失。本次 pill 清除链接做对了（基于当前 q 派生），但 sidebar 链接这个老坑没顺手修——在 /bug-fix 规则下不扩大范围
+- **建议处理方式**：把 `buildCategoryItems`/`buildStackItems`/`buildStatusItems` 都改成接收 `url.Values`，基于它派生新 URL；同时 pager 也有类似问题（翻页丢 filter），可统一成一个 hrefBuilder 辅助
+- **紧急程度**：中（多 filter 组合的用户会觉得"复选"不工作）
+
+### 快速功能：projects-category-filter-ux — URL 派生模式
+- **类型**：架构洞察
+- **描述**：导航链接（filter tab / sidebar / pill / pager）**应该从当前 url.Values 派生新链接而非字符串拼接**。`cloneValues + Del + Add + q.Encode()` 的模式干净可复用，且天然保留了其它 query 参数。在 `/docs` 页面也有对应的 `buildTagItems` 已经这么做了——`projects` 侧是漏网之鱼
+- **建议处理方式**：下次遇到类似 handler，优先用派生模式而非拼接模式；既有代码里有用拼接的地方值得一并翻新
+- **紧急程度**：低
+
+### 快速功能：projects-category-filter-ux — 测试缺口
+- **类型**：重构机会（测试）
+- **描述**：既有 projects_test.go 未覆盖 "sidebar 链接保留其它 filter" 和 "pager 保留 filter" 的行为。本次新加了 pill 的覆盖，但 sidebar/pager 还是盲区
+- **建议处理方式**：配合上述 hrefBuilder 统一重构时一起补测
+- **紧急程度**：低
