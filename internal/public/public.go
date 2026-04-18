@@ -26,7 +26,8 @@ type SiteSettings struct {
 	Direction  string
 	Status     string
 	ContactQQ  string
-	MediaLinks []MediaLink
+	OSSLinks   []MediaLink // 开源项目列：GitHub, Gitee
+	MediaLinks []MediaLink // 媒体列：B站, 抖音, 小红书
 }
 
 // MediaLink points at one of Penguin's social profiles.
@@ -44,6 +45,10 @@ func DefaultSettings() SiteSettings {
 		Direction: "后端 / 工程化 / 开发者工具",
 		Status:    "活跃维护若干个人项目",
 		ContactQQ: "772436864",
+		OSSLinks: []MediaLink{
+			{Platform: "GitHub"},
+			{Platform: "Gitee"},
+		},
 		MediaLinks: []MediaLink{
 			{Platform: "B站"},
 			{Platform: "抖音"},
@@ -114,7 +119,17 @@ func (h *Handlers) resolveSettings() SiteSettings {
 		if v := kv["qq_group"]; v != "" {
 			s.ContactQQ = v
 		}
-		// Overwrite media links from DB where present.
+		// Overwrite link columns from DB; URL empty means "show platform name
+		// without hyperlink" — the template decides presentation.
+		oss := []struct{ Platform, Key string }{
+			{"GitHub", "media_github"},
+			{"Gitee", "media_gitee"},
+		}
+		filledOSS := []MediaLink{}
+		for _, m := range oss {
+			filledOSS = append(filledOSS, MediaLink{Platform: m.Platform, URL: kv[m.Key]})
+		}
+		s.OSSLinks = filledOSS
 		media := []struct{ Platform, Key string }{
 			{"B站", "media_bilibili"},
 			{"抖音", "media_douyin"},

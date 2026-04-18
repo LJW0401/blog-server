@@ -342,3 +342,9 @@
   - `internal/admin/images.go` 中 `w.WriteHeader(413/415)` 再 `http.Redirect` 的双 WriteHeader 问题（已在上一条 learnings 里提过）
   - 考虑在模板里全站搜一次 `{{ $.` 用法，确认其他 with/range 场景下 $ 含义是否正确
   - 渲染 payload 其实可以把 CSRF 提到 root（render.Render 里统一注入），让模板不需要跨 with 作用域取值——但这是架构改动，单独规划
+
+### 快速功能：联系/媒体加 GitHub/Gitee URL + URL 填写后自动链接化
+- **类型**：架构洞察
+- **描述**：footer 住在 layout.html，对所有页面共享。把 settings 暴露给 footer 的正确做法是 **把 Settings 加到 render payload 根**，而不是让每个 handler 在 Data 里塞 `"Settings"`（那样有 10+ 个 handler 要改）。最终选择在 `render.Templates` 上加了一个 `SettingsFn func() any` 可选字段，main.go 一处注入。这条模式可以复用到任何"跨所有页面可见"的全局字段（如未来加版权、访客计数）
+- **建议处理方式**：保留这个注入点，文档化"需要 layout 级可见的全局数据往 `Templates.SettingsFn` 或同类注入点走"；不再让每个 handler 单独在 Data 里塞
+- **紧急程度**：低

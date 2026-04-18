@@ -19,6 +19,12 @@ type Templates struct {
 	pages  map[string]string  // pageFile → raw template text
 	md     *Markdown
 	layout string
+
+	// SettingsFn, if set, returns site settings made available to the layout
+	// (and any page) as {{ .Settings }} at the payload root. Admin / public
+	// callers both benefit without having to stuff Settings into every Data
+	// map. Called on every Render; caller is responsible for any caching.
+	SettingsFn func() any
 }
 
 // LayoutName is the template entry point invoked by Render.
@@ -85,6 +91,9 @@ func (t *Templates) Render(w http.ResponseWriter, r *http.Request, status int, p
 		"Banner":    middleware.DefaultPasswordBannerFrom(r.Context()),
 		"RequestID": middleware.RequestIDFrom(r.Context()),
 		"Now":       time.Now(),
+	}
+	if t.SettingsFn != nil {
+		payload["Settings"] = t.SettingsFn()
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)

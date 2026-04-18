@@ -22,7 +22,9 @@ type SettingsHandlers struct {
 var SettingsKeys = []string{
 	// Hero + footer contact.
 	"name", "tagline", "location", "direction", "status",
-	"qq_group", "media_bilibili", "media_douyin", "media_xiaohongshu",
+	"qq_group",
+	"media_github", "media_gitee",
+	"media_bilibili", "media_douyin", "media_xiaohongshu",
 	// About-me cards.
 	"about_bio",
 	"about_stack",      // comma/newline-separated list
@@ -84,7 +86,10 @@ func validateSettings(v map[string]string) error {
 	if v["tagline"] == "" {
 		return errMsg("tagline 不能为空")
 	}
-	for _, k := range []string{"media_bilibili", "media_douyin", "media_xiaohongshu"} {
+	for _, k := range []string{
+		"media_github", "media_gitee",
+		"media_bilibili", "media_douyin", "media_xiaohongshu",
+	} {
 		val := v[k]
 		if val == "" {
 			continue

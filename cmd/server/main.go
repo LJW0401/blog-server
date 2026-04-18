@@ -136,6 +136,9 @@ func main() {
 	ph.GitHubCache = ghCache
 	ph.SettingsDB = settingsStore
 	ph.Stats = statsStore
+	// Expose site settings to layout.html footer across all pages (public +
+	// admin); SiteSettings is cached 30s inside ph.Settings() already.
+	tpl.SettingsFn = func() any { return ph.Settings() }
 
 	// Daily cold backup task.
 	backupStore := backup.New(cfg.DataDir, store.DB, logger)

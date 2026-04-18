@@ -43,13 +43,23 @@
       <thead><tr><th>开源项目</th><th>媒体</th><th>交流群</th></tr></thead>
       <tbody>
         <tr>
-          <td><ul><li>GitHub ›</li><li>Gitee ›</li></ul></td>
-          <td><ul><li>B 站</li><li>抖音</li><li>小红书</li></ul></td>
-          <td><ul><li>QQ：772436864</li></ul></td>
+          <td><ul>
+            {{ range .Settings.OSSLinks }}
+              {{ if .URL }}<li><a href="{{ .URL }}" target="_blank" rel="noopener noreferrer">{{ .Platform }} ›</a></li>
+              {{ else }}<li>{{ .Platform }}</li>{{ end }}
+            {{ end }}
+          </ul></td>
+          <td><ul>
+            {{ range .Settings.MediaLinks }}
+              {{ if .URL }}<li><a href="{{ .URL }}" target="_blank" rel="noopener noreferrer">{{ .Platform }} ›</a></li>
+              {{ else }}<li>{{ .Platform }}</li>{{ end }}
+            {{ end }}
+          </ul></td>
+          <td><ul><li>QQ：{{ .Settings.ContactQQ }}</li></ul></td>
         </tr>
       </tbody>
     </table>
-    <div class="copyright">© {{ formatDate .Now "2006" }} Penguin. Designed with care.</div>
+    <div class="copyright">© {{ formatDate .Now "2006" }} {{ .Settings.Name }}. Designed with care.</div>
   </div>
 </footer>
 </body>
