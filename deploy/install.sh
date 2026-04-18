@@ -343,11 +343,13 @@ RestartSec=5s
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-# ProtectHome=tmpfs (not =true): when INSTALL_DIR lives under /home (e.g.
-# /home/ubuntu/blog-site), =true masks the entire /home and systemd can't even
-# locate the binary at ExecStart. =tmpfs mounts /home as empty tmpfs; the
-# ReadWritePaths= below then bind-mounts the install dir back in.
-ProtectHome=tmpfs
+# ProtectHome=false: INSTALL_DIR typically lives under /home (or the caller's
+# pwd). =true masks /home so systemd can't even locate the binary at ExecStart;
+# =tmpfs works only on newer systemd that auto-creates bind-mount parents for
+# ReadWritePaths= (older ones fail with 226/NAMESPACE). Since we already
+# constrain writes via ReadWritePaths= and ProtectSystem=strict, disabling
+# ProtectHome doesn't meaningfully weaken the sandbox for this service.
+ProtectHome=false
 ReadWritePaths=$INSTALL_DIR
 ProtectKernelModules=true
 ProtectKernelTunables=true
