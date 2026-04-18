@@ -640,7 +640,21 @@ Go 1.22+、chi v5.0.12、goldmark v1.7.8、chroma v2.14.0、modernc.org/sqlite v
 - **Given** 连续 5 次密码错误，**When** 第 6 次尝试，**Then** 返回 429
 - **Given** 管理员修改密码成功，**When** 访客刷新主页，**Then** 黄条消失
 
-**阶段状态**：未开始
+**阶段状态**：已完成
+
+**完成日期**：2026-04-18
+**验收结果**：通过
+**安全门控**：`make check` 全绿（fmt + vet + lint + tidy + test + vulncheck）
+**集成门控**：WI-4.5、WI-4.9、WI-4.13 全部通过
+**覆盖率**：auth 83.5% / admin 62.8% / middleware 82.1%；全局 74.1%
+**端到端验证**：live server 验证登录流程端到端（未登录 → 303 到 login；错密 → 303+error；正确密码 → Set-Cookie+303；登录态访问 dashboard → 200；CSRF 缺失 → 403；banner 显示逻辑正常）；单元测试覆盖完整密码修改+banner 消失链路
+**备注**：
+- 13 个 WI 全部完成
+- 5 条 learnings 已记录（config 变可写取舍、UA binding 副作用、bcrypt fixture 教训、helper 过度避依赖、mux exclude 语义）
+- Session cookie：HMAC-SHA256 签名 + HttpOnly+Secure+SameSite=Strict + 7d TTL + UA 指纹绑定
+- 限流：5 次/10 分钟 sliding window（IP 级），成功登录清空计数
+- CSRF：每 session 24B 随机 token 嵌入表单 hidden field
+- password_changed_at 持久化到 config.yaml（yaml.v3 序列化 + 原子 rename）
 
 ---
 

@@ -1,0 +1,24 @@
+{{ define "title" }}登录 — Penguin{{ end }}
+{{ define "body_class" }}page-admin-login{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<div class="admin-login-wrap">
+  <form class="admin-card" method="POST" action="/manage/login">
+    <h1>管理后台</h1>
+    <p class="sub">使用管理员用户名与密码登录。</p>
+    {{ if .Error }}<div class="form-err">{{ .Error }}</div>{{ end }}
+    <label>
+      <span>用户名</span>
+      <input name="username" autocomplete="username" required autofocus />
+    </label>
+    <label>
+      <span>密码</span>
+      <input name="password" type="password" autocomplete="current-password" required />
+    </label>
+    {{ if .Next }}<input type="hidden" name="next" value="{{ .Next }}" />{{ end }}
+    <button type="submit" class="btn btn-primary">登录</button>
+  </form>
+</div>
+{{ end }}
+{{ end }}

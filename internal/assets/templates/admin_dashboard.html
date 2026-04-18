@@ -1,0 +1,37 @@
+{{ define "title" }}管理后台 — Penguin{{ end }}
+{{ define "body_class" }}page-admin{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<div class="admin-shell">
+  <header class="admin-header">
+    <h1>管理后台</h1>
+    <div class="admin-session">
+      <span>已登录：<strong>{{ .Username }}</strong></span>
+      <form method="POST" action="/manage/logout" style="display:inline;"><button class="btn btn-ghost" type="submit">退出</button></form>
+    </div>
+  </header>
+
+  {{ if .Banner }}
+  <div class="admin-warning">⚠ 当前使用默认密码，前台黄条将持续显示至密码修改。<a href="/manage/password">立即修改</a></div>
+  {{ end }}
+
+  <section class="admin-section">
+    <h2>操作</h2>
+    <ul class="admin-nav">
+      <li><a href="/manage/password">修改密码</a></li>
+      <li class="disabled">文档管理（P5）</li>
+      <li class="disabled">项目管理（P5）</li>
+      <li class="disabled">基本信息 / 联系方式（P5）</li>
+      <li class="disabled">图片管理（P5）</li>
+    </ul>
+  </section>
+
+  {{ if .Changed }}
+  <section class="admin-section">
+    <div class="note">密码上次修改于 {{ formatDate .Changed "2006-01-02 15:04:05" }}</div>
+  </section>
+  {{ end }}
+</div>
+{{ end }}
+{{ end }}

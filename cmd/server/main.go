@@ -13,7 +13,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/penguin/blog-server/internal/admin"
 	"github.com/penguin/blog-server/internal/assets"
+	"github.com/penguin/blog-server/internal/auth"
 	"github.com/penguin/blog-server/internal/config"
 	"github.com/penguin/blog-server/internal/content"
 	gh "github.com/penguin/blog-server/internal/github"
@@ -80,6 +82,15 @@ func main() {
 	ph := public.NewHandlers(cstore, tpl, logger)
 	ph.GitHubCache = ghCache
 
+	// Auth + admin wiring
+	sessionSecret, err := auth.LoadOrCreateSecret(store.DB)
+	if err != nil {
+		logger.Error("auth.secret", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
+	authStore := auth.NewStore(store.DB, sessionSecret)
+	adminH := admin.New(authStore, cfg, *cfgPath, tpl, logger)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/__healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -97,6 +108,30 @@ func main() {
 	mux.HandleFunc("/docs/", ph.DocDetail)
 	mux.HandleFunc("/projects", ph.ProjectsList)
 	mux.HandleFunc("/projects/", ph.ProjectDetail)
+
+	// Admin routes: public login/password-reset endpoints are at /manage/login;
+	// the authGate middleware protects everything else under /manage.
+	mux.HandleFunc("/manage/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			adminH.LoginSubmit(w, r)
+			return
+		}
+		adminH.LoginPage(w, r)
+	})
+	mux.HandleFunc("/manage/logout", adminH.Logout)
+
+	protected := http.NewServeMux()
+	protected.HandleFunc("/manage", adminH.Dashboard)
+	protected.HandleFunc("/manage/", adminH.Dashboard)
+	protected.HandleFunc("/manage/password", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			adminH.PasswordSubmit(w, r)
+			return
+		}
+		adminH.PasswordPage(w, r)
+	})
+	mux.Handle("/manage", middleware.AuthGate(authStore)(protected))
+	mux.Handle("/manage/password", middleware.AuthGate(authStore)(protected))
 
 	chain := middleware.Chain(
 		middleware.PanicRecover(logger),

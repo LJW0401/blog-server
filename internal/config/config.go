@@ -92,3 +92,37 @@ func (c *Config) validate() error {
 func (c *Config) DefaultPasswordUnchanged() bool {
 	return c.PasswordChangedAt == nil
 }
+
+// Save marshals the config back to YAML and atomically writes it to path
+// with 0o600 permissions. Comments from the source YAML are NOT preserved
+// (yaml.v3 discards them) — this is an accepted trade-off given the admin
+// panel owns updates to the password hash and password_changed_at.
+func (c *Config) Save(path string) error {
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return fmt.Errorf("config: marshal: %w", err)
+	}
+	dir := "."
+	if i := strings.LastIndex(path, string(os.PathSeparator)); i >= 0 {
+		dir = path[:i]
+	}
+	tmp, err := os.CreateTemp(dir, ".config-*.tmp")
+	if err != nil {
+		return fmt.Errorf("config: temp: %w", err)
+	}
+	tmpName := tmp.Name()
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+		return fmt.Errorf("config: write: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpName)
+		return err
+	}
+	if err := os.Chmod(tmpName, 0o600); err != nil {
+		_ = os.Remove(tmpName)
+		return err
+	}
+	return os.Rename(tmpName, path)
+}

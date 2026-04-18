@@ -128,3 +128,46 @@
 | 4 | 设计假设在实现时才暴露不成立 | 有（Status 类型跨 kind 共用不合理）|
 | 5 | 范围外的重构机会 | 有（ProjectView cache-ahead，改 intToString）|
 | 6 | 新的系统 / 需求理解 | 有（Syncer 接口解耦 + ReposSource 模式）|
+
+## 2026-04-18 · P4 管理后台鉴权
+
+### 架构洞察：config.yaml 变可写 vs site_settings 二选一
+- **发现于**：WI-4.10 执行过程中
+- **描述**：密码修改需持久化 `admin_password_bcrypt` + `password_changed_at`。两种路径：① 重写 config.yaml（yaml.v3 + atomic rename）；② 把可变字段迁到 site_settings 表。选择了 ①（保持架构 §2.config 的设定）。代价：用户在 config.yaml 里写的注释被 yaml.v3 discards。
+- **建议处理方式**：在 `config.yaml.example` 注释里写清"本文件会被管理端覆写；持久化更改请从后台进行"。
+- **紧急程度**：低
+
+### 架构洞察：Session Cookie 的 UA binding 副作用
+- **发现于**：WI-4.4 执行 `TestSession_Edge_UABindingRejectsMismatch`
+- **描述**：为了满足 R10 "Cookie 未绑定 IP/UA 存在 session fixation 风险"，session payload 嵌入 UA 前 64 字节的哈希（`UAFP`），parse 时重算比对。带来副作用：浏览器切换（或 UA 被安全软件改写）会导致登录态失效。作品集型单管理员场景可接受。
+- **建议处理方式**：日志里 slog.Warn "session_ua_mismatch" 帮助诊断；不放到硬检查里。
+- **紧急程度**：低
+
+### Bug：测试用 bcrypt 哈希需实际生成
+- **发现于**：WI-4.11 TestPassword_Smoke 首次运行
+- **描述**：把 `defaultPasswordHash` 随手写了字符串冒充 bcrypt("supersecret")，格式是对的但 salt 是假的——`VerifyPassword` 返回 mismatch，整个 admin 测试套件全挂。根因：bcrypt 是有 salt 的哈希，必须用 `bcrypt.GenerateFromPassword` 真生成一个固定哈希。
+- **修复**：本地生成一次 `bcrypt("supersecret")` 的哈希并以 const 方式 inline 到 `admin_test.go` 中。
+- **教训**：有 salt 的哈希无法"编造"fixture；应该在 init 时 `once.Do` 真实计算一次并缓存，或用 test helper 生成。
+- **紧急程度**：已修复
+
+### 重构机会：admin 包里的 url() / itoa() helper
+- **发现于**：WI-4.1、WI-4.10 执行过程中
+- **描述**：为了"少引一个 strconv/net/url 包"，admin.go 里手写了 `itoa` 和 wrapping `urlEscape`。与 P3 的 intToString 同病——typical over-engineering。
+- **建议处理方式**：整理时统一换回 `strconv.Itoa` 和 `url.QueryEscape`。
+- **紧急程度**：低
+
+### 架构洞察：gate 与 login page 的分叉放置
+- **发现于**：WI-4.6 实现过程中
+- **描述**：`/manage/login` 本身必须**不**被 AuthGate 拦截（否则未登录就永远进不去登录页），所以只能把 protected 路由挂在另一套 mux 上，login/logout 放在 public mux。`mux.Handle("/manage", middleware.AuthGate(...))` + `mux.Handle("/manage/password", ...)` 两条独立挂载是解决之道——net/http 的 path 路由没有"除了 X 其它都拦截"的原生语法。
+- **建议处理方式**：若路由数量增多，可以引入 chi.Router 的 `Group(func(r) { r.Use(authGate); r.Get(...)... })` 让结构更清晰。目前简单够用。
+- **紧急程度**：低
+
+### 反思清单
+| # | 问题 | 本阶段 |
+|---|------|--------|
+| 1 | 临时方案 / 妥协 | 有（admin.go 里的 url()/itoa() 手写避 strconv/net/url）|
+| 2 | "能跑但不够好"的代码 | 有（同上 + net/http mux 的双路由拼装）|
+| 3 | Bug 根因在别处 | 有（bcrypt fixture 用字符串冒充——哈希有 salt 必须真算）|
+| 4 | 设计假设在实现时才暴露不成立 | 有（UA binding 副作用、config.yaml 变可写的注释保留问题）|
+| 5 | 范围外的重构机会 | 有（admin helper 换 strconv/net/url、引入 chi Router 分组）|
+| 6 | 新的系统 / 需求理解 | 有（net/http mux 无 exclude 语义、session UA-fp 的取舍）|
