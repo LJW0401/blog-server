@@ -350,3 +350,23 @@
 - **紧急程度**：低
 
 - 2026-04-19 快速功能 auto-dismiss-info-banner 完成，无 learnings（已执行反思清单）
+
+## 2026-04-19
+
+### 快速功能：docs-views-hierarchy（目录树 / 标签目录 / 归档时间线）
+- **类型**：架构洞察
+- **描述**：Go `html/template` 的 `{{ template "name" . }}` 可以把 view-specific 数据原样交给子模板，不必靠 `{{ if/with }}` 塞一堆 view 判断进主 content block。本次 `docs_list.html` 主内容按 `.View` 分叉到 4 个 `define` 子模板（view_list / view_category / view_tag / view_archive），每个子模板各自只关心自己的数据形状，可读性和复用性都好。**以后"多视图同页面"场景复用这个模式**
+- **建议处理方式**：文档化一下"主模板分叉到多个 define 子模板"的约定
+- **紧急程度**：低
+
+### 快速功能：docs-views-hierarchy — `<details>` 展开动画
+- **类型**：技术债
+- **描述**：`<details>/<summary>` 原生展开无过渡动画，点击时体验略"硬"。纯 CSS 对 `<details>` 做 max-height transition 不工作（content 高度未知）；流畅做法需要 JS 读测量 scrollHeight 或用 `<dialog>`-like 方案。当前足够可用，但可打磨
+- **建议处理方式**：未来如果追求极致交互再补 JS；现在不是瓶颈
+- **紧急程度**：低
+
+### 快速功能：docs-views-hierarchy — DocsList handler 长度
+- **类型**：重构机会
+- **描述**：`DocsList` 已经 80+ 行做了多件事（过滤、计数、分页、现在还加了 view-specific payloads）。继续加视图/过滤规则会越堆越乱
+- **建议处理方式**：拆成 `handler()` + `buildDocsListData(ctx, q)`；后者纯函数便于单测覆盖边界条件
+- **紧急程度**：低

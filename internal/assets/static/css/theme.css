@@ -520,3 +520,158 @@ body.page-admin { background: var(--bg-alt); }
   .draft-banner { background: #332b00; color: #ffd280; }
   .archived-banner { background: #2c2c2e; color: #a1a1a6; }
 }
+
+/* ----- /docs 三种 view：目录 / 标签 / 归档（Apple-style） ----- */
+/* 核心设计：去重边框、hairline 分隔、typography hierarchy、SF 风缓动曲线、
+   active 态不用加粗 bg 而是主色渐淡。与 .doc-row / .repo-card 保持语言一致。*/
+.tree-view, .archive-view, .tag-catalog { margin-top: 4px; }
+
+/* 共用的 details/summary 基础 */
+.tree-node, .archive-year, .archive-month { border: none; }
+.tree-node > summary,
+.archive-year > summary,
+.archive-month > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  transition: color 0.2s var(--ease);
+}
+.tree-node > summary::-webkit-details-marker,
+.archive-year > summary::-webkit-details-marker,
+.archive-month > summary::-webkit-details-marker { display: none; }
+.tree-node > summary::before,
+.archive-year > summary::before,
+.archive-month > summary::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid var(--ink-faint);
+  border-bottom: 1.5px solid var(--ink-faint);
+  transform: rotate(-45deg) translate(2px, -2px);
+  transition: transform 0.28s var(--ease), border-color 0.28s var(--ease);
+}
+.tree-node[open] > summary::before,
+.archive-year[open] > summary::before,
+.archive-month[open] > summary::before {
+  transform: rotate(45deg) translate(-1px, -1px);
+  border-color: var(--accent);
+}
+.tree-node > summary:hover,
+.archive-year > summary:hover,
+.archive-month > summary:hover { color: var(--accent); }
+.tree-count {
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* 目录树（Category） */
+.tree-name { font-size: 17px; font-weight: 500; flex: 1; }
+.tree-body { padding: 6px 0 14px 22px; }
+.tree-node .tree-node > summary {
+  padding: 12px 0;
+  font-size: 15px;
+  border-bottom-color: transparent;
+}
+.tree-node .tree-name { font-size: 15px; font-weight: 400; }
+
+/* 归档（Archive） — Year / Month 视觉层级明显分开 */
+.archive-year > summary { padding: 22px 0; border-bottom-color: rgba(0,0,0,0.08); }
+.archive-year > summary .archive-key {
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  flex: 1;
+  font-variant-numeric: tabular-nums;
+}
+.archive-months { padding: 4px 0 18px 32px; }
+.archive-month > summary {
+  padding: 10px 0;
+  border-bottom-color: transparent;
+}
+.archive-month .archive-key {
+  font-size: 15px;
+  font-weight: 500;
+  flex: 1;
+  color: var(--ink-soft);
+}
+.archive-month[open] .archive-key { color: var(--ink); }
+.archive-docs { padding: 4px 0 8px 18px; }
+
+/* Tree-doc（目录 / 归档末梢的文章链接） — 薄行、悬停轻微推移与主色 */
+.tree-doc {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 0;
+  text-decoration: none;
+  color: var(--ink);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  transition: color 0.2s var(--ease), transform 0.28s var(--ease);
+}
+.tree-doc:last-child { border-bottom: none; }
+.tree-doc:hover { color: var(--accent); transform: translateX(2px); }
+.tree-doc-title { flex: 1; font-size: 14px; }
+.tree-doc-date {
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* 标签目录 — 卡片模仿 .repo-card 的 hairline + 细腻阴影抬升 */
+.tag-catalog {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+.tag-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--ink);
+  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease), border-color 0.2s var(--ease);
+}
+.tag-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(0,113,227,0.28);
+  box-shadow: 0 10px 24px -12px rgba(0,113,227,0.22);
+}
+.tag-card.active {
+  border-color: var(--accent);
+  background: rgba(0,113,227,0.06);
+  color: var(--accent);
+}
+.tag-card.active .tag-card-count { color: var(--accent); opacity: 0.75; }
+.tag-card-name { font-size: 15px; font-weight: 500; letter-spacing: -0.005em; }
+.tag-card-count {
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* Dark-mode overrides */
+@media (prefers-color-scheme: dark) {
+  .tree-node > summary,
+  .archive-year > summary,
+  .archive-month > summary { border-bottom-color: rgba(255,255,255,0.08); }
+  .archive-year > summary { border-bottom-color: rgba(255,255,255,0.12); }
+  .tree-doc { border-bottom-color: rgba(255,255,255,0.06); }
+  .tag-card { background: #1c1c1e; border-color: rgba(255,255,255,0.08); }
+  .tag-card:hover { border-color: rgba(10,132,255,0.45); box-shadow: 0 10px 24px -12px rgba(10,132,255,0.28); }
+  .tag-card.active { background: rgba(10,132,255,0.12); }
+}
