@@ -348,3 +348,5 @@
 - **描述**：footer 住在 layout.html，对所有页面共享。把 settings 暴露给 footer 的正确做法是 **把 Settings 加到 render payload 根**，而不是让每个 handler 在 Data 里塞 `"Settings"`（那样有 10+ 个 handler 要改）。最终选择在 `render.Templates` 上加了一个 `SettingsFn func() any` 可选字段，main.go 一处注入。这条模式可以复用到任何"跨所有页面可见"的全局字段（如未来加版权、访客计数）
 - **建议处理方式**：保留这个注入点，文档化"需要 layout 级可见的全局数据往 `Templates.SettingsFn` 或同类注入点走"；不再让每个 handler 单独在 Data 里塞
 - **紧急程度**：低
+
+- 2026-04-19 快速功能 auto-dismiss-info-banner 完成，无 learnings（已执行反思清单）

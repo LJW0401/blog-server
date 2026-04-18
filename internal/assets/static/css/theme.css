@@ -381,7 +381,13 @@ body.page-admin-login { background: var(--bg); }
 .admin-card input:focus { outline: none; border-color: var(--accent); background: #fff; }
 .admin-card .btn { height: 40px; justify-content: center; font-size: 14px; }
 .form-err { background: #ffe8e5; color: #8a1f1f; font-size: 13px; padding: 10px 14px; border-radius: var(--radius-sm); }
-.form-info { background: #e6f4ff; color: #0054a8; font-size: 13px; padding: 10px 14px; border-radius: var(--radius-sm); }
+/* .form-info 是成功 / 提示横幅（如"已保存"）。不能让它长期占位，先显示
+   4s 给用户读完，再 1s 淡出并折叠高度，整个元素退出文档流。forwards 让
+   终态停在 opacity:0 / max-height:0。.form-err 不加动画，错误必须一直可见。*/
+.form-info { background: #e6f4ff; color: #0054a8; font-size: 13px; padding: 10px 14px; border-radius: var(--radius-sm); overflow: hidden; animation: fade-out-banner 1s ease-out 4s forwards; }
+@keyframes fade-out-banner {
+  to { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; margin-top: 0; margin-bottom: 0; border-width: 0; }
+}
 .form-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 
 body.page-admin { background: var(--bg-alt); }
