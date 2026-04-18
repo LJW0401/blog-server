@@ -12,6 +12,10 @@
 #   RELEASE_TAG    版本标签，默认 latest
 #   INSTALL_DIR    安装目录，默认 /opt/blog-server
 #   SERVICE_USER   运行用户，默认 blog
+#   GH_MIRROR      GitHub 下载加速前缀（例：https://ghproxy.com/）
+#                  国内网络慢时强烈建议设置；留空走直连
+#   LOCAL_ASSET    本地已经下载好的 tarball 路径（例：/tmp/blog-server-linux-amd64.tar.gz）
+#                  设置后跳过远程下载；优先级最高
 #   NO_CADDY=1     跳过 Caddy 安装与配置（自己接管反代时用）
 #   NO_BACKUP=1    卸载时不备份数据（危险）
 
@@ -24,7 +28,19 @@ INSTALL_DIR="${INSTALL_DIR:-/opt/blog-server}"
 SERVICE_USER="${SERVICE_USER:-blog}"
 ASSET_NAME_PATTERN='blog-server-linux-{ARCH}.tar.gz'   # release 里资产命名约定
 SERVICE_NAME="blog-server"
+GH_MIRROR="${GH_MIRROR:-}"   # 国内网速慢时可设 https://ghproxy.com/
 # ===================================================
+
+# 把 https://github.com/... 转换成带镜像前缀的 URL。
+mirror_url() {
+    local u="$1"
+    if [[ -z "$GH_MIRROR" ]]; then
+        echo "$u"
+    else
+        # 规范化：去掉结尾 /，然后拼上原始 URL
+        echo "${GH_MIRROR%/}/$u"
+    fi
+}
 
 # ---------- 视觉辅助 ----------
 RED="\033[0;31m"; GREEN="\033[0;32m"; YELLOW="\033[0;33m"; BLUE="\033[0;34m"; NC="\033[0m"
@@ -93,32 +109,73 @@ download_release() {
     tmpdir=$(mktemp -d)
     trap "rm -rf $tmpdir" RETURN
 
-    # 解析版本号
-    if [[ "$RELEASE_TAG" == "latest" ]]; then
-        info "查询 $GITHUB_REPO 的最新 release……"
-        resolved_tag=$(curl -sSL "https://api.github.com/repos/$GITHUB_REPO/releases/latest" \
-            | grep -oP '"tag_name":\s*"\K[^"]+' | head -1)
-        [[ -z "$resolved_tag" ]] && die "无法获取最新 release tag（仓库是不是 public / 是否至少发布过一个版本？）"
-    else
-        resolved_tag="$RELEASE_TAG"
-    fi
-    info "目标版本：$resolved_tag"
+    # 优先使用本地已有 tarball（LOCAL_ASSET）——跳过远程下载
+    if [[ -n "$LOCAL_ASSET" ]]; then
+        if [[ ! -f "$LOCAL_ASSET" ]]; then
+            die "LOCAL_ASSET 指向的文件不存在：$LOCAL_ASSET"
+        fi
+        info "使用本地 tarball：$LOCAL_ASSET"
+        cp "$LOCAL_ASSET" "$tmpdir/$asset"
+        resolved_tag="${RELEASE_TAG}"
+        [[ "$resolved_tag" == "latest" ]] && resolved_tag="local"
 
-    url="https://github.com/$GITHUB_REPO/releases/download/$resolved_tag/$asset"
-    info "下载：$url"
-    if ! curl -fsSL "$url" -o "$tmpdir/$asset"; then
-        die "下载失败。检查 (1) GITHUB_REPO 是否正确 (2) release 里是否有 $asset 这个资产"
-    fi
-
-    # 校验 sha256（如果有）
-    local sha_asset="$asset.sha256"
-    local sha_url="https://github.com/$GITHUB_REPO/releases/download/$resolved_tag/$sha_asset"
-    if curl -fsSL "$sha_url" -o "$tmpdir/$sha_asset" 2>/dev/null; then
-        info "校验 SHA256……"
-        ( cd "$tmpdir" && sha256sum -c "$sha_asset" >/dev/null ) || die "SHA256 校验失败"
-        ok "SHA256 校验通过"
+        # 校验（如果同目录有 .sha256）
+        local local_sha="${LOCAL_ASSET}.sha256"
+        if [[ -f "$local_sha" ]]; then
+            info "本地 SHA256 校验……"
+            cp "$local_sha" "$tmpdir/${asset}.sha256"
+            ( cd "$tmpdir" && sha256sum -c "${asset}.sha256" >/dev/null ) || die "本地 SHA256 校验失败"
+            ok "SHA256 校验通过"
+        else
+            warn "未找到 $local_sha，跳过校验"
+        fi
     else
-        warn "未找到 $sha_asset，跳过校验（如果是官方 release 建议补上）"
+        # 远程下载路径
+        if [[ "$RELEASE_TAG" == "latest" ]]; then
+            info "查询 $GITHUB_REPO 的最新 release……"
+            resolved_tag=$(curl -sSL "https://api.github.com/repos/$GITHUB_REPO/releases/latest" \
+                | grep -oP '"tag_name":\s*"\K[^"]+' | head -1)
+            [[ -z "$resolved_tag" ]] && die "无法获取最新 release tag（仓库是不是 public / 是否至少发布过一个版本？）"
+        else
+            resolved_tag="$RELEASE_TAG"
+        fi
+        info "目标版本：$resolved_tag"
+
+        # 复用已下载的缓存：如果 /tmp/blog-server-<tag>-<arch>.tar.gz 存在且非空，直接用
+        local cached="/tmp/blog-server-${resolved_tag}-${arch}.tar.gz"
+        if [[ -s "$cached" ]]; then
+            info "发现缓存 tarball：$cached（跳过下载；如需强制重下请先 rm）"
+            cp "$cached" "$tmpdir/$asset"
+        else
+            url=$(mirror_url "https://github.com/$GITHUB_REPO/releases/download/$resolved_tag/$asset")
+            info "下载：$url"
+            # --progress-bar 显示下载进度；--connect-timeout 避免无限等待
+            if ! curl -fL --progress-bar --connect-timeout 15 --retry 3 --retry-delay 2 \
+                     "$url" -o "$tmpdir/$asset"; then
+                if [[ -z "$GH_MIRROR" ]]; then
+                    err "直连 GitHub 下载失败。国内网络可能需要镜像代理，重试："
+                    err "  sudo GH_MIRROR=https://ghproxy.com/ bash $0 install"
+                    err "备选镜像：ghfast.top / gh.llkk.cc / mirror.ghproxy.com"
+                fi
+                err "或手动下载后指定本地文件："
+                err "  sudo LOCAL_ASSET=/path/to/$asset bash $0 install"
+                die "下载失败。检查 (1) GITHUB_REPO 是否正确 (2) release 里是否有 $asset 这个资产"
+            fi
+            # 保存到缓存位置，下次同版本直接复用
+            cp "$tmpdir/$asset" "$cached" 2>/dev/null || true
+        fi
+
+        # 校验 sha256（如果有）
+        local sha_asset="$asset.sha256"
+        local sha_url
+        sha_url=$(mirror_url "https://github.com/$GITHUB_REPO/releases/download/$resolved_tag/$sha_asset")
+        if curl -fsSL --connect-timeout 15 "$sha_url" -o "$tmpdir/$sha_asset" 2>/dev/null; then
+            info "校验 SHA256……"
+            ( cd "$tmpdir" && sha256sum -c "$sha_asset" >/dev/null ) || die "SHA256 校验失败"
+            ok "SHA256 校验通过"
+        else
+            warn "未找到 $sha_asset，跳过校验（如果是官方 release 建议补上）"
+        fi
     fi
 
     info "解压到 $tmpdir"
