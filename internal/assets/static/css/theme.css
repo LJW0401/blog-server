@@ -220,6 +220,32 @@ body.page-doc-detail { background: var(--bg); }
 .draft-banner { background: #fff3cd; color: #664d03; }
 .archived-banner { background: #e2e3e5; color: #41464b; }
 
+/* About block on home page 2 */
+.about-bio {
+  font-size: clamp(18px, 1.8vw, 22px);
+  line-height: 1.55;
+  color: var(--ink);
+  max-width: 820px;
+  letter-spacing: -0.004em;
+  margin-bottom: 36px;
+  font-weight: 400;
+}
+.about-bio .muted { color: var(--ink-soft); }
+.about-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.about-card {
+  background: #fff; border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-lg); padding: 28px;
+  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+.about-card:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05); }
+.about-card .kicker { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); font-weight: 500; margin-bottom: 14px; }
+.about-card h4 { font-size: 18px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 14px; }
+.about-card ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.about-card li { font-size: 14px; line-height: 1.5; color: var(--ink-soft); display: flex; justify-content: space-between; gap: 12px; }
+.about-card li .yr { color: var(--ink-faint); font-size: 12px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.about-card .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.about-card .pill { font-size: 12px; padding: 4px 10px; background: #f0f0f2; border-radius: 980px; color: var(--ink); }
+
 /* Projects list */
 body.page-projects .status-list { list-style: none; padding-left: 12px; display: flex; flex-direction: column; gap: 10px; }
 body.page-projects .status-list a { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); text-decoration: none; padding: 4px 0; transition: color 0.2s var(--ease); }
@@ -400,6 +426,7 @@ body.page-admin { background: var(--bg-alt); }
   .hero { grid-template-columns: 1fr; gap: 48px; }
   .project-grid { grid-template-columns: 1fr; }
   .docs-list { grid-template-columns: 1fr; }
+  .about-grid { grid-template-columns: 1fr; }
   .nav-links { display: none; }
   body.page-docs .shell, body.page-projects .shell { grid-template-columns: 1fr; gap: 32px; }
   .sidebar { position: relative; top: 0; max-height: none; }

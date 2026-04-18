@@ -257,6 +257,12 @@
 | 5 | 范围外的重构机会 | 有（Deps struct、backup 压缩级别可调、stats 按时间粒度聚合）|
 | 6 | 新的系统 / 需求理解 | 有（监测类 API 用"吞错入日志"而非返回 error 的约定）|
 
+### 重构机会：静态资源应有 fingerprint 破缓存
+- **发现于**：用户把 CSS 里新增的 "关于我" 卡片样式后，页面仍显示为纯文字
+- **描述**：P7 加了 `Cache-Control: public, max-age=604800`（7 天）给 /static/*。这在生产是对的，但开发期会让"改了 CSS 用户看不到"成为反复卡点（已经是第二次，第一次是 P2 验收后的 scroll-snap bug）。
+- **建议处理方式**：给静态资源 URL 加内容哈希 `/static/css/theme.<sha8>.css`，这样 CSS 变了 URL 就变、浏览器自动拉新版本。实现：启动时计算每个静态资源的 sha，在模板 funcmap 里暴露 `{{ staticURL "css/theme.css" }}`。
+- **紧急程度**：中（影响反复开发体验，生产侧不痛）
+
 ### Bug：pickFeatured 仍用 `==published` 过滤项目（种子化后暴露）
 - **发现于**：种子化 3 个项目后用户发现主页"主要开源项目"为空
 - **描述**：`pickFeatured` 是 P2 写的，当时项目和文档共用 `StatusPublished`。P3 修 "status 跨 kind" 时只改了 `filterProjectsByStatus`，没改 pickFeatured；测试的 fixture 当时也不足以暴露——`TestHome_Smoke_RecentlyActiveDerived` 只测了右栏派生路径，featured 槽位走 `pickFeatured(projs, 3)` 从未被断言过。

@@ -193,11 +193,101 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 		"FeaturedProjects": pickFeatured(projs, 3),
 		// Recently Active is a derived view merging content + github cache.
 		"RecentRepos": h.RecentlyActiveProjects(r.Context(), 3),
+		"About":       h.about(),
 	}
 	if err := h.Tpl.Render(w, r, http.StatusOK, "home.html", data); err != nil {
 		h.Logger.Error("home.render", slog.String("err", err.Error()))
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
+}
+
+// AboutData drives the "关于我" block on the homepage. Values are filled from
+// site_settings where present, otherwise fall back to sensible defaults so a
+// fresh deployment still renders a complete section.
+type AboutData struct {
+	Bio        string
+	Stack      []string
+	Experience []AboutExperience
+	Interests  []string
+}
+
+// AboutExperience is one row in the Experience card.
+type AboutExperience struct {
+	Title string
+	Year  string
+}
+
+func (h *Handlers) about() AboutData {
+	defaults := AboutData{
+		Bio: "",
+		Stack: []string{
+			"TypeScript", "Go", "Python", "Node.js",
+			"PostgreSQL", "SQLite", "Linux", "Docker",
+		},
+		Experience: []AboutExperience{
+			{Title: "后端 / 工具开发者", Year: "2023 – 现在"},
+			{Title: "开始写开源项目", Year: "2021"},
+			{Title: "计算机科学本科", Year: "2019 – 2023"},
+		},
+		Interests: []string{
+			"开发者工具与工程化",
+			"极简与克制的设计",
+			"阅读与技术写作",
+			"终端美学与 dotfiles",
+		},
+	}
+	if h.SettingsDB == nil {
+		return defaults
+	}
+	kv := h.SettingsDB.All()
+	if v := strings.TrimSpace(kv["about_bio"]); v != "" {
+		defaults.Bio = v
+	}
+	if v := strings.TrimSpace(kv["about_stack"]); v != "" {
+		defaults.Stack = splitCommaList(v)
+	}
+	if v := strings.TrimSpace(kv["about_interests"]); v != "" {
+		defaults.Interests = splitCommaList(v)
+	}
+	if v := strings.TrimSpace(kv["about_experience"]); v != "" {
+		defaults.Experience = parseExperience(v)
+	}
+	return defaults
+}
+
+// splitCommaList tolerates comma, Chinese comma and newline separators.
+func splitCommaList(s string) []string {
+	replacer := strings.NewReplacer("，", ",", "\n", ",", "、", ",")
+	s = replacer.Replace(s)
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// parseExperience parses lines of the form "标题 | 年份" into AboutExperience.
+func parseExperience(s string) []AboutExperience {
+	out := []AboutExperience{}
+	for _, line := range strings.Split(s, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "|", 2)
+		item := AboutExperience{Title: strings.TrimSpace(parts[0])}
+		if len(parts) == 2 {
+			item.Year = strings.TrimSpace(parts[1])
+		}
+		if item.Title != "" {
+			out = append(out, item)
+		}
+	}
+	return out
 }
 
 // atoi parses a query-string integer defaulting to `def` on any issue.

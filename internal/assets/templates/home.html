@@ -55,6 +55,42 @@
     <div class="orb orb-5"></div>
   </div>
   <div class="page-2-inner">
+    <div id="about">
+      <div class="section-head">
+        <h2>关于我。</h2>
+        <a class="see-all" href="#contact">联系 ›</a>
+      </div>
+      <p class="about-bio">
+        {{ if .About.Bio }}{{ .About.Bio }}{{ else }}
+        一名长期专注于<strong>后端工程与开发者工具</strong>的开发者，相信好的代码和好的文字同样重要。
+        <span class="muted">业余时间用来写博客、打磨开源项目，并记录思考与方法。</span>
+        {{ end }}
+      </p>
+      <div class="about-grid">
+        <div class="about-card">
+          <div class="kicker">Stack</div>
+          <h4>技能栈</h4>
+          <div class="pills">
+            {{ range .About.Stack }}<span class="pill">{{ . }}</span>{{ end }}
+          </div>
+        </div>
+        <div class="about-card">
+          <div class="kicker">Experience</div>
+          <h4>经历</h4>
+          <ul>
+            {{ range .About.Experience }}<li><span>{{ .Title }}</span><span class="yr">{{ .Year }}</span></li>{{ end }}
+          </ul>
+        </div>
+        <div class="about-card">
+          <div class="kicker">Interests</div>
+          <h4>兴趣</h4>
+          <ul>
+            {{ range .About.Interests }}<li>{{ . }}</li>{{ end }}
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <div>
       <div class="section-head">
         <h2>主要开源项目。</h2>
