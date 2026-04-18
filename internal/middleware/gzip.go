@@ -71,11 +71,19 @@ func Gzip(next http.Handler) http.Handler {
 		}
 		gz := gzipWriterPool.Get().(*gzip.Writer)
 		gz.Reset(w)
+		grw := &gzippedResponseWriter{ResponseWriter: w, gz: gz}
 		defer func() {
-			_ = gz.Close()
+			// Only flush the gzip trailer if compression was actually used.
+			// gzip.Writer.Close() always writes header+footer (even if
+			// nothing was written to it), which would append ~23 bytes of
+			// empty stream to non-compressible responses (images, etc.).
+			// gzip.Writer.Reset() on the next Get() is safe — it zero-resets
+			// internal state including wroteHeader/closed.
+			if grw.compress {
+				_ = gz.Close()
+			}
 			gzipWriterPool.Put(gz)
 		}()
-		grw := &gzippedResponseWriter{ResponseWriter: w, gz: gz}
 		next.ServeHTTP(grw, r)
 	})
 }

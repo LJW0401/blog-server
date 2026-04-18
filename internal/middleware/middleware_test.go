@@ -235,6 +235,34 @@ func TestGzip_Edge_NonCompressibleSkipped(t *testing.T) {
 	}
 }
 
+// Regression: early implementation unconditionally called gz.Close() in the
+// deferred cleanup, which writes ~18 bytes of empty gzip stream to the
+// ResponseWriter even when compression wasn't used — silently corrupting
+// binary responses (images, etc.). Verify the body is byte-exact.
+func TestGzip_Edge_NonCompressibleBodyBitExact(t *testing.T) {
+	payload := []byte("\x89PNG\x0d\x0a\x1a\x0a binary image data not-really-a-png-but-won't-be-compressed")
+	srv := httptest.NewServer(middleware.Gzip(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(payload)
+	})))
+	t.Cleanup(srv.Close)
+	req, _ := http.NewRequest("GET", srv.URL, nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		t.Fatalf("RoundTrip: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if ce := resp.Header.Get("Content-Encoding"); ce == "gzip" {
+		t.Fatalf("unexpectedly gzipped: Content-Encoding=%q", ce)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if !bytes.Equal(body, payload) {
+		t.Errorf("body tampered:\n  got  %d bytes: %x\n  want %d bytes: %x",
+			len(body), body, len(payload), payload)
+	}
+}
+
 // Concurrent requests each get unique request IDs.
 func TestChain_Edge_ConcurrentRequestIDsUnique(t *testing.T) {
 	const n = 32
