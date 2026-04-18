@@ -24,8 +24,19 @@ set -euo pipefail
 # ================== 可覆盖的默认值 ==================
 GITHUB_REPO="${GITHUB_REPO:-LJW0401/blog-server}"
 RELEASE_TAG="${RELEASE_TAG:-latest}"
-INSTALL_DIR="${INSTALL_DIR:-/opt/blog-server}"
-SERVICE_USER="${SERVICE_USER:-blog}"
+
+# INSTALL_DIR 默认为调用脚本时的当前工作目录。
+# 这样 cd 到你想放的地方、sudo bash install.sh install，东西就留在原地，
+# 方便用文件管理器 / git / scp 直接操作，不需要 sudo 才能看。
+# 强烈建议在一个专用子目录里跑（mkdir ~/blog-site && cd ~/blog-site），
+# 不要直接在 $HOME 或 / 下跑——uninstall 的 trash 归档会把整个目录打包。
+INSTALL_DIR="${INSTALL_DIR:-$(pwd -P)}"
+
+# SERVICE_USER 默认为实际调用 sudo 的那个用户（即 $SUDO_USER），
+# 如果直接以 root 跑则退回到 'blog' 专用用户。
+# 好处：文件所有权还是你自己，平时无需 sudo 就能编辑 content/*.md。
+SERVICE_USER="${SERVICE_USER:-${SUDO_USER:-blog}}"
+
 ASSET_NAME_PATTERN='blog-server-linux-{ARCH}.tar.gz'   # release 里资产命名约定
 SERVICE_NAME="blog-server"
 GH_MIRROR="${GH_MIRROR:-}"   # 国内网速慢时可设 https://ghproxy.com/
@@ -197,20 +208,34 @@ cleanup_download() {
 # ---------- 创建用户和目录 ----------
 setup_user_and_dirs() {
     if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
-        info "创建系统用户 $SERVICE_USER"
+        info "创建系统用户 $SERVICE_USER（当前用户不存在）"
         useradd -r -s /usr/sbin/nologin -d "$INSTALL_DIR" "$SERVICE_USER"
     else
-        info "用户 $SERVICE_USER 已存在"
+        info "以已有用户 $SERVICE_USER 运行服务"
     fi
 
     info "准备目录 $INSTALL_DIR"
     mkdir -p "$INSTALL_DIR"
-    chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
-    chmod 750 "$INSTALL_DIR"
+
+    # 只在目录所有者不是 SERVICE_USER 时才 chown（避免把用户自己的家目录权限搞乱）。
+    local current_owner
+    current_owner=$(stat -c '%U' "$INSTALL_DIR")
+    if [[ "$current_owner" != "$SERVICE_USER" ]]; then
+        info "将 $INSTALL_DIR 所有权改为 $SERVICE_USER（原 $current_owner）"
+        chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+    fi
+    # 权限：user=rwx, group=rx, other=---（如果目录在 $HOME 下，原始 755 就够了，不强改）
+    if [[ "$(stat -c '%a' "$INSTALL_DIR")" == "755" ]]; then
+        : # 保留
+    elif [[ "$(stat -c '%a' "$INSTALL_DIR")" -lt 700 ]]; then
+        chmod 750 "$INSTALL_DIR"
+    fi
 
     local subs=(content/docs content/projects images backups trash)
     for d in "${subs[@]}"; do
-        sudo -u "$SERVICE_USER" mkdir -p "$INSTALL_DIR/$d"
+        if [[ ! -d "$INSTALL_DIR/$d" ]]; then
+            sudo -u "$SERVICE_USER" mkdir -p "$INSTALL_DIR/$d" 2>/dev/null || mkdir -p "$INSTALL_DIR/$d"
+        fi
     done
     ok "目录就绪"
 }
@@ -300,6 +325,10 @@ install_systemd_unit() {
 Description=blog-server — personal site
 After=network-online.target
 Wants=network-online.target
+# StartLimit* directives must live in [Unit], not [Service] — systemd will
+# emit a "Unknown key name" warning and ignore them otherwise.
+StartLimitIntervalSec=30
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -309,8 +338,6 @@ WorkingDirectory=$INSTALL_DIR
 ExecStart=$INSTALL_DIR/blog-server -config $INSTALL_DIR/config.yaml
 Restart=on-failure
 RestartSec=5s
-StartLimitIntervalSec=30
-StartLimitBurst=5
 
 # Hardening
 NoNewPrivileges=true
@@ -469,6 +496,15 @@ start_service() {
 cmd_install() {
     require_root
     info "=== blog-server 安装 ==="
+    echo
+    echo "  安装目录：$INSTALL_DIR"
+    echo "  运行用户：$SERVICE_USER"
+    echo "  数据：    $INSTALL_DIR/{content,images,backups,data.sqlite}"
+    echo
+    read -rp "继续？[Y/n] " yn
+    yn="${yn:-Y}"
+    [[ "$yn" =~ ^[Yy] ]] || { info "已取消"; exit 0; }
+    echo
     ensure_deps
     download_release
     setup_user_and_dirs
@@ -580,14 +616,12 @@ cmd_uninstall() {
     echo -e "${YELLOW}即将卸载 blog-server。${NC}"
     echo "  - 停止并禁用 systemd unit"
     echo "  - 移除 /etc/systemd/system/$SERVICE_NAME.service"
-    if [[ "${NO_BACKUP:-0}" != "1" ]]; then
-        echo "  - 归档 $INSTALL_DIR 下的数据到 /tmp/blog-server-uninstall-*.tar.gz"
-    else
-        echo "  - ${RED}NO_BACKUP=1 跳过数据归档（不可恢复）${NC}"
-    fi
-    echo "  - 删除 $INSTALL_DIR"
-    echo "  - 删除系统用户 $SERVICE_USER"
+    echo "  - 保留数据目录：$INSTALL_DIR（需要删除请自行 rm -rf）"
+    echo "  - 保留用户 $SERVICE_USER（系统用户才会被提示删除）"
     echo "  - 保留 Caddy（只清 Caddyfile 里的 blog-server 块）"
+    if [[ "${PURGE:-0}" == "1" ]]; then
+        echo -e "  - ${RED}PURGE=1：会额外删除 $INSTALL_DIR + 系统用户${NC}"
+    fi
     echo
     read -rp "确认？输入 yes 继续： " yn
     [[ "$yn" == "yes" ]] || { info "已取消"; exit 0; }
@@ -597,32 +631,42 @@ cmd_uninstall() {
     rm -f "/etc/systemd/system/$SERVICE_NAME.service"
     systemctl daemon-reload
 
-    if [[ "${NO_BACKUP:-0}" != "1" ]] && [[ -d "$INSTALL_DIR" ]]; then
-        local archive="/tmp/blog-server-uninstall-$(date +%Y%m%d-%H%M%S).tar.gz"
-        info "归档数据到 $archive"
-        tar czf "$archive" -C "$(dirname "$INSTALL_DIR")" "$(basename "$INSTALL_DIR")" 2>/dev/null || true
-        ok "归档完成（请自行下载到本地后再删除这台 VPS）"
-    fi
-
-    info "删除 $INSTALL_DIR"
-    rm -rf "$INSTALL_DIR"
-
-    if id -u "$SERVICE_USER" >/dev/null 2>&1; then
-        info "删除用户 $SERVICE_USER"
-        userdel "$SERVICE_USER" 2>/dev/null || true
-    fi
-
     # 从 Caddyfile 里移除 blog-server 块（保留注释/其他站点）
     local caddy_cfg=/etc/caddy/Caddyfile
     if [[ -f "$caddy_cfg" ]] && grep -q "blog-server" "$caddy_cfg"; then
         info "清理 Caddyfile 里的 blog-server 块"
-        # 粗粒度：删除包含 "blog-server" 注释行起到下一空行/大括号结束的块
         awk '
             /# blog-server/ { skip=1; next }
             skip && /^}/    { skip=0; next }
             !skip           { print }
         ' "$caddy_cfg" > "$caddy_cfg.new" && mv "$caddy_cfg.new" "$caddy_cfg"
         systemctl reload caddy || true
+    fi
+
+    # PURGE 模式：同时清数据和用户（需显式启用）
+    if [[ "${PURGE:-0}" == "1" ]]; then
+        if [[ -d "$INSTALL_DIR" ]]; then
+            local archive="/tmp/blog-server-uninstall-$(date +%Y%m%d-%H%M%S).tar.gz"
+            info "PURGE：归档数据到 $archive"
+            tar czf "$archive" -C "$(dirname "$INSTALL_DIR")" "$(basename "$INSTALL_DIR")" 2>/dev/null || true
+            info "PURGE：删除 $INSTALL_DIR"
+            rm -rf "$INSTALL_DIR"
+        fi
+        # 只删除系统用户（UID < 1000）；普通登录用户保留
+        if id -u "$SERVICE_USER" >/dev/null 2>&1; then
+            local uid
+            uid=$(id -u "$SERVICE_USER")
+            if (( uid < 1000 )); then
+                info "PURGE：删除系统用户 $SERVICE_USER"
+                userdel "$SERVICE_USER" 2>/dev/null || true
+            else
+                info "保留登录用户 $SERVICE_USER（UID $uid）"
+            fi
+        fi
+    else
+        echo
+        info "服务已停止；数据保留在 $INSTALL_DIR"
+        info "要完全清理：sudo PURGE=1 bash $0 uninstall"
     fi
 
     ok "=== 卸载完成 ==="
@@ -633,25 +677,38 @@ cmd_help() {
 blog-server 一键安装脚本
 
 子命令：
-    install    首次安装（下载最新 release、建用户、起 systemd、配 Caddy）
+    install    首次安装（默认装到当前目录，下载最新 release，配 systemd + Caddy）
     update     升级到最新 release（失败自动回滚）
     status     查看服务状态 + 最近日志 + 二进制信息
-    uninstall  卸载（默认会先把数据打包归档到 /tmp）
+    uninstall  卸载（默认只移除 systemd unit，保留数据目录给你自己管理）
     help       显示本帮助
 
 环境变量：
     GITHUB_REPO    发布仓库，当前 $GITHUB_REPO
     RELEASE_TAG    版本标签，当前 $RELEASE_TAG
-    INSTALL_DIR    安装目录，当前 $INSTALL_DIR
-    SERVICE_USER   运行用户，当前 $SERVICE_USER
+    INSTALL_DIR    安装目录，当前 $INSTALL_DIR（默认 \$(pwd)）
+    SERVICE_USER   运行用户，当前 $SERVICE_USER（默认 \$SUDO_USER）
+    GH_MIRROR      GitHub 下载镜像前缀（国内加速用，例 https://ghproxy.com/）
+    LOCAL_ASSET    本地已有的 tarball 路径，跳过远程下载
     NO_CADDY=1     跳过 Caddy 安装与配置（已有其它反代时用）
-    NO_BACKUP=1    卸载时不备份数据（谨慎）
+    PURGE=1        uninstall 时同时删除数据目录和系统用户
 
 示例：
+    # 最常见：cd 到想放的目录，一行装好
+    mkdir ~/blog && cd ~/blog
     sudo bash $0 install
-    sudo RELEASE_TAG=v1.2.3 bash $0 update
-    sudo NO_CADDY=1 bash $0 install
+
+    # 国内网络加速
+    sudo GH_MIRROR=https://ghproxy.com/ bash $0 install
+
+    # 指定版本
+    sudo RELEASE_TAG=v1.0.2 bash $0 update
+
+    # 干净卸载（保留数据）
     sudo bash $0 uninstall
+
+    # 连数据带用户一起清
+    sudo PURGE=1 bash $0 uninstall
 EOF
 }
 
