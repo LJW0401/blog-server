@@ -257,6 +257,13 @@
 | 5 | 范围外的重构机会 | 有（Deps struct、backup 压缩级别可调、stats 按时间粒度聚合）|
 | 6 | 新的系统 / 需求理解 | 有（监测类 API 用"吞错入日志"而非返回 error 的约定）|
 
+### Bug：pickFeatured 仍用 `==published` 过滤项目（种子化后暴露）
+- **发现于**：种子化 3 个项目后用户发现主页"主要开源项目"为空
+- **描述**：`pickFeatured` 是 P2 写的，当时项目和文档共用 `StatusPublished`。P3 修 "status 跨 kind" 时只改了 `filterProjectsByStatus`，没改 pickFeatured；测试的 fixture 当时也不足以暴露——`TestHome_Smoke_RecentlyActiveDerived` 只测了右栏派生路径，featured 槽位走 `pickFeatured(projs, 3)` 从未被断言过。
+- **修复**：抽 `isFrontpageVisible(entry)` 辅助函数，按 `Kind` 分派。docs→published，projects→active|developing。新增回归测试 `TestHome_Edge_FeaturedProjectsIncludeActiveAndDeveloping`。
+- **教训**：修"跨 kind 共用类型"的 bug 要全仓库 `grep` 相关常量引用。这次第二次栽在同一个设计缺陷上——可能是时候拆 `DocStatus` / `ProjectStatus` 两个独立类型。
+- **紧急程度**：已修复；设计级重构可排上 backlog
+
 ## 2026-04-18 · P7 精致化 + 发布门控
 
 ### 架构洞察：gzip 中间件的"content-type 延迟嗅探"

@@ -134,13 +134,14 @@ func (h *Handlers) resolveSettings() SiteSettings {
 // --- Helpers ---------------------------------------------------------------
 
 // pickFeatured returns up to `limit` entries following the Mixed rule:
-// featured=true + status=published first (sorted by updated desc), then
-// published non-featured to fill the remainder. Archived and draft are
-// excluded. Stable.
+// featured=true first (sorted by updated desc), then non-featured fill. The
+// "visible" filter differs per kind — docs require status=published; projects
+// are visible for active/developing (archived hidden); other kinds pass by
+// default. Archived / draft are always excluded.
 func pickFeatured(all []*content.Entry, limit int) []*content.Entry {
 	var featured, rest []*content.Entry
 	for _, e := range all {
-		if e.Status != content.StatusPublished {
+		if !isFrontpageVisible(e) {
 			continue
 		}
 		if e.Featured {
@@ -163,6 +164,20 @@ func pickFeatured(all []*content.Entry, limit int) []*content.Entry {
 		out = append(out, e)
 	}
 	return out
+}
+
+// isFrontpageVisible says whether an entry is eligible to show on the
+// homepage carousel. Matches requirement 2.1.2's "mixed" rule semantics but
+// honours the kind-specific status vocabulary we set up in P3.
+func isFrontpageVisible(e *content.Entry) bool {
+	switch e.Kind {
+	case content.KindDoc:
+		return e.Status == content.StatusPublished
+	case content.KindProject:
+		return e.Status == content.StatusActive || e.Status == content.StatusDeveloping
+	default:
+		return e.Status != content.StatusArchived && e.Status != content.StatusDraft
+	}
 }
 
 // --- Handlers --------------------------------------------------------------

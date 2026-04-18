@@ -194,6 +194,31 @@ func TestProjectDetail_Edge_RemoteGone(t *testing.T) {
 	}
 }
 
+// Regression: projects with status=active/developing must appear in the
+// homepage's "主要开源项目" (pickFeatured) slot. Earlier code only accepted
+// status=published, which silently filtered every project out.
+func TestHome_Edge_FeaturedProjectsIncludeActiveAndDeveloping(t *testing.T) {
+	h := setup(t, nil, map[string]string{
+		"a": proj("a", "2026-04-10", "active", "true"),
+		"b": proj("b", "2026-04-09", "developing", ""),
+		"c": proj("c", "2026-04-08", "archived", ""), // must NOT appear
+	})
+	req := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	h.Home(w, req)
+	body := w.Body.String()
+	// The project cards in "主要开源项目" use .Slug in href=/projects/<slug>.
+	if !strings.Contains(body, `class="project-card" href="/projects/a"`) {
+		t.Errorf("active featured project a missing")
+	}
+	if !strings.Contains(body, `class="project-card" href="/projects/b"`) {
+		t.Errorf("developing project b missing")
+	}
+	if strings.Contains(body, `class="project-card" href="/projects/c"`) {
+		t.Error("archived project c should not appear")
+	}
+}
+
 // --- Home Recently Active derivation (WI-3.15, WI-3.16) -------------------
 
 func TestHome_Smoke_RecentlyActiveDerived(t *testing.T) {
