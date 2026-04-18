@@ -370,3 +370,5 @@
 - **描述**：`DocsList` 已经 80+ 行做了多件事（过滤、计数、分页、现在还加了 view-specific payloads）。继续加视图/过滤规则会越堆越乱
 - **建议处理方式**：拆成 `handler()` + `buildDocsListData(ctx, q)`；后者纯函数便于单测覆盖边界条件
 - **紧急程度**：低
+
+- 2026-04-19 快速功能 drop-title-periods 完成，无 learnings（已执行反思清单）
