@@ -31,6 +31,16 @@ func buildAdminMux(
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/manage", adm.Dashboard)
+	// Trailing-slash variant: ServeMux doesn't auto-redirect /manage/ → /manage
+	// when both patterns exist, and the protected mux would otherwise 404 on
+	// the subtree match. Normalise to the canonical URL.
+	mux.HandleFunc("/manage/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/manage/" {
+			http.Redirect(w, r, "/manage", http.StatusMovedPermanently)
+			return
+		}
+		http.NotFound(w, r)
+	})
 	mux.HandleFunc("/manage/password", postOrGet(adm.PasswordSubmit, adm.PasswordPage))
 
 	// Docs
