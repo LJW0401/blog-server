@@ -329,3 +329,16 @@
 - **为什么原测试没覆盖**：既有 `TestDocsEdit_Edge_InvalidFrontmatter` 只断言状态码 `w.Code != 400`——通过。**错误响应的可用性（Content-Type + body 是否真能被浏览器渲染）没有被校验**，属于"异常路径只看 status code 不看响应可用性"这一类盲点。测试用例的断言粒度应该包含"客户端能正确理解响应"，而不仅"服务端返回了指定状态码"
 - **紧急程度**：中（用户首次体验即踩，但不丢数据）
 - **衍生改进建议**（下次处理，不在本次范围）：`internal/admin/images.go` 的 `ImagesUpload` 有同样模式——先 `w.WriteHeader(413/415)` 再调 `redirectImages` 里的 `http.Redirect`，首次 WriteHeader 会让 `Location` 头发不出去，跳转失效。应按同样方式删除前置 WriteHeader
+
+### Bug 修复：已登记仓库点击删除后返回 "csrf"（403）
+- **发现于**：用户报告（管理后台点删除）
+- **现象**：点"删除"→ 页面只剩文字 "csrf"，实际返回 HTTP 403
+- **根因**：`internal/assets/templates/admin_{docs,repos}_list.html` 的删除表单用 `{{ $.CSRF }}` 取 CSRF 值。Go 模板里 `$` 永远是传给 Execute 的**根值**（此处是 render payload `{Data, Banner, RequestID, Now}`），不是当前 `with` / `range` 的作用域。根上并没有 `CSRF` 字段，`{{ $.CSRF }}` 取出空字符串，渲染出 `<input value="">`。浏览器提交时 csrf 字段为空，服务端 `auth.CSRFValid` 返回 false → `http.Error(w, "csrf", 403)`
+- **修复**：在 `{{ with .Data }}` 作用域里先 `{{ $csrf := .CSRF }}` 绑定局部变量，`range` 内改用 `{{ $csrf }}`。两份 list 模板一起修
+- **回归测试**：`internal/admin/repos_delete_csrf_regression_test.go::TestReposList_Bug_DeleteFormHasValidCSRF` — 渲染 list 页，正则提取 delete 表单的 hidden csrf 值，断言非空且等于会话 CSRF；再用该值 POST delete，断言 303 redirect 而非 403
+- **为什么原测试没覆盖**：CRUD 测试直接传 `b.CSRF`（会话真值）给 handler，**跳过了"模板实际渲染出了什么"这一步**。整个 E2E 链条 "session 里有 csrf → 模板能把它渲染到 form → 浏览器把 form 提交回来 → 服务端校验"，测试只压了首尾两截。**所有通过模板渲染再回传的 hidden / form 字段都应有一次"渲染出什么"的断言**，否则模板作用域/拼写错了不会被捕获
+- **紧急程度**：高（删除功能在管理后台完全不可用，且错误信息对用户毫无指导性）
+- **衍生改进建议**（下次处理，不在本次范围）：
+  - `internal/admin/images.go` 中 `w.WriteHeader(413/415)` 再 `http.Redirect` 的双 WriteHeader 问题（已在上一条 learnings 里提过）
+  - 考虑在模板里全站搜一次 `{{ $.` 用法，确认其他 with/range 场景下 $ 含义是否正确
+  - 渲染 payload 其实可以把 CSRF 提到 root（render.Render 里统一注入），让模板不需要跨 with 作用域取值——但这是架构改动，单独规划

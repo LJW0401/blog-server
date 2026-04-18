@@ -3,6 +3,9 @@
 
 {{ define "content" }}
 {{ with .Data }}
+{{/* $.CSRF would resolve against the Render root ({Data,Banner,...}), not this
+     with-scope. Bind a local so usage inside range works. */}}
+{{ $csrf := .CSRF }}
 <div class="admin-shell">
   <header class="admin-header">
     <h1>项目管理</h1>
@@ -46,7 +49,7 @@
           <td>
             <a href="/manage/projects/{{ .Slug }}/edit">编辑</a>
             <form method="POST" action="/manage/projects/{{ .Slug }}/delete" style="display:inline;" onsubmit="return confirm('确定删除项目 {{ .DisplayName }}？MD 文件进 trash/，GitHub 缓存清零。');">
-              <input type="hidden" name="csrf" value="{{ $.CSRF }}" />
+              <input type="hidden" name="csrf" value="{{ $csrf }}" />
               <button class="link-danger" type="submit">删除</button>
             </form>
           </td>
