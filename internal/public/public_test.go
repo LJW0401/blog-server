@@ -1,6 +1,7 @@
 package public_test
 
 import (
+	"errors"
 	"io"
 	"log/slog"
 	"net/http/httptest"
@@ -13,6 +14,8 @@ import (
 	"github.com/penguin/blog-server/internal/content"
 	"github.com/penguin/blog-server/internal/public"
 	"github.com/penguin/blog-server/internal/render"
+	"github.com/penguin/blog-server/internal/settings"
+	"github.com/penguin/blog-server/internal/storage"
 )
 
 func setup(t *testing.T, docs map[string]string, projects map[string]string) *public.Handlers {
@@ -45,7 +48,16 @@ func setup(t *testing.T, docs map[string]string, projects map[string]string) *pu
 	if err != nil {
 		t.Fatalf("templates: %v", err)
 	}
-	return public.NewHandlers(store, tpl, logger)
+	// Attach a fresh SettingsDB so tests can drive site_settings-backed
+	// features (about_* overrides, tagline cache, etc.).
+	st, err := storage.Open(dir)
+	if err != nil && !errors.Is(err, storage.ErrCorruptDB) {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	h := public.NewHandlers(store, tpl, logger)
+	h.SettingsDB = settings.New(st.DB)
+	return h
 }
 
 func titleCase(s string) string {

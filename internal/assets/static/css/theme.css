@@ -440,7 +440,19 @@ body.page-admin { background: var(--bg-alt); }
 .settings-form label { display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 12px; font-size: 13px; color: var(--ink-soft); }
 .settings-form label em { color: #c73737; font-style: normal; }
 .settings-form input { height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 14px; background: var(--bg-alt); color: var(--ink); font-family: inherit; }
-.settings-form input:focus { outline: none; border-color: var(--accent); background: #fff; }
+.settings-form input:focus, .settings-form textarea:focus { outline: none; border-color: var(--accent); background: #fff; }
+.settings-form label.block-label { display: flex; flex-direction: column; gap: 6px; }
+.settings-form label.block-label span { padding-left: 2px; }
+.settings-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 13px; line-height: 1.5;
+  background: var(--bg-alt); color: var(--ink);
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  resize: vertical;
+}
 
 /* Images */
 .image-upload { display: flex; gap: 12px; align-items: center; }

@@ -16,10 +16,18 @@ type SettingsHandlers struct {
 	Settings *settings.Store
 }
 
-// SettingsKeys defines the canonical set of user-editable keys.
+// SettingsKeys defines the canonical set of user-editable keys. The about_*
+// keys drive the "关于我" card block on the homepage; empty values fall back
+// to the hardcoded defaults baked into public.Handlers.about().
 var SettingsKeys = []string{
+	// Hero + footer contact.
 	"name", "tagline", "location", "direction", "status",
 	"qq_group", "media_bilibili", "media_douyin", "media_xiaohongshu",
+	// About-me cards.
+	"about_bio",
+	"about_stack",      // comma/newline-separated list
+	"about_experience", // lines of "标题 | 年份"
+	"about_interests",  // comma/newline-separated list
 }
 
 var urlRe = regexp.MustCompile(`^https?://[^\s]+$`)

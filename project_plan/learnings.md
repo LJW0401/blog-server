@@ -257,6 +257,18 @@
 | 5 | 范围外的重构机会 | 有（Deps struct、backup 压缩级别可调、stats 按时间粒度聚合）|
 | 6 | 新的系统 / 需求理解 | 有（监测类 API 用"吞错入日志"而非返回 error 的约定）|
 
+## 2026-04-18 · quick-feature：about_* 字段上后台
+
+### 架构洞察：public 测试夹具应统一接 SettingsDB
+- **描述**：public_test 的 `setup()` 创建 Handlers 时没接 SettingsDB，导致所有 site_settings 相关路径在测试里走"SettingsDB == nil"分支。结果 about_* / tagline 缓存这类功能没法被测验证。这次补了一次全局。
+- **建议处理方式**：保留；未来加 site_settings 派生的 UI 字段，直接 `h.SettingsDB.Set(key, val)` 灌进去测。
+- **紧急程度**：已修
+
+### 测试/文档缺口：后端字段 ↔ 后台表单的对应关系没有自动化守护
+- **描述**：about_* 四个字段 **P5 种子化时已在 public.about() 里读 DB**，但后台 `/manage/settings` 表单没同步挂上，用户实际改不了——发现这个断层 2 次（P5 + P7 补 "关于我" 时都没注意）。真正暴露是在用户运行时说"9 项要能管理"时。
+- **建议处理方式**：维护一个 const slice（`public.AboutKeys`）同时被 admin settings form 和 public.about() 读，CI 用反射/常量表验证"所有 AboutKeys 在表单出现"。短期先靠 code review + learnings 兜底。
+- **紧急程度**：中
+
 ### 重构机会：静态资源应有 fingerprint 破缓存
 - **发现于**：用户把 CSS 里新增的 "关于我" 卡片样式后，页面仍显示为纯文字
 - **描述**：P7 加了 `Cache-Control: public, max-age=604800`（7 天）给 /static/*。这在生产是对的，但开发期会让"改了 CSS 用户看不到"成为反复卡点（已经是第二次，第一次是 P2 验收后的 scroll-snap bug）。

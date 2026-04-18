@@ -219,6 +219,38 @@ func TestHome_Edge_FeaturedProjectsIncludeActiveAndDeveloping(t *testing.T) {
 	}
 }
 
+// quick-feature: about_* site_settings must actually influence home render.
+func TestHome_Edge_AboutSettingsOverrideDefaults(t *testing.T) {
+	h := setup(t, nil, nil)
+	// Inject settings store with custom about_* keys and populate DB.
+	// We can't import admin here, but the SettingsDB is accessible.
+	if h.SettingsDB == nil {
+		t.Skip("no settings store attached to setup handler")
+	}
+	_ = h.SettingsDB.Set("about_bio", "这是自定义 bio。")
+	_ = h.SettingsDB.Set("about_stack", "CustomLang1, CustomLang2")
+	_ = h.SettingsDB.Set("about_interests", "兴趣 A, 兴趣 B")
+	_ = h.SettingsDB.Set("about_experience", "自定义岗位 | 2024")
+
+	// Bust the 30s cache so this test sees the overrides.
+	_ = h.SettingsDB.Set("tagline", "冷却破缓存占位")
+
+	req := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	h.Home(w, req)
+	body := w.Body.String()
+	for _, need := range []string{
+		"这是自定义 bio",
+		"CustomLang1",
+		"兴趣 A",
+		"自定义岗位",
+	} {
+		if !strings.Contains(body, need) {
+			t.Errorf("about override not rendered: %q", need)
+		}
+	}
+}
+
 // --- Home Recently Active derivation (WI-3.15, WI-3.16) -------------------
 
 func TestHome_Smoke_RecentlyActiveDerived(t *testing.T) {

@@ -416,6 +416,82 @@ func TestSettings_Edge_URLMustHavePrefix(t *testing.T) {
 	}
 }
 
+// --- About-me fields (quick-feature) --------------------------------------
+
+// Smoke: the 4 about_* fields roundtrip through the form.
+func TestSettings_Smoke_AboutFieldsRoundtrip(t *testing.T) {
+	b := crudSetup(t)
+	form := url.Values{
+		"csrf":             {b.CSRF},
+		"tagline":          {"必填占位"},
+		"about_bio":        {"我是 Penguin，专注后端工程。"},
+		"about_stack":      {"Go, TypeScript, Python"},
+		"about_experience": {"后端工程师 | 2023 – 现在\n开始写开源 | 2021"},
+		"about_interests":  {"工具链, 写作, 开源"},
+	}
+	w := b.authedPost(t, "/manage/settings", form, b.Settings.SettingsSubmit)
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("status %d", w.Code)
+	}
+	// Reload via GET: textarea values should be preserved verbatim.
+	g := b.authedGet(t, "/manage/settings", b.Settings.SettingsPage)
+	body := g.Body.String()
+	for _, need := range []string{
+		"我是 Penguin",
+		"Go, TypeScript, Python",
+		"后端工程师 | 2023 – 现在",
+		"工具链, 写作, 开源",
+	} {
+		if !strings.Contains(body, need) {
+			t.Errorf("about field not saved/reloaded: %q", need)
+		}
+	}
+}
+
+// Edge: empty about_* is accepted (fallback to defaults on the public side).
+func TestSettings_Edge_AboutFieldsCanBeEmpty(t *testing.T) {
+	b := crudSetup(t)
+	form := url.Values{
+		"csrf":             {b.CSRF},
+		"tagline":          {"x"},
+		"about_bio":        {""},
+		"about_stack":      {""},
+		"about_experience": {""},
+		"about_interests":  {""},
+	}
+	w := b.authedPost(t, "/manage/settings", form, b.Settings.SettingsSubmit)
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("status %d", w.Code)
+	}
+	loc := w.Header().Get("Location")
+	if !strings.Contains(loc, "m=") {
+		t.Errorf("expected success redirect: %s", loc)
+	}
+}
+
+// Edge: Chinese separators (，、\n) all parse into the about list correctly.
+// We can't directly call public.splitCommaList from the admin package, so we
+// assert the raw saved payload is preserved — the parser is tested via public
+// unit tests if present; here we just ensure the round-trip isn't mangled.
+func TestSettings_Edge_MixedSeparatorsPreservedAsIs(t *testing.T) {
+	b := crudSetup(t)
+	form := url.Values{
+		"csrf":            {b.CSRF},
+		"tagline":         {"x"},
+		"about_stack":     {"Go，TypeScript、Python\nRust"},
+		"about_interests": {"工具,写作"},
+	}
+	w := b.authedPost(t, "/manage/settings", form, b.Settings.SettingsSubmit)
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("status %d", w.Code)
+	}
+	g := b.authedGet(t, "/manage/settings", b.Settings.SettingsPage)
+	body := g.Body.String()
+	if !strings.Contains(body, "Go，TypeScript、Python") {
+		t.Error("mixed separators should be preserved verbatim in textarea")
+	}
+}
+
 // --- Projects (WI-5.18, 5.19) ---------------------------------------------
 
 func withMockGitHub(t *testing.T, status int) *httptest.Server {
