@@ -2,6 +2,7 @@ package middleware_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"io"
 	"log/slog"
 	"net/http"
@@ -163,6 +164,74 @@ func TestChain_Edge_LongPathLoggedAndHeadersPresent(t *testing.T) {
 	_ = resp.Body.Close()
 	if !strings.Contains(buf.String(), `"method":"GET"`) {
 		t.Errorf("access log missing")
+	}
+}
+
+// --- Gzip middleware (WI-7.9) ----------------------------------------------
+
+func TestGzip_Smoke_CompressesHTML(t *testing.T) {
+	payload := strings.Repeat("hello ", 200)
+	srv := httptest.NewServer(middleware.Gzip(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = io.WriteString(w, payload)
+	})))
+	t.Cleanup(srv.Close)
+	req, _ := http.NewRequest("GET", srv.URL, nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		t.Fatalf("RoundTrip: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if ce := resp.Header.Get("Content-Encoding"); ce != "gzip" {
+		t.Errorf("Content-Encoding: %q", ce)
+	}
+	if v := resp.Header.Get("Vary"); !strings.Contains(v, "Accept-Encoding") {
+		t.Errorf("Vary missing Accept-Encoding: %q", v)
+	}
+	// Body smaller than original (compression actually applied).
+	gz, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		t.Fatalf("NewReader: %v", err)
+	}
+	defer func() { _ = gz.Close() }()
+	body, _ := io.ReadAll(gz)
+	if string(body) != payload {
+		t.Errorf("decoded body mismatch")
+	}
+}
+
+func TestGzip_Edge_NoAcceptEncodingSkipped(t *testing.T) {
+	srv := httptest.NewServer(middleware.Gzip(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = io.WriteString(w, "hi")
+	})))
+	t.Cleanup(srv.Close)
+	resp, err := http.Get(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		t.Error("should not gzip when client didn't ask")
+	}
+}
+
+func TestGzip_Edge_NonCompressibleSkipped(t *testing.T) {
+	srv := httptest.NewServer(middleware.Gzip(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = io.WriteString(w, "binary-ish")
+	})))
+	t.Cleanup(srv.Close)
+	req, _ := http.NewRequest("GET", srv.URL, nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		t.Error("image/png should not be gzipped")
 	}
 }
 

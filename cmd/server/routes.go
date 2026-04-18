@@ -1,11 +1,23 @@
 package main
 
 import (
+	"io/fs"
 	"net/http"
 	"strings"
 
 	"github.com/penguin/blog-server/internal/admin"
 )
+
+// staticFileServer serves the embedded static FS under /static/ with a
+// long cache header. Safe for our immutable deploy model — on every release
+// new binaries ship, so stale browser caches are fine.
+func staticFileServer(fsys fs.FS) http.Handler {
+	inner := http.StripPrefix("/static/", http.FileServer(http.FS(fsys)))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=604800")
+		inner.ServeHTTP(w, r)
+	})
+}
 
 // buildAdminMux assembles the protected /manage/* routes. Split out of main()
 // so the entry point stays within the project's gocyclo threshold.

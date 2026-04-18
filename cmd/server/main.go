@@ -117,7 +117,7 @@ func main() {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte("ok"))
 	})
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.Static()))))
+	mux.Handle("/static/", staticFileServer(assets.Static()))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
@@ -129,6 +129,8 @@ func main() {
 	mux.HandleFunc("/docs/", ph.DocDetail)
 	mux.HandleFunc("/projects", ph.ProjectsList)
 	mux.HandleFunc("/projects/", ph.ProjectDetail)
+	mux.HandleFunc("/rss.xml", ph.RSS)
+	mux.HandleFunc("/sitemap.xml", ph.Sitemap)
 
 	// Admin routes: public login/password-reset endpoints are at /manage/login;
 	// the authGate middleware protects everything else under /manage.
@@ -154,6 +156,7 @@ func main() {
 		middleware.RequestID,
 		middleware.AccessLog(logger),
 		middleware.SecurityHeaders,
+		middleware.Gzip,
 		middleware.WithDefaultPasswordBanner(cfg.DefaultPasswordUnchanged),
 	)
 

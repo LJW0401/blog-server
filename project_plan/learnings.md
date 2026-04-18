@@ -256,3 +256,39 @@
 | 4 | 设计假设在实现时才暴露不成立 | 无 |
 | 5 | 范围外的重构机会 | 有（Deps struct、backup 压缩级别可调、stats 按时间粒度聚合）|
 | 6 | 新的系统 / 需求理解 | 有（监测类 API 用"吞错入日志"而非返回 error 的约定）|
+
+## 2026-04-18 · P7 精致化 + 发布门控
+
+### 架构洞察：gzip 中间件的"content-type 延迟嗅探"
+- **发现于**：WI-7.9 实现 Gzip middleware 时
+- **描述**：gzip 压缩决策依赖响应的 `Content-Type`，但 handler 不一定在 `Write()` 前显式 `Set("Content-Type")`；Go 的 ResponseWriter 会在首次 Write 时自动嗅探 MIME。解法：在 `gzippedResponseWriter` 里第一次 Write 时如果 CT 还没定（空字符串），不提交 `sniffed`，下一次 Write 再判定。这个"lazy sniff"模式能兼容两种 handler 写法。
+- **建议处理方式**：未来增加第三方 gzip-lib 时保留此行为；有文档覆盖更好。
+- **紧急程度**：低
+
+### 技术债：真 Lighthouse 仍缺失 — scripts/lighthouse.sh 是替身
+- **发现于**：WI-7.9、WI-7.10
+- **描述**：真 Lighthouse 需要 headless Chrome + Node + chrome-launcher；本地沙箱没有。写了 `scripts/lighthouse.sh` 用 curl 检查 4 项核心指标（响应头基线、gzip active、HTML ≤ 50KB gzipped、静态资源 Cache-Control）作为替身。核心性能指标（LCP、FCP、CLS）实际上仍未量化测试。
+- **建议处理方式**：发布后在真实域名上跑一次 `npx lighthouse https://example.com --output html` 人工归档。项目迁移到有 Node 的 CI 时引入自动化。
+- **紧急程度**：中（影响需求 3.1 的 Perf ≥ 90 客观证明）
+
+### 架构洞察：`make release` 不依赖运行中的 server
+- **发现于**：WI-7.14 设计时
+- **描述**：最初让 release 目标启后台 server + 跑 smoke，但沙箱的后台进程管理不稳定。重构为：release 只做 check + e2e + build + sha256；runtime gates（lighthouse/headers/migrate-test）抽到 `make smoke URL=...`，假定 caller 已手动启动服务。这种"构建/运行时"分离让 CI 流水线和本地发布都干净。
+- **建议处理方式**：保留；CI 里 release + start server + smoke 三步串联即可。
+- **紧急程度**：低
+
+### 重构机会：systemd unit 里 `MemoryDenyWriteExecute=true` 与 Go 的交互
+- **发现于**：WI-7.11 写 systemd unit 时
+- **描述**：静态 Go 二进制无 W+X 页，`MemoryDenyWriteExecute=true` 理应不冲突。但未来若切 CGO、引入动态加载库（modernc sqlite 纯 Go 不涉及 CGO，但万一改回用 mattn/go-sqlite3 需要 CGO）会触发 SIGSYS。
+- **建议处理方式**：hardening 选项齐全好，但每条都注明"为什么可用"会更防踩雷。当前项目注释足够，未来添加依赖时 review 一遍。
+- **紧急程度**：低
+
+### 反思清单
+| # | 问题 | 本阶段 |
+|---|------|--------|
+| 1 | 临时方案 / 妥协 | 有（lighthouse.sh 是资源级替身，不是真 Lighthouse）|
+| 2 | "能跑但不够好"的代码 | 有（make release 需要手动拆分 smoke，非一键）|
+| 3 | Bug 根因在别处 | 无 |
+| 4 | 设计假设在实现时才暴露不成立 | 有（gzip middleware 的 "CT 延迟嗅探"）|
+| 5 | 范围外的重构机会 | 有（引入 Node 工具链启真 Lighthouse + CodeMirror 打包）|
+| 6 | 新的系统 / 需求理解 | 有（systemd hardening 选项与 Go 二进制的交互、构建/运行时 gate 分离）|

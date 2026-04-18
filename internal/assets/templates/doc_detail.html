@@ -1,5 +1,15 @@
 {{ define "title" }}{{ .Data.Doc.Title }} — Penguin{{ end }}
 {{ define "body_class" }}page-doc-detail{{ end }}
+{{ define "description" }}{{ .Data.Doc.Excerpt }}{{ end }}
+{{ define "og" }}
+<meta property="og:site_name" content="Penguin" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="{{ .Data.Doc.Title }}" />
+<meta property="og:description" content="{{ .Data.Doc.Excerpt }}" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="{{ .Data.Doc.Title }}" />
+<meta name="twitter:description" content="{{ .Data.Doc.Excerpt }}" />
+{{ end }}
 
 {{ define "content" }}
 {{ with .Data }}

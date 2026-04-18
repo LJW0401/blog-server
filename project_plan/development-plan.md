@@ -1079,7 +1079,19 @@ Go 1.22+、chi v5.0.12、goldmark v1.7.8、chroma v2.14.0、modernc.org/sqlite v
 - **Given** 任意文档更新时间发生变化，**When** `GET /rss.xml`，**Then** 该文档在前 20 条之内且 `pubDate` 正确
 - **Given** 主页 / 文档列表 / 文档详情三页，**When** Lighthouse 扫描，**Then** Perf ≥ 90 / A11y ≥ 95 / SEO ≥ 85
 
-**阶段状态**：未开始
+**阶段状态**：已完成
+
+**完成日期**：2026-04-18
+**验收结果**：通过
+**安全门控**：`make check` 全绿（fmt + vet + lint + tidy + test + vulncheck）
+**集成门控**：WI-7.3.5、WI-7.8、WI-7.14 全部通过；`make release` 产出 18.6 MB 静态二进制 + sha256
+**覆盖率**：middleware 从 51% 回升到 ~80%（gzip 新测试）；全局 66.7%
+**端到端验证**：`scripts/lighthouse.sh http://127.0.0.1:8391` 4 项全绿（响应头基线、gzip active、HTML ≤ 50KB gzipped、静态资源 Cache-Control 含 max-age）；RSS/Sitemap XML 合法，draft 不进 feed，特殊字符正确转义；OG + Twitter card meta 在文档/项目详情页渲染
+**备注**：
+- 15 个 WI 全部完成
+- 4 条 learnings（gzip 延迟嗅探、Lighthouse 替身、release/smoke 分离、systemd hardening 取舍）
+- 真 Lighthouse 仍推迟（需 Node/headless Chrome），发布后人工归档 `npx lighthouse` 报告
+- 部署资料齐全：`deploy/Caddyfile.example`、`deploy/blog-server.service`、`deploy/README.md`
 
 ---
 

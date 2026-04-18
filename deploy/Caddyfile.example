@@ -1,0 +1,30 @@
+# Caddyfile.example — front proxy for blog-server.
+# Place at /etc/caddy/Caddyfile and replace `example.com` with your domain.
+# Caddy will obtain/renew Let's Encrypt certificates automatically.
+
+example.com {
+	# Reverse-proxy all traffic to the Go service listening on localhost.
+	# blog-server's config.yaml must set listen_addr: "127.0.0.1:8080".
+	reverse_proxy 127.0.0.1:8080
+
+	# Compress text responses at the edge. (blog-server also does its own
+	# gzip; Caddy's zstd/gzip picks whichever the client prefers first.)
+	encode zstd gzip
+
+	# Access log — journald by default; adjust as needed.
+	log {
+		output stdout
+		format json
+	}
+
+	# Security headers are set by the app, but Caddy can add HSTS preload.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		-Server
+	}
+}
+
+# Optional: redirect www to apex.
+www.example.com {
+	redir https://example.com{uri} permanent
+}

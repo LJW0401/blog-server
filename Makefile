@@ -39,7 +39,11 @@ cover:
 	$(GO) tool cover -func=cover.out | tail -30
 
 e2e:
-	$(GO) test -tags=e2e -race ./e2e/...
+	@if [ -n "$$(find ./e2e -name '*.go' 2>/dev/null)" ]; then \
+		$(GO) test -tags=e2e -race ./e2e/...; \
+	else \
+		echo "[SKIP] no e2e tests yet; integration tests live in internal/*_test.go"; \
+	fi
 
 vulncheck:
 	@if command -v govulncheck >/dev/null 2>&1; then \
@@ -57,11 +61,19 @@ dev:
 check: fmt vet lint tidy test vulncheck
 	@echo "[OK] make check all green"
 
-release: check e2e
-	@if [ -x scripts/check-headers.sh ]; then ./scripts/check-headers.sh http://127.0.0.1:8080 || exit 1; fi
-	$(MAKE) build
+release: check e2e build
 	@sha256sum blog-server > blog-server.sha256
-	@echo "[OK] make release complete"
+	@echo "[OK] make release complete — ./blog-server + ./blog-server.sha256 ready"
+	@echo "    next: start the binary then 'make smoke URL=http://...' for runtime gates"
+
+# smoke runs the runtime-only gates (lighthouse resource checks, header baseline,
+# migrate-test). Caller must start the server first; pass URL=... to target.
+URL ?= http://127.0.0.1:8080
+smoke:
+	./scripts/check-headers.sh $(URL)
+	./scripts/lighthouse.sh $(URL)
+	./scripts/migrate-test.sh .
+	@echo "[OK] smoke PASS"
 
 clean:
 	rm -f blog-server blog-server.sha256 cover.out

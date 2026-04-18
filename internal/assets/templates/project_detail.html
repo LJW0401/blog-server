@@ -1,5 +1,15 @@
 {{ define "title" }}{{ .Data.Project.Entry.DisplayName }} — Penguin{{ end }}
 {{ define "body_class" }}page-project-detail{{ end }}
+{{ define "description" }}{{ .Data.Project.Entry.DisplayDesc }}{{ end }}
+{{ define "og" }}
+<meta property="og:site_name" content="Penguin" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="{{ .Data.Project.Entry.DisplayName }}" />
+<meta property="og:description" content="{{ .Data.Project.Entry.DisplayDesc }}" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="{{ .Data.Project.Entry.DisplayName }}" />
+<meta name="twitter:description" content="{{ .Data.Project.Entry.DisplayDesc }}" />
+{{ end }}
 
 {{ define "content" }}
 {{ with .Data.Project }}
