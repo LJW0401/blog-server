@@ -317,3 +317,15 @@
 | 4 | 设计假设在实现时才暴露不成立 | 有（gzip middleware 的 "CT 延迟嗅探"）|
 | 5 | 范围外的重构机会 | 有（引入 Node 工具链启真 Lighthouse + CodeMirror 打包）|
 | 6 | 新的系统 / 需求理解 | 有（systemd hardening 选项与 Go 二进制的交互、构建/运行时 gate 分离）|
+
+## 2026-04-19
+
+### Bug 修复：新建文档保存后浏览器显示 400 空白页（editorError 双 WriteHeader）
+- **发现于**：用户报告（手动测试：点"新建文档"→ 不改直接"保存"）
+- **现象**：Firefox 显示 "此网站似乎存在问题 / localhost:8888 sent back an error. 错误代码：400"
+- **根因**：`internal/admin/docs.go` 的 `editorError` 先调 `w.WriteHeader(400)` 再调 `render.Render`。Render 内部先 `Header().Set("Content-Type", "text/html")` 再自己 `WriteHeader(status)`——但上一步已经把 response header 刷出去了，Content-Type 没赶上，第二次 WriteHeader 被 Go 忽略。浏览器收到 400 + 无 Content-Type 的响应，叠加 `X-Content-Type-Options: nosniff`，就拒绝渲染 body 里实际存在的 HTML，改显示自己的通用错误页
+- **修复**：删除 `editorError` 里那行冗余的 `w.WriteHeader(http.StatusBadRequest)`，交给 Render 统一写头。加注释标记此处易踩
+- **回归测试**：`internal/admin/docs_regression_test.go::TestDocsEdit_Bug_DefaultFormSaveShowsEditorNot400` — 断言 400 响应的 `Content-Type` 是 `text/html` 且 body 含 `<form>` 和具体错误消息
+- **为什么原测试没覆盖**：既有 `TestDocsEdit_Edge_InvalidFrontmatter` 只断言状态码 `w.Code != 400`——通过。**错误响应的可用性（Content-Type + body 是否真能被浏览器渲染）没有被校验**，属于"异常路径只看 status code 不看响应可用性"这一类盲点。测试用例的断言粒度应该包含"客户端能正确理解响应"，而不仅"服务端返回了指定状态码"
+- **紧急程度**：中（用户首次体验即踩，但不丢数据）
+- **衍生改进建议**（下次处理，不在本次范围）：`internal/admin/images.go` 的 `ImagesUpload` 有同样模式——先 `w.WriteHeader(413/415)` 再调 `redirectImages` 里的 `http.Redirect`，首次 WriteHeader 会让 `Location` 头发不出去，跳转失效。应按同样方式删除前置 WriteHeader

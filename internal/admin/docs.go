@@ -158,7 +158,9 @@ func (d *DocHandlers) SaveDoc(w http.ResponseWriter, r *http.Request) {
 func (d *DocHandlers) editorError(w http.ResponseWriter, r *http.Request, isNew bool, slug, body, msg string) {
 	sess, _ := d.Parent.Auth.ParseSession(r)
 	data := docEditData{IsNew: isNew, Slug: slug, Body: body, CSRF: sess.CSRF, Error: msg, Kind: "doc"}
-	w.WriteHeader(http.StatusBadRequest)
+	// Don't call w.WriteHeader here; Render sets Content-Type before it calls
+	// WriteHeader itself. A pre-emptive WriteHeader would flush headers without
+	// Content-Type, and the browser would refuse to render the body as HTML.
 	_ = d.Parent.Tpl.Render(w, r, http.StatusBadRequest, "admin_doc_edit.html", data)
 }
 
