@@ -942,7 +942,20 @@ Go 1.22+、chi v5.0.12、goldmark v1.7.8、chroma v2.14.0、modernc.org/sqlite v
 - **Given** 当前已有 7 份历史备份，**When** 新备份生成，**Then** `backups/` 中保留最新 7 份
 - **Given** 把全量数据目录复制到另一台机器启动，**When** 访问各公开页，**Then** 输出与原机器一致（内容 + 计数 + 缓存）
 
-**阶段状态**：未开始
+**阶段状态**：已完成
+
+**完成日期**：2026-04-18
+**验收结果**：通过
+**安全门控**：`make check` 全绿（fmt + vet + lint + tidy + test + vulncheck）
+**集成门控**：WI-6.5、WI-6.9、WI-6.12 全部通过
+**覆盖率**：stats 72.4% / backup 64.2% / public 72.3%；全局 66.1%
+**端到端验证**：`scripts/migrate-test.sh .` 完整通过——临时目录启动第二实例、/ /docs /projects /manage/login 四条路径 200，RSS/sitemap P7 todo 容忍
+**备注**：
+- 12 个 WI 全部完成
+- 4 条 learnings 已记录（stats 吞错约定、public Handlers 字段堆积、backup 自调度、压缩级别）
+- stats：IP+UA sha256 指纹 60 分钟去重 + 15+ 种爬虫 UA 黑名单；DB 失败只进日志不影响页面
+- backup：每日 03:00 tar.gz，保留 7 份；WAL checkpoint 保证 SQLite 一致快照；同日重跑幂等
+- migrate-test.sh：迁移验收关口自动化，6 条路由 smoke 覆盖
 
 ---
 

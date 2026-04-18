@@ -39,15 +39,40 @@ func (h *Handlers) DocDetail(w http.ResponseWriter, r *http.Request) {
 
 	prev, next := prevNext(h.Content.Docs().List(content.KindDoc), e)
 
+	// Record a read — only for published (not draft preview or archived).
+	if e.Status == content.StatusPublished && h.Stats != nil {
+		h.Stats.RecordRead(r.Context(), slug, remoteIP(r), r.UserAgent())
+	}
+	var readCount int
+	if h.Stats != nil {
+		readCount = h.Stats.Count(r.Context(), slug)
+	}
+
 	data := map[string]any{
-		"Doc":  e,
-		"Prev": prev,
-		"Next": next,
+		"Doc":       e,
+		"Prev":      prev,
+		"Next":      next,
+		"ReadCount": readCount,
 	}
 	if err := h.Tpl.Render(w, r, http.StatusOK, "doc_detail.html", data); err != nil {
 		h.Logger.Error("docs.detail.render", slog.String("err", err.Error()))
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
+}
+
+// remoteIP mirrors stats.RemoteIP without an import cycle dance.
+func remoteIP(r *http.Request) string {
+	if xf := r.Header.Get("X-Forwarded-For"); xf != "" {
+		if i := strings.IndexByte(xf, ','); i > 0 {
+			return strings.TrimSpace(xf[:i])
+		}
+		return strings.TrimSpace(xf)
+	}
+	host := r.RemoteAddr
+	if i := strings.LastIndexByte(host, ':'); i > 0 {
+		return host[:i]
+	}
+	return host
 }
 
 // prevNext picks adjacent entries within the list (assumed sorted by Updated

@@ -17,6 +17,7 @@ import (
 	"github.com/penguin/blog-server/internal/admin"
 	"github.com/penguin/blog-server/internal/assets"
 	"github.com/penguin/blog-server/internal/auth"
+	"github.com/penguin/blog-server/internal/backup"
 	"github.com/penguin/blog-server/internal/config"
 	"github.com/penguin/blog-server/internal/content"
 	gh "github.com/penguin/blog-server/internal/github"
@@ -24,6 +25,7 @@ import (
 	"github.com/penguin/blog-server/internal/public"
 	"github.com/penguin/blog-server/internal/render"
 	"github.com/penguin/blog-server/internal/settings"
+	"github.com/penguin/blog-server/internal/stats"
 	"github.com/penguin/blog-server/internal/storage"
 )
 
@@ -82,10 +84,17 @@ func main() {
 	syncStop := syncer.Start(rootCtx)
 
 	settingsStore := settings.New(store.DB)
+	statsStore := stats.New(store.DB, logger)
 
 	ph := public.NewHandlers(cstore, tpl, logger)
 	ph.GitHubCache = ghCache
 	ph.SettingsDB = settingsStore
+	ph.Stats = statsStore
+
+	// Daily cold backup task.
+	backupStore := backup.New(cfg.DataDir, store.DB, logger)
+	backupStop := backupStore.Start(rootCtx)
+	_ = backupStop
 
 	// Auth + admin wiring
 	sessionSecret, err := auth.LoadOrCreateSecret(store.DB)
@@ -169,6 +178,7 @@ func main() {
 	stopRoot()
 	watchStop()
 	syncStop()
+	backupStop()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(ctx)

@@ -215,6 +215,7 @@ body.page-doc-detail { background: var(--bg); }
 .doc-nav .prev::before { content: "‹ "; }
 .doc-nav .next::after { content: " ›"; }
 
+.read-count { margin-top: 32px; font-size: 12px; color: var(--ink-faint); text-align: right; letter-spacing: 0.04em; }
 .draft-banner, .archived-banner { padding: 8px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 24px; }
 .draft-banner { background: #fff3cd; color: #664d03; }
 .archived-banner { background: #e2e3e5; color: #41464b; }

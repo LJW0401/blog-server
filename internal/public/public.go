@@ -3,6 +3,7 @@
 package public
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -57,12 +58,20 @@ type Handlers struct {
 	Tpl         *render.Templates
 	GitHubCache CacheReader
 	SettingsDB  *settings.Store
+	Stats       StatsRecorder
 	Settings    func() SiteSettings
 	Logger      *slog.Logger
 
 	mu       sync.Mutex
 	cached   SiteSettings
 	cachedAt time.Time
+}
+
+// StatsRecorder is the subset of *stats.Store that DocDetail consumes. Kept
+// as an interface to avoid an import cycle and to simplify test fakes.
+type StatsRecorder interface {
+	RecordRead(ctx context.Context, slug, ip, userAgent string)
+	Count(ctx context.Context, slug string) int
 }
 
 // NewHandlers constructs a Handlers with safe defaults. Settings resolves to

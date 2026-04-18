@@ -220,3 +220,39 @@
 | 4 | 设计假设在实现时才暴露不成立 | 有（gocyclo 15 对 web handler 过严）|
 | 5 | 范围外的重构机会 | 有（全局换 chi.Router、引入 esbuild 前端构建）|
 | 6 | 新的系统 / 需求理解 | 有（site_settings 跨包共享的包拆分技法、reload-on-write vs watch-only 取舍）|
+
+## 2026-04-18 · P6 统计 + 备份 + 迁移验收
+
+### 架构洞察：stats DB 失败不阻断页面渲染
+- **发现于**：WI-6.1 设计时
+- **描述**：stats.RecordRead 的签名是 `(ctx, slug, ip, ua)` 不返回 error。需求 2.8 明确："DB 写失败 → 页面仍正常渲染（计数损失可接受），错误入日志"。因此把 DB 错误吞在内部、只记 slog，允许调用方不 handle error。这是"可观测但不阻断"的典型模式，和 auth.Store 的 RegisterFailure 相同。
+- **建议处理方式**：未来所有"监测/度量类"API 都应走这个约定，功能类 API 则明确返回 error。在 docstring 里标明选择。
+- **紧急程度**：低
+
+### 重构机会：public.Handlers 字段堆积
+- **发现于**：WI-6.2 把 Stats 加入 Handlers 时
+- **描述**：Handlers 现在有 Content/Tpl/GitHubCache/SettingsDB/Stats/Settings/Logger 七个字段，外加两个 cache 相关的 sync 字段——已经超过"构造函数好管"的阈值。字段一个一个往上堆的坏处：测试每次都要实例化一堆，注入顺序容易乱。
+- **建议处理方式**：P7 发布前重构为 `Deps struct{ ... }` 显式依赖结构，`NewHandlers(deps)` 构造。目前不 block。
+- **紧急程度**：低
+
+### 架构洞察：backup 用 time.Until(nextBoundary) 替代 cron
+- **发现于**：WI-6.6 设计时
+- **描述**：原考虑 `github.com/robfig/cron`，但每日一次固定点的需求太简单——引入一个三方依赖不值。写了 10 行 `nextBoundary` 函数，`time.NewTimer(time.Until(next))` 等到 03:00 执行，然后循环。副作用：ctx.Done 时 timer 能干净取消，没额外 goroutine 逃逸。
+- **建议处理方式**：等需求变复杂（多任务/多时间点）再引入 cron 库。
+- **紧急程度**：低
+
+### 重构机会：backup tar.gz 流式 write 对大文件
+- **发现于**：WI-6.7 自测试
+- **描述**：当前 `addTree` 用 `io.Copy(tw, f)` 流式写，不把整个文件读内存，OK。但 gzip.Writer 默认级别是 DefaultCompression（-1 → 6）；对数千 MD 文件可能较慢。测试用 sample 1 个 MD 秒级完成，真实使用数据 > 100MB 时可能值得降到 BestSpeed。
+- **建议处理方式**：配置项 `backup_compression_level`，默认 BestSpeed；监控备份时长，> 30s 告警。
+- **紧急程度**：低（非瓶颈 until scale）
+
+### 反思清单
+| # | 问题 | 本阶段 |
+|---|------|--------|
+| 1 | 临时方案 / 妥协 | 有（backup 自实现调度而非引入 cron 库）|
+| 2 | "能跑但不够好"的代码 | 有（public.Handlers 字段堆积）|
+| 3 | Bug 根因在别处 | 无 |
+| 4 | 设计假设在实现时才暴露不成立 | 无 |
+| 5 | 范围外的重构机会 | 有（Deps struct、backup 压缩级别可调、stats 按时间粒度聚合）|
+| 6 | 新的系统 / 需求理解 | 有（监测类 API 用"吞错入日志"而非返回 error 的约定）|
