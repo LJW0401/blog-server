@@ -50,10 +50,11 @@ func DefaultSettings() SiteSettings {
 
 // Handlers bundles the dependencies needed by all public routes.
 type Handlers struct {
-	Content  *content.Store
-	Tpl      *render.Templates
-	Settings func() SiteSettings
-	Logger   *slog.Logger
+	Content     *content.Store
+	Tpl         *render.Templates
+	GitHubCache CacheReader
+	Settings    func() SiteSettings
+	Logger      *slog.Logger
 }
 
 // NewHandlers constructs a Handlers with safe defaults.
@@ -103,22 +104,6 @@ func pickFeatured(all []*content.Entry, limit int) []*content.Entry {
 	return out
 }
 
-// recentRepos returns up to `limit` non-archived projects sorted by updated
-// desc — the "Recently Active" derived view used on the home right column.
-func recentRepos(all []*content.Entry, limit int) []*content.Entry {
-	out := make([]*content.Entry, 0, limit)
-	for _, e := range all {
-		if e.Status == content.StatusArchived {
-			continue
-		}
-		out = append(out, e)
-		if len(out) == limit {
-			break
-		}
-	}
-	return out
-}
-
 // --- Handlers --------------------------------------------------------------
 
 // Home handles GET /.
@@ -130,7 +115,8 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 		"Settings":         h.Settings(),
 		"FeaturedDocs":     pickFeatured(docs, 4),
 		"FeaturedProjects": pickFeatured(projs, 3),
-		"RecentRepos":      recentRepos(projs, 3),
+		// Recently Active is a derived view merging content + github cache.
+		"RecentRepos": h.RecentlyActiveProjects(r.Context(), 3),
 	}
 	if err := h.Tpl.Render(w, r, http.StatusOK, "home.html", data); err != nil {
 		h.Logger.Error("home.render", slog.String("err", err.Error()))

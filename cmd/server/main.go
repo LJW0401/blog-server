@@ -1,5 +1,5 @@
 // Command blog-server is the HTTP service entry point. Wires config, content,
-// render and middleware stacks and serves the public routes.
+// render, middleware and GitHub sync.
 package main
 
 import (
@@ -16,6 +16,7 @@ import (
 	"github.com/penguin/blog-server/internal/assets"
 	"github.com/penguin/blog-server/internal/config"
 	"github.com/penguin/blog-server/internal/content"
+	gh "github.com/penguin/blog-server/internal/github"
 	"github.com/penguin/blog-server/internal/middleware"
 	"github.com/penguin/blog-server/internal/public"
 	"github.com/penguin/blog-server/internal/render"
@@ -50,8 +51,8 @@ func main() {
 		logger.Error("content.reload", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
-	rootCtx, stopWatch := context.WithCancel(context.Background())
-	watchCancel, _ := cstore.Watch(rootCtx, 200*time.Millisecond)
+	rootCtx, stopRoot := context.WithCancel(context.Background())
+	watchStop, _ := cstore.Watch(rootCtx, 200*time.Millisecond)
 
 	tpl, err := render.NewTemplates(assets.Templates(), render.NewMarkdown())
 	if err != nil {
@@ -59,7 +60,25 @@ func main() {
 		os.Exit(1)
 	}
 
+	// GitHub cache + sync
+	ghCache := gh.NewCache(store.DB)
+	ghClient := gh.NewClient(
+		gh.WithToken(cfg.GitHubToken),
+		gh.WithTimeout(10*time.Second),
+	)
+	interval := time.Duration(cfg.GitHubSyncIntervalMin) * time.Minute
+	if interval < time.Minute {
+		interval = 30 * time.Minute
+	}
+	syncer := gh.NewSyncer(ghClient, ghCache, cstore,
+		gh.WithInterval(interval),
+		gh.WithLogger(logger),
+		gh.WithTokenConfigured(cfg.GitHubToken != ""),
+	)
+	syncStop := syncer.Start(rootCtx)
+
 	ph := public.NewHandlers(cstore, tpl, logger)
+	ph.GitHubCache = ghCache
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/__healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +95,8 @@ func main() {
 	})
 	mux.HandleFunc("/docs", ph.DocsList)
 	mux.HandleFunc("/docs/", ph.DocDetail)
+	mux.HandleFunc("/projects", ph.ProjectsList)
+	mux.HandleFunc("/projects/", ph.ProjectDetail)
 
 	chain := middleware.Chain(
 		middleware.PanicRecover(logger),
@@ -99,12 +120,13 @@ func main() {
 		}
 	}()
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	<-sig
 	logger.Info("shutdown")
-	watchCancel()
-	stopWatch()
+	stopRoot()
+	watchStop()
+	syncStop()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(ctx)

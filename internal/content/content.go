@@ -25,9 +25,14 @@ import (
 type Status string
 
 const (
+	// Shared
+	StatusArchived Status = "archived"
+	// Docs
 	StatusDraft     Status = "draft"
 	StatusPublished Status = "published"
-	StatusArchived  Status = "archived"
+	// Projects
+	StatusActive     Status = "active"
+	StatusDeveloping Status = "developing"
 )
 
 // Kind distinguishes docs and projects.
@@ -147,6 +152,20 @@ func (s *Store) Docs() *Index { return s.docs }
 
 // Projects returns the projects index.
 func (s *Store) Projects() *Index { return s.projs }
+
+// Repos implements github.ReposSource: returns the set of `owner/name`
+// identifiers declared by currently indexed project entries (including
+// archived ones, so stats/caches don't lose history).
+func (s *Store) Repos() []string {
+	list := s.projs.List(KindProject)
+	out := make([]string, 0, len(list))
+	for _, e := range list {
+		if e.Repo != "" {
+			out = append(out, e.Repo)
+		}
+	}
+	return out
+}
 
 // Reload performs a full scan of the content directory. Files with parse or
 // validation errors are skipped and logged; the rest are indexed. A duplicate
@@ -298,6 +317,10 @@ func parseStatus(s string) Status {
 		return StatusDraft
 	case "archived":
 		return StatusArchived
+	case "active":
+		return StatusActive
+	case "developing":
+		return StatusDeveloping
 	default:
 		return StatusPublished
 	}

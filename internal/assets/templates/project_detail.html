@@ -1,0 +1,48 @@
+{{ define "title" }}{{ .Data.Project.Entry.DisplayName }} — Penguin{{ end }}
+{{ define "body_class" }}page-project-detail{{ end }}
+
+{{ define "content" }}
+{{ with .Data.Project }}
+<article class="doc-detail">
+  {{ if .RemoteGone }}
+  <div class="archived-banner">远端仓库不可达——最后同步于 {{ .SyncLabel }}。下方展示的是本地保存的缓存。</div>
+  {{ else if .LastError }}
+  <div class="draft-banner">最近同步失败（{{ .SyncLabel }}），继续展示旧缓存。</div>
+  {{ end }}
+
+  <header class="doc-header">
+    <div class="kicker">{{ .Entry.Category }} · {{ .Entry.Repo }}</div>
+    <h1>{{ .Entry.DisplayName }}</h1>
+    <div class="meta">
+      {{ if .Info }}
+      <span>★ {{ .Info.Stars }} · ⑂ {{ .Info.Forks }}</span>
+      <span class="dot-sep">·</span>
+      <span>{{ .Info.Language }}</span>
+      <span class="dot-sep">·</span>
+      <span>{{ if .SyncStale }}同步异常{{ else }}同步于 {{ .SyncLabel }}{{ end }}</span>
+      {{ else }}
+      <span>正在首次同步……</span>
+      {{ end }}
+      {{ range .Entry.Stack }}<span class="tag-mini">{{ . }}</span>{{ end }}
+    </div>
+  </header>
+
+  <section class="doc-body">
+    {{ markdown .Entry.Body }}
+  </section>
+
+  {{ if and .Info .Info.ReadmeExcerpt }}
+  <section class="doc-body readme-excerpt">
+    <h2>README 摘要</h2>
+    <p>{{ .Info.ReadmeExcerpt }}</p>
+  </section>
+  {{ end }}
+
+  {{ if .Info }}
+  <nav class="doc-nav">
+    <a class="next" href="{{ .Info.HTMLURL }}" rel="noopener noreferrer" target="_blank">查看 GitHub 仓库</a>
+  </nav>
+  {{ end }}
+</article>
+{{ end }}
+{{ end }}

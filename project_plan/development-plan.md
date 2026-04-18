@@ -524,7 +524,18 @@ Go 1.22+、chi v5.0.12、goldmark v1.7.8、chroma v2.14.0、modernc.org/sqlite v
 - **Given** 某仓库在远端被删除，**When** 下次同步返回 404，**Then** 该项目详情页显示"远端仓库不可达"黄条
 - **Given** 未配置 token + 登记仓库数 × 2 > 30，**When** 服务启动，**Then** 日志输出 WARN
 
-**阶段状态**：未开始
+**阶段状态**：已完成
+
+**完成日期**：2026-04-18
+**验收结果**：通过
+**安全门控**：`make check` 全绿（fmt + vet + lint + tidy + test + vulncheck）
+**集成门控**：WI-3.7、WI-3.10.5、WI-3.14、WI-3.17 全部通过
+**覆盖率**：github 71.4% / content 80.4% / public 76.9%；全局 76.5%
+**端到端验证**：live server 验证 `/`、`/projects`、`/projects/:slug`、`/projects/nonexistent`（404）、404 处理、Recently Active 派生全部通过；mock GitHub 模拟 14 种响应（200/304/404/401/403+remaining=0/429/500/timeout）
+**备注**：
+- 18 个 WI 全部完成（含修正 status 枚举跨 kind 共用问题）
+- 4 条 learnings 已记录（status 枚举、Syncer 接口解耦、ProjectView 合并模型、intToString 过度工程）
+- GitHub 同步含 ETag 条件请求、50% 安全裕度 WARN、429 Retry-After 退避、单仓库失败不波及其它、首次同步前"正在首次同步"占位
 
 ---
 

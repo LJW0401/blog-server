@@ -30,12 +30,15 @@
       <div class="panel-label">Recently Active</div>
       <div class="repo-list">
         {{ range .RecentRepos }}
-        <a class="repo-card" href="/projects/{{ .Slug }}">
+        <a class="repo-card" href="/projects/{{ .Entry.Slug }}">
           <div class="top">
-            <div class="repo-name">{{ .DisplayName }}</div>
-            <div class="repo-time">{{ formatDate .Updated "2006-01-02" }}</div>
+            <div class="repo-name">{{ .Entry.DisplayName }}</div>
+            <div class="repo-time">
+              {{ if .Info }}{{ formatDate .Info.PushedAt "2006-01-02" }}{{ else }}{{ formatDate .Entry.Updated "2006-01-02" }}{{ end }}
+            </div>
           </div>
-          <div class="repo-desc">{{ .DisplayDesc }}</div>
+          <div class="repo-desc">{{ .Entry.DisplayDesc }}</div>
+          {{ if .Info }}<div class="repo-meta">★ {{ .Info.Stars }} · {{ .Info.Language }}</div>{{ end }}
         </a>
         {{ else }}
         <div class="repo-card repo-card-empty">暂无活跃仓库</div>
