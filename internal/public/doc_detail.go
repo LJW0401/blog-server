@@ -13,12 +13,12 @@ func (h *Handlers) DocDetail(w http.ResponseWriter, r *http.Request) {
 	slug := strings.TrimPrefix(r.URL.Path, "/docs/")
 	slug = strings.Trim(slug, "/")
 	if slug == "" || strings.Contains(slug, "/") {
-		http.NotFound(w, r)
+		h.NotFound(w, r)
 		return
 	}
 	e, ok := h.Content.Docs().Get(content.KindDoc, slug)
 	if !ok {
-		http.NotFound(w, r)
+		h.NotFound(w, r)
 		return
 	}
 	loggedIn := isLoggedIn(r)
@@ -27,13 +27,13 @@ func (h *Handlers) DocDetail(w http.ResponseWriter, r *http.Request) {
 	switch e.Status {
 	case content.StatusDraft:
 		if !loggedIn {
-			http.NotFound(w, r)
+			h.NotFound(w, r)
 			return
 		}
 	case content.StatusPublished, content.StatusArchived:
 		// Accessible to everyone.
 	default:
-		http.NotFound(w, r)
+		h.NotFound(w, r)
 		return
 	}
 

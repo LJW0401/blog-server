@@ -1,0 +1,19 @@
+{{ define "title" }}页面未找到 — Penguin{{ end }}
+{{ define "body_class" }}page-404{{ end }}
+
+{{ define "content" }}
+<section class="notfound">
+  <div class="orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-3"></div>
+  </div>
+  <div class="notfound-inner">
+    <div class="notfound-code">404</div>
+    <h1>页面走丢了</h1>
+    <p class="notfound-sub">你访问的页面可能已被移动、重命名，或从未存在过</p>
+    <div class="notfound-actions">
+      <a class="btn btn-primary" href="/">返回主页</a>
+    </div>
+  </div>
+</section>
+{{ end }}

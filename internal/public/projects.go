@@ -176,12 +176,12 @@ func (h *Handlers) ProjectDetail(w http.ResponseWriter, r *http.Request) {
 	slug := strings.TrimPrefix(r.URL.Path, "/projects/")
 	slug = strings.Trim(slug, "/")
 	if slug == "" || strings.Contains(slug, "/") {
-		http.NotFound(w, r)
+		h.NotFound(w, r)
 		return
 	}
 	e, ok := h.Content.Projects().Get(content.KindProject, slug)
 	if !ok {
-		http.NotFound(w, r)
+		h.NotFound(w, r)
 		return
 	}
 	pv := h.makeProjectView(r.Context(), e)

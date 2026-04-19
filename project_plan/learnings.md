@@ -435,3 +435,15 @@
   2. `.admin-table td code` 用 `var(--bg-alt)` 在暗色下等于 `#151518`，与卡片同色导致 code 块消隐；应偏移一档（例如 `#1c1c1e` 或 `#222225`）
   3. **立即应加的元测试**：扫描亮色规则里所有包含 `background: #` 字面量的选择器，若选择器形如 `.xxx-card` / `.xxx-section` / `.admin-*`，断言暗色 @media 块里必须包含对应覆盖。这是彻底断掉"亮色硬编码 + 暗色遗漏"这条模式的唯一方法
 - **最重要的反思**：同类 bug 连续三次复发，说明光靠人眼 review 不够，必须把衍生建议转化为自动化断言。下次再遇到 CSS 加硬编码色值时，第一件事是写元测试，而不是先写功能
+
+### 快速功能：404-page — 管理后台未使用品牌化 404
+- **类型**：技术债
+- **描述**：`cmd/server/routes.go:42,58,81`（admin mux 下的 /manage 变体、docs/projects 子路由 default 分支）与 `internal/admin/*.go` 里大量 `http.NotFound` 调用未替换。本次判断"admin 是技术面、保留纯文本 404 即可"，但管理员误操作或链接过期时弹一个 "404 page not found" 纯字体页观感也差
+- **建议处理方式**：给 admin 包加 `h.NotFound` 等价方法，渲染一个简化版、带"返回 /manage"按钮的 admin-404 模板；复用 admin-shell 外壳即可
+- **紧急程度**：低
+
+### 快速功能：404-page — 测试能发现 body 泄露
+- **类型**：架构洞察
+- **描述**：遍历攻击测试 `TestDocDetail_Edge_TraversalSlugRendersBrandedNotFound` 顺带断言 body 不含 `/etc/` 或 `passwd`——这是把安全断言和 UI 断言捏在一起的好做法。早期 `http.NotFound` 会把原路径回显到 body，品牌化后天然没有这个问题，但这条断言能卡住未来如果有人回归去回显 url 的情况
+- **建议处理方式**：在其他涉及用户输入 → 错误页的测试里也加"body 不得回显输入"的断言，作为一种 XSS / 信息泄露的轻量防线
+- **紧急程度**：低

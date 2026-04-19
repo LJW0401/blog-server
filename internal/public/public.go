@@ -197,6 +197,17 @@ func isFrontpageVisible(e *content.Entry) bool {
 
 // --- Handlers --------------------------------------------------------------
 
+// NotFound renders the branded 404 page at StatusNotFound. Used by every
+// public-facing "not found" path (unknown slug, root catch-all, etc.) so users
+// hit a styled page with a "返回主页" button instead of plain text.
+func (h *Handlers) NotFound(w http.ResponseWriter, r *http.Request) {
+	data := map[string]any{}
+	if err := h.Tpl.Render(w, r, http.StatusNotFound, "404.html", data); err != nil {
+		h.Logger.Error("notfound.render", slog.String("err", err.Error()))
+		http.Error(w, "not found", http.StatusNotFound)
+	}
+}
+
 // Home handles GET /.
 func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 	docs := h.Content.Docs().List(content.KindDoc)

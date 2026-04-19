@@ -170,7 +170,7 @@ func main() {
 	mux.Handle("/static/", staticFileServer(assets.Static()))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
-			http.NotFound(w, r)
+			ph.NotFound(w, r)
 			return
 		}
 		ph.Home(w, r)
