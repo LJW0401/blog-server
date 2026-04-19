@@ -598,9 +598,9 @@ body.page-diary { background: var(--bg); }
   transform: translateY(-0.5px);
 }
 .diary-sub {
-  display: flex; gap: 16px; align-items: center;
+  display: flex; gap: 16px; align-items: center; justify-content: space-between;
   font-size: 12.5px; color: var(--ink-soft);
-  padding-left: 4px;
+  padding: 0 4px;
 }
 .diary-link-plain {
   color: var(--accent); text-decoration: none;
