@@ -491,3 +491,5 @@
 - **描述**：为了让 `go test ./...` 自动涵盖 deploy 目录下的 bash 脚本测试，添加了一个空的 `deploy/deploy.go` 占位 package。这不是运行时代码，纯粹是 Go 工具链的仪式
 - **建议处理方式**：接受即可；如果后续真在 deploy 里放运行时 Go 代码，占位文件可以删除
 - **紧急程度**：低
+
+- 2026-04-19 快速功能 login-prefill-username 完成，无 learnings（已执行反思清单）

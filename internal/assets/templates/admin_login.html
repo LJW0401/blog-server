@@ -10,11 +10,11 @@
     {{ if .Error }}<div class="form-err">{{ .Error }}</div>{{ end }}
     <label>
       <span>用户名</span>
-      <input name="username" autocomplete="username" required autofocus />
+      <input name="username" autocomplete="username" required value="{{ .Username }}" />
     </label>
     <label>
       <span>密码</span>
-      <input name="password" type="password" autocomplete="current-password" required />
+      <input name="password" type="password" autocomplete="current-password" required {{ if .Username }}autofocus{{ end }} />
     </label>
     {{ if .Next }}<input type="hidden" name="next" value="{{ .Next }}" />{{ end }}
     <button type="submit" class="btn btn-primary">登录</button>

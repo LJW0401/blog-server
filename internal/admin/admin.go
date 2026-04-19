@@ -55,8 +55,9 @@ func (h *Handlers) LoginPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := map[string]any{
-		"Error": r.URL.Query().Get("e"),
-		"Next":  r.URL.Query().Get("next"),
+		"Error":    r.URL.Query().Get("e"),
+		"Next":     r.URL.Query().Get("next"),
+		"Username": h.Config.AdminUsername,
 	}
 	if err := h.Tpl.Render(w, r, http.StatusOK, "admin_login.html", data); err != nil {
 		h.Logger.Error("admin.login.render", slog.String("err", err.Error()))
