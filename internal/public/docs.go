@@ -77,6 +77,7 @@ type docsListData struct {
 	Categories     []string
 	Years          []yearItem
 	Pager          pager
+	HasTagFilter   bool // view=tag 下是否有 ?tag=... 过滤；控制目录后要不要追加命中文档列表
 
 	// View-specific payloads, populated only for their owning view so
 	// templates don't need to compute these every render path.
@@ -163,6 +164,7 @@ func (h *Handlers) DocsList(w http.ResponseWriter, r *http.Request) {
 		Categories:     mapKeys(cats),
 		Years:          buildYears(yearCounts),
 		Pager:          buildPager(page, totalPages, docsPerPage, len(filtered)),
+		HasTagFilter:   len(wantTags) > 0,
 	}
 	// Build the heavier per-view payloads only when that view is active.
 	switch view {

@@ -49,6 +49,9 @@
       {{ template "view_category" .CategoryTree }}
     {{ else if eq .View "tag" }}
       {{ template "view_tag" .AllTags }}
+      {{ if .HasTagFilter }}
+        {{ template "view_list" . }}
+      {{ end }}
     {{ else if eq .View "archive" }}
       {{ template "view_archive" .ArchiveTree }}
     {{ else }}

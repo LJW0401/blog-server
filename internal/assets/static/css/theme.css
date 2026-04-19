@@ -1010,6 +1010,7 @@ body.page-diary { background: var(--bg); }
   letter-spacing: 0.02em;
 }
 
+
 /* Dark-mode overrides */
 @media (prefers-color-scheme: dark) {
   .tree-node > summary,

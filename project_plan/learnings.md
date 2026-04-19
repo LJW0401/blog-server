@@ -671,3 +671,13 @@
   - 加 retention 任务（TTL 可配置，默认 30 天）做自动清理
   - restore 路径换成 `os.Rename + 条件错误判断（linkat/EEXIST）`的原子语义，去掉 stat-then-rename 窗口
 - **紧急程度**：低（当前规模/使用模式都不触发）
+
+### 快速功能：标签视图选中标签后下方展示命中文档
+- **类型**：Bug + 架构洞察
+- **描述**：
+  1. **潜在 pager bug（pre-existing）**：`view_list` 的分页链接用的是 `?page={{ .N }}`，相对 URL 的 `?` 会**替换整个 query string**，不是合并。所以用户在 `/docs?view=tag&tag=foo` 翻到第二页，点"下一页"后 URL 变成 `/docs?page=2`，view 和 tag 参数全丢。过去只在 `view=all` 下被翻页，这个 bug 没人触发；这次加了 tag 视图下的筛选列表，如果筛选结果多于一页，会立刻暴露。本次不修（/quick-feature 保守范围），但**强烈建议**下一个 quick-feature 就修
+  2. **架构洞察**：`DocsList` handler 实际上一直在服务端算 filtered docs，可所有 view=tag|category|archive 的 template 分支都只渲染自家结构（目录树 / tag 卡片 / 归档树），没用这份 filtered 数据。用户看到的是"点了过滤结果没变"的错觉。即 **数据在 data 里但 template 没展示**，这是个容易踩的坑：未来扩展 view 时要警觉
+- **建议处理方式**：
+  - Pager 链接改成保留全部现有 query + 覆盖/追加 `page` 参数。最简做法是 handler 把完整 href 字符串（`/docs?view=tag&tag=foo&page=2`）预算好塞进 `pager`，template 直接 `href="{{ .Pager.PrevHref }}"`
+  - 做个小扫描：其他 view 是不是也有"数据到了但没展示"的潜在 UX 坑（category/archive 似乎各自只渲染树结构，和 tag 同模式，都该考虑选中后要不要展示命中列表）
+- **紧急程度**：中（分页 bug 一旦筛选结果 >10 篇立刻复现）
