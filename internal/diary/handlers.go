@@ -160,7 +160,28 @@ func (h *Handlers) Page(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := h.Now()
-	year, month := NormaliseMonth(atoiOr(r.URL.Query().Get("year"), 0), atoiOr(r.URL.Query().Get("month"), 0), now)
+
+	// `?date=YYYY-MM-DD` 的优先级最高：如果给出且合法，它决定了显示的
+	// 月份，并会让前端在加载后自动进入周视图（键盘箭头切上下周用）。
+	// 非法 date 静默忽略，回退到 ?year&month 或当月。
+	var focusDate string
+	var year int
+	var month time.Month
+	if d := r.URL.Query().Get("date"); d != "" {
+		if t, err := h.Store.Validate(d); err == nil {
+			focusDate = d
+			year = t.Year()
+			month = t.Month()
+		}
+	}
+	if focusDate == "" {
+		year, month = NormaliseMonth(
+			atoiOr(r.URL.Query().Get("year"), 0),
+			atoiOr(r.URL.Query().Get("month"), 0),
+			now,
+		)
+	}
+	_ = year // 下面用到
 
 	entries, err := h.Store.DatesIn(year, month)
 	if err != nil {
@@ -186,6 +207,7 @@ func (h *Handlers) Page(w http.ResponseWriter, r *http.Request) {
 		"NextURL":   monthURL(nextCursor.Year(), int(nextCursor.Month())),
 		"ThisURL":   "/diary",
 		"CSRF":      sess.CSRF,
+		"FocusDate": focusDate, // 非空时前端自动进入周视图
 	}
 
 	if err := h.Tpl.Render(w, r, http.StatusOK, "diary.html", data); err != nil {

@@ -232,4 +232,60 @@
   if (calendar) {
     calendar.addEventListener('click', onCellClick);
   }
+
+  // 编辑器头上的 ← / → 按钮：可见的切周入口
+  const weekPrevBtn = document.querySelector('.diary-week-prev');
+  const weekNextBtn = document.querySelector('.diary-week-next');
+  if (weekPrevBtn) weekPrevBtn.addEventListener('click', () => navigateWeek(-1));
+  if (weekNextBtn) weekNextBtn.addEventListener('click', () => navigateWeek(+1));
+
+  // --- 周视图：左右箭头切上下周 -----------------------------------------
+  // 仅在已进入周视图（currentDate 非空）且焦点不在 textarea/input 时拦截。
+  // 跨月时直接走 /diary?date=<新日期> 让服务端重新渲染对应月份并自动
+  // 进入周视图（通过 data-focus-date 触达）。
+  function shiftDays(isoDate, delta) {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    dt.setUTCDate(dt.getUTCDate() + delta);
+    const yy = dt.getUTCFullYear();
+    const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getUTCDate()).padStart(2, '0');
+    return yy + '-' + mm + '-' + dd;
+  }
+
+  async function navigateWeek(delta) {
+    if (!currentDate) return;
+    // 保证当前未保存内容落盘再跳，避免丢稿
+    await saveDay();
+    const target = shiftDays(currentDate, delta * 7);
+    window.location.href = '/diary?date=' + encodeURIComponent(target);
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (editor.hidden) return; // 没进入周视图，让箭头原生行为（月视图没交互就无事发生）
+    // textarea / input 聚焦时让箭头走原生光标移动
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT')) return;
+    // 带修饰键的组合让给浏览器 / 其他拦截器
+    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      navigateWeek(-1);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      navigateWeek(+1);
+    }
+  });
+
+  // --- SSR 预填 data-focus-date 时自动进入周视图 ------------------------
+  // `/diary?date=YYYY-MM-DD` 页面加载时，把焦点直接落在该日（周视图模式）。
+  // 覆盖两种入口：用户点月视图某格 → JS 逻辑；用户按 ← / → 跳到别月
+  // → 页面重载 → 这里兜底。
+  (function maybeAutoFocus() {
+    const focusDate = shell.dataset.focusDate;
+    if (!focusDate) return;
+    // 在 calendar 渲染完成的同一个 tick 里点对应格子
+    const cell = calendar && calendar.querySelector(`.diary-cell[data-date="${focusDate}"]`);
+    if (cell) cell.click();
+  })();
 })();
