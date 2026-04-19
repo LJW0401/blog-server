@@ -1,9 +1,13 @@
 {{ define "title" }}日记 — Penguin{{ end }}
 {{ define "body_class" }}page-diary{{ end }}
+{{ define "head" }}
+<meta name="csrf" content="{{ .Data.CSRF }}" />
+<script src="/static/js/diary.js" defer></script>
+{{ end }}
 
 {{ define "content" }}
 {{ with .Data }}
-<div class="diary-shell">
+<div class="diary-shell" data-today="{{ .Today }}">
   <header class="diary-header">
     <div class="diary-nav">
       <a class="diary-nav-btn" href="{{ .PrevURL }}" aria-label="上个月">‹ 上个月</a>
@@ -36,6 +40,18 @@
       {{ end }}
     </tbody>
   </table>
+
+  <section class="diary-editor" hidden>
+    <div class="diary-editor-head">
+      <h2 class="diary-editor-date" data-date="">选择日期开始编辑</h2>
+      <span class="diary-status" data-state="idle"></span>
+    </div>
+    <textarea class="diary-textarea" placeholder="这一天在想什么？" rows="12"></textarea>
+    <div class="diary-editor-actions">
+      <button type="button" class="btn btn-primary diary-save-btn">保存</button>
+      <span class="diary-hint">Ctrl + S / Cmd + S 也可保存；离开编辑器时会自动保存</span>
+    </div>
+  </section>
 </div>
 {{ end }}
 {{ end }}

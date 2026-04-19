@@ -20,8 +20,15 @@ import (
 )
 
 // setupHandlers returns a wired-up Handlers + helpers for building
-// authenticated / anonymous requests in handler tests.
-func setupHandlers(t *testing.T) (*diary.Handlers, string, *http.Cookie) {
+// authenticated / anonymous requests in handler tests. csrf 是当前 session 的
+// CSRF token，用于构造 POST 请求。
+func setupHandlers(t *testing.T) (h *diary.Handlers, dir string, cookie *http.Cookie) {
+	h, dir, cookie, _ = setupHandlersWithCSRF(t)
+	return
+}
+
+// setupHandlersWithCSRF 和 setupHandlers 一样，但多返一个 CSRF token，给 POST 测试用。
+func setupHandlersWithCSRF(t *testing.T) (*diary.Handlers, string, *http.Cookie, string) {
 	t.Helper()
 	dir := t.TempDir()
 	st, err := storage.Open(dir)
@@ -46,11 +53,11 @@ func setupHandlers(t *testing.T) (*diary.Handlers, string, *http.Cookie) {
 	// 固定 "今天" 为 2026-04-19，便于断言
 	h.Now = func() time.Time { return time.Date(2026, time.April, 19, 12, 0, 0, 0, time.UTC) }
 
-	_, cookie, err := authStore.IssueSession("admin", "test/ua")
+	sess, cookie, err := authStore.IssueSession("admin", "test/ua")
 	if err != nil {
 		t.Fatal(err)
 	}
-	return h, dir, cookie
+	return h, dir, cookie, sess.CSRF
 }
 
 // --- Smoke (WI-1.10) -------------------------------------------------------

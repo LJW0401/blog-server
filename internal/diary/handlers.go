@@ -1,6 +1,7 @@
 package diary
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -35,13 +36,87 @@ func New(store *Store, tpl *render.Templates, authStore *auth.Store, logger *slo
 	}
 }
 
+// session 提取 + 认证拒绝。GET 场景只要求登录态；POST 还要求 CSRF 匹配。
+// 未登录返回 (zero, false)；handler 按语义自己决定 302 (HTML) / 401 (JSON API)。
+func (h *Handlers) session(r *http.Request) (auth.Session, bool) {
+	return h.Auth.ParseSession(r)
+}
+
+// writeJSON 统一 JSON 响应头 + 编码。传入 status=0 表示 200。
+func writeJSON(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if status > 0 {
+		w.WriteHeader(status)
+	}
+	_ = json.NewEncoder(w).Encode(payload)
+}
+
+// APIDay 处理 GET /diary/api/day?date=YYYY-MM-DD。未登录 401（JSON 而非 302，
+// 因为是 XHR 调用点，客户端需要明确错误码而不是跟随跳转）。
+func (h *Handlers) APIDay(w http.ResponseWriter, r *http.Request) {
+	if _, ok := h.session(r); !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "unauthorized"})
+		return
+	}
+	date := r.URL.Query().Get("date")
+	if _, err := h.Store.Validate(date); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_date"})
+		return
+	}
+	body, _, err := h.Store.Get(date)
+	if err != nil {
+		h.Logger.Error("diary.api.day.read", slog.String("date", date), slog.String("err", err.Error()))
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "read_failed"})
+		return
+	}
+	writeJSON(w, 0, map[string]any{"body": body})
+}
+
+// APISave 处理 POST /diary/api/save。form 字段：date、content、csrf。
+// 空 content 按 Store 约定等同 Delete（清空这一天的快捷路径）。
+func (h *Handlers) APISave(w http.ResponseWriter, r *http.Request) {
+	sess, ok := h.session(r)
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "unauthorized"})
+		return
+	}
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"ok": false, "error": "method_not_allowed"})
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "bad_form"})
+		return
+	}
+	if !auth.CSRFValid(sess, r.Form.Get("csrf")) {
+		writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "csrf"})
+		return
+	}
+	date := r.Form.Get("date")
+	if _, err := h.Store.Validate(date); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_date"})
+		return
+	}
+	content := r.Form.Get("content")
+	if err := h.Store.Put(date, content); err != nil {
+		h.Logger.Error("diary.api.save.put", slog.String("date", date), slog.String("err", err.Error()))
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "save_failed"})
+		return
+	}
+	writeJSON(w, 0, map[string]any{
+		"ok":      true,
+		"savedAt": h.Now().Format(time.RFC3339),
+	})
+}
+
 // Page 处理 GET /diary。未登录 302 到 /manage/login?next=/diary；否则根据
 // ?year&month 渲染月视图日历。非法参数按需求 2.1.2 回落到当前月。
 //
 // 为什么这里重复做 session 检查：/diary 不走 AuthGate 中间件（那是 /manage/* 的
 // 专属），但共享同一个 session cookie。直接在 handler 里 ParseSession 最简单。
 func (h *Handlers) Page(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.Auth.ParseSession(r); !ok {
+	sess, ok := h.Auth.ParseSession(r)
+	if !ok {
 		http.Redirect(w, r, "/manage/login?next=/diary", http.StatusSeeOther)
 		return
 	}
@@ -72,6 +147,7 @@ func (h *Handlers) Page(w http.ResponseWriter, r *http.Request) {
 		"PrevURL":   monthURL(prevCursor.Year(), int(prevCursor.Month())),
 		"NextURL":   monthURL(nextCursor.Year(), int(nextCursor.Month())),
 		"ThisURL":   "/diary",
+		"CSRF":      sess.CSRF,
 	}
 
 	if err := h.Tpl.Render(w, r, http.StatusOK, "diary.html", data); err != nil {

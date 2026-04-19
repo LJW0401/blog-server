@@ -507,3 +507,23 @@
 - **描述**：`handlers_test.go` 里每个 authenticated 用例都重复 `req.Header.Set("User-Agent", "test/ua")`，共 8 处。能跑但不够好
 - **建议处理方式**：抽一个 `newAuthenticatedRequest(method, url, cookie)` helper。Stage 2/3 新加的 API 用例会多，届时顺手重构
 - **紧急程度**：低
+
+## 2026-04-19 · 日记功能 Stage 2 完成
+
+### 架构洞察：XHR 端点的未登录响应要 401 JSON，不能 302 HTML
+- **发现于**：WI-2.1 APIDay/APISave 设计
+- **描述**：与 `Page` handler 不同，API 端点给 fetch 调用；如果未登录回 302，浏览器会跟随跳转到 `/manage/login`，JSON 解析失败，客户端拿不到"未登录"信号。必须返回 401 + JSON body，让前端状态机能识别并引导重新登录
+- **建议处理方式**：已落实。后续所有 XHR 端点（/diary/api/* + 后续的 delete/promote）都遵循"HTML 路由 302、API 路由 401 JSON"的约定
+- **紧急程度**：低（已实现）
+
+### 技术债：测试 helper setupHandlers 扩成两份
+- **发现于**：WI-2.2/2.3 api_test.go 需要 CSRF token
+- **描述**：Stage 1 的 `setupHandlers` 只返回 (h, dir, cookie)；Stage 2 的 POST 测试要 CSRF，为了向后兼容又加了 `setupHandlersWithCSRF` 并让前者调用后者。这种"包装一层给老调用方"的做法有点技术债感
+- **建议处理方式**：Stage 3 无论如何都要用 CSRF，届时可以把旧 `setupHandlers` 删掉，统一用带 CSRF 的版本
+- **紧急程度**：低
+
+### 架构洞察：beforeunload flush 靠 sendBeacon 而不是 fetch
+- **发现于**：WI-2.5 diary.js 实现
+- **描述**：页面关闭时 fetch 往往会被浏览器取消（特别是长链接）；`navigator.sendBeacon` 是专为此类场景设计的 fire-and-forget 端点，被浏览器保证在卸载过程也能送达。需要传 Blob + 对应的 Content-Type
+- **建议处理方式**：已用 sendBeacon。静态扫描测试未覆盖这个（只能靠人工审查），写进 learnings 方便下次
+- **紧急程度**：低

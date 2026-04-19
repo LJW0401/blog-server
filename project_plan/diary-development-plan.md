@@ -292,7 +292,12 @@
 3. Given 非法 csrf，When POST /diary/api/save，Then 403（异常路径验收）
 4. 所有 WI 安全门控通过
 
-**阶段状态**：未开始
+**阶段状态**：已完成
+**完成日期**：2026-04-19
+**验收结果**：通过
+**安全门控**：`make check` 全绿
+**集成门控**：WI-2.4 / 2.8 通过
+**备注**：共 30 个测试（Stage 1 + Stage 2 累计），全绿；UI 契约测试扫 diary.html/.js/.css 关键结构。Learnings 新增 3 条（XHR 401 约定 / setupHandlers 技术债 / sendBeacon 用法）
 
 ---
 

@@ -663,6 +663,66 @@ body.page-diary { background: var(--bg); }
   background: #30d158; /* iOS 系统绿 */
   box-shadow: 0 0 0 2px #fff;
 }
+.diary-cell-selected {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(0,113,227,0.14) !important;
+}
+
+/* 日期点击后的周视图折叠 + 下方编辑器 */
+.diary-week-mode .diary-calendar { margin-bottom: 32px; }
+.diary-editor {
+  margin-top: 8px;
+  padding: 24px 28px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: var(--radius-lg);
+}
+.diary-editor[hidden] { display: none; }
+.diary-editor-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.diary-editor-date {
+  font-size: 18px; font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.diary-status {
+  font-size: 12px; color: var(--ink-faint);
+  cursor: default;
+  transition: color 0.2s var(--ease);
+}
+.diary-status[data-state="editing"] { color: var(--ink-soft); }
+.diary-status[data-state="saving"]  { color: var(--ink-soft); }
+.diary-status[data-state="saved"]   { color: #30d158; }
+.diary-status[data-state="error"]   { color: #ff3b30; cursor: pointer; text-decoration: underline; }
+.diary-status[data-state="loading"] { color: var(--ink-faint); }
+
+.diary-textarea {
+  width: 100%;
+  min-height: 260px;
+  padding: 14px 16px;
+  background: var(--bg-alt);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink);
+  resize: vertical;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.diary-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+}
+.diary-editor-actions {
+  display: flex; align-items: center; gap: 14px;
+  margin-top: 14px;
+}
+.diary-save-btn { padding: 0 22px; }
+.diary-hint { font-size: 12px; color: var(--ink-faint); }
 
 /* WI-2.20 暗色模式 — follows system only (per requirement 2.9) */
 @media (prefers-color-scheme: dark) {
@@ -730,6 +790,16 @@ body.page-diary { background: var(--bg); }
     background-clip: text;
   }
   .diary-dot { box-shadow: 0 0 0 2px #1c1c1e; }
+  .diary-editor {
+    background: #1c1c1e;
+    border-color: rgba(255,255,255,0.08);
+  }
+  .diary-textarea {
+    background: #151518;
+    color: var(--ink);
+    border-color: transparent;
+  }
+  .diary-textarea:focus { background: #26262a; border-color: var(--accent); }
   .default-password-banner { background: #332b00; color: #ffd280; border-bottom-color: #664d00; }
   .draft-banner { background: #332b00; color: #ffd280; }
   .archived-banner { background: #2c2c2e; color: #a1a1a6; }
