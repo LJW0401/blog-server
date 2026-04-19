@@ -520,6 +520,9 @@ body.page-admin { background: var(--bg-alt); }
   body.page-projects .status-list a:hover { color: var(--ink); }
   /* Orbs desaturated in dark mode per requirement */
   .orb { mix-blend-mode: screen; filter: blur(80px) saturate(0.55) brightness(0.7); }
+  .admin-card, .admin-section { background: #1f1f22; border-color: rgba(255,255,255,0.09); box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset; }
+  .admin-card input:focus { background: #151518; }
+  .admin-table th, .admin-table td { border-bottom-color: rgba(255,255,255,0.08); }
   .default-password-banner { background: #332b00; color: #ffd280; border-bottom-color: #664d00; }
   .draft-banner { background: #332b00; color: #ffd280; }
   .archived-banner { background: #2c2c2e; color: #a1a1a6; }

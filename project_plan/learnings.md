@@ -421,3 +421,17 @@
 - **衍生改进建议**：
   1. `.about-card .pill` 在 262-274 块里也写死了 `background: #f0f0f2`，暗色下会是亮灰底 — 本次未改，下次可顺手
   2. 所有卡片类（含 `.contact-table td`、`.featured` 等）都应统一用 `var(--bg-alt)` 或走"亮色 + 暗色覆盖对列表"，避免再漏。可以加一条元测试："凡是选择器里含 `-card` 且在亮色块设了 `background: #xxx`，必须在暗色块有对应 `background` 覆盖"
+
+### Bug 修复：暗色模式下后台管理卡片仍是白底
+- **发现于**：用户报告
+- **现象**：系统深色模式下，`/manage` 下所有页面（dashboard / docs / repos / settings / images / login / password）的容器卡片仍是白色 `#fff`，整个后台与暗色系统反差刺眼
+- **根因**：`theme.css:378 .admin-card` 与 `theme.css:402 .admin-section` 都硬编码 `background: #fff`；暗色 `@media` block 只覆盖了前台卡片家族（`.repo-card/.project-card/.about-card/.doc-item/.proj` 等），整个 `.admin-*` 家族被遗漏。这是与前两次暗色 bug 同一模式的**第三次复发**
+- **修复**：在暗色 block 加 `.admin-card, .admin-section { background: #151518; border-color: rgba(255,255,255,0.06); }` + `.admin-table` 行边框色适配 + `.admin-card input:focus` 不再闪回白底
+- **回归测试**：`internal/assets/admin_card_dark_mode_test.go:TestTheme_Regression_AdminCardDarkModeOverride`
+- **为什么原测试没覆盖**：继前两次（about-card / about-card .pill）后，**"亮色硬编码 + 暗色遗漏" 已经出现第三次**。前一条衍生建议就提了"加元测试：凡 `-card` 选择器在亮色块设 background 必在暗色块覆盖"，但没落地，于是又踩一次。属于**已识别但未建防线**
+- **紧急程度**：中（不影响功能，但使用后台的人就是管理员本人，观感体验差）
+- **衍生改进建议**：
+  1. `.admin-warning` 用了 `#fff8dd/#714d00/#ffe083`，暗色下亮黄会刺眼；可仿 `.draft-banner` 用 `#332b00/#ffd280`
+  2. `.admin-table td code` 用 `var(--bg-alt)` 在暗色下等于 `#151518`，与卡片同色导致 code 块消隐；应偏移一档（例如 `#1c1c1e` 或 `#222225`）
+  3. **立即应加的元测试**：扫描亮色规则里所有包含 `background: #` 字面量的选择器，若选择器形如 `.xxx-card` / `.xxx-section` / `.admin-*`，断言暗色 @media 块里必须包含对应覆盖。这是彻底断掉"亮色硬编码 + 暗色遗漏"这条模式的唯一方法
+- **最重要的反思**：同类 bug 连续三次复发，说明光靠人眼 review 不够，必须把衍生建议转化为自动化断言。下次再遇到 CSS 加硬编码色值时，第一件事是写元测试，而不是先写功能
