@@ -644,3 +644,14 @@
   1. 后续凡是依赖 client-side JS 做渲染的功能（code 高亮自定义、图表、diagram、音视频嵌入等），都应该有一个"资源引用断言"型的 regression test，即便内容本身要浏览器才能看见
   2. 考虑加 CSP font-src 的检查测试：现在 CSP 是 font-src 'self'，embed 的 KaTeX woff2 走 /static/math/fonts/...  满足 self 同源，OK；但未来若有人引入 CDN 字体会静默被拒绝
   3. 当前 init 只扫 `.doc-body, .diary-preview, .editor-preview` 三种容器。如果未来在 /projects/:slug 或 README 摘要等地方也要支持公式，需扩展选择器
+
+### 快速功能：文档/项目删除确认改走外部 JS
+- **类型**：架构洞察 + Bug + 测试缺口
+- **描述**：修这个"小功能"时发现它其实是个潜伏 bug——两份 admin list 模板里一直都有 `onsubmit="return confirm(...)"`，但 CSP `script-src 'self'` 会**静默拦截所有 inline 事件处理器**（不止 `<script>` 标签），过去这个确认框从来没真正弹出过，用户误点就软删
+- **根因模式**：CSP self 模式下 `onclick=` / `onsubmit=` / `onchange=` 一类 HTML 属性全是 noop。项目里凡是靠 inline handler 做的交互都可能是哑的。已知位点两处（文档/项目 delete），但没有 lint 或测试规则扫其他模板
+- **修复**：新增 `internal/assets/static/js/confirm_submit.js` 监听 `[data-confirm]` 表单 submit；两份列表模板把 `onsubmit="return confirm('X')"` 改成 `data-confirm="X"`，末尾引入外部 JS
+- **建议处理方式**：补一个 template 扫描型测试（`go test` 遍历所有 `internal/assets/templates/*.html`，grep 到 `\bon[a-z]+\s*=` 就 fail），一次性杜绝同类问题；或把 CSP 改成 nonce 模式（文档写的是"refined to nonce-based in a later phase"——就是它该做了）
+- **紧急程度**：高（本次修复后解除，但同类其他 inline handler 若存在则一直是哑的）
+- **衍生改进建议**：
+  1. **模板内联事件 lint**：加一条 grep 测试扫所有模板文件，命中任何 `on\w+=` 属性就失败，绝杀同类问题
+  2. **CSP 升级到 nonce**：现在 middleware 注释说"refined to nonce-based in a later phase"，就是这个阶段了。nonce 模式下可以重新放开内联 JS，不用再一次次地把小交互外置成独立 .js 文件

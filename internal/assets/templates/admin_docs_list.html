@@ -33,7 +33,7 @@
           <td>{{ formatDate .Updated "2006-01-02" }}</td>
           <td>
             <a href="/manage/docs/{{ .Slug }}/edit">编辑</a>
-            <form method="POST" action="/manage/docs/{{ .Slug }}/delete" style="display:inline;" onsubmit="return confirm('确定删除《{{ .Title }}》？软删到 trash/');">
+            <form method="POST" action="/manage/docs/{{ .Slug }}/delete" style="display:inline;" data-confirm="确定删除《{{ .Title }}》？软删到 trash/">
               <input type="hidden" name="csrf" value="{{ $csrf }}" />
               <button class="link-danger" type="submit">删除</button>
             </form>
@@ -48,4 +48,5 @@
   </section>
 </div>
 {{ end }}
+<script defer src="/static/js/confirm_submit.js"></script>
 {{ end }}
