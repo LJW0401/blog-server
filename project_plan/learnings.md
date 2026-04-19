@@ -691,3 +691,9 @@
   - scroll-snap 本次不扩大范围，CSS 方案够用
   - 长期看应评估：加 Playwright e2e（Go 生态可用 `chromedp` 或 `rod`），专跑"浏览器执行后才能验证的行为"。暂列高优先级 **衍生任务**
 - **紧急程度**：中（scroll-snap 本身够用；测试缺口已累积两次，再不处理还会继续踩）
+
+### 快速功能：diary 页窄屏适配
+- **类型**：架构洞察
+- **描述**：diary 页之前**一个 @media 都没有**，所有 shell padding / cell 高度 / editor padding 默认值一路生效到 0px 视口宽。补了两级断点（900px 桌面窄窗 + 640px 手机竖屏）后问题解决。巡查其他公开页面也有可能有同类现象 —— home / docs / projects 各自的 `@media (max-width: 860px)` 是在 layout 级加的但覆盖面不全，比如文档详情页的 `.doc-body` 以及 `/projects/:slug` 详情大概率也有窄屏"直接压缩"的毛病，本次范围不扩大
+- **建议处理方式**：列入待办，下一轮专门做一次"窄屏适配 审视 + 批量补"，把 home/docs/projects/manage 几个详情页都过一遍。断点建议统一用这次的 900/640 两级节奏
+- **紧急程度**：中（diary 修了后可用，其他页用户会陆续报）

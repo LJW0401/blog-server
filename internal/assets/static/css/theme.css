@@ -773,6 +773,42 @@ body.page-diary { background: var(--bg); }
 .diary-save-btn { padding: 0 22px; }
 .diary-hint { font-size: 12px; color: var(--ink-faint); }
 
+/* --- Diary 窄屏适配 ----------------------------------------------------- */
+/* 两级断点：900px 给桌面端窄窗口喘口气；640px 给手机/平板竖屏。
+   不改 DOM，只放宽 padding / gap / 字号；该 wrap 的 flex 都放 wrap
+   以免"所有元素被横向直接压缩"的丑态。 */
+@media (max-width: 900px) {
+  .diary-shell { padding: 72px 28px 56px; }
+  .diary-header { margin-bottom: 28px; }
+  .diary-cell { height: 64px; padding: 8px 10px; }
+  .diary-editor { padding: 20px 22px; }
+}
+
+@media (max-width: 640px) {
+  .diary-shell { padding: 56px 16px 48px; }
+  .diary-header { margin-bottom: 20px; }
+  .diary-nav { flex-wrap: wrap; gap: 12px; }
+  .diary-title { font-size: clamp(22px, 6.5vw, 30px); }
+  .diary-sub { flex-wrap: wrap; gap: 10px; font-size: 12px; padding-left: 0; }
+  .diary-nav-btn { height: 30px; padding: 0 12px; font-size: 12.5px; }
+
+  .diary-calendar { border-spacing: 4px; }
+  .diary-calendar th { font-size: 10px; padding: 2px 0 8px; letter-spacing: 0.06em; }
+  .diary-cell { height: 52px; padding: 6px 6px; }
+  .diary-day-num { font-size: 13px; }
+  .diary-dot { top: 6px; right: 6px; width: 6px; height: 6px; box-shadow: 0 0 0 1.5px #fff; }
+
+  .diary-grid-wrap { gap: 6px; }
+  .diary-week-btn { width: 28px; height: 28px; flex: 0 0 28px; font-size: 16px; }
+
+  .diary-editor { padding: 14px 16px; border-radius: var(--radius-md); }
+  .diary-editor-head { flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .diary-editor-date { font-size: 16px; }
+  .diary-textarea { padding: 12px; font-size: 14.5px; min-height: 200px; line-height: 1.65; }
+  .diary-editor-actions { flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .diary-save-btn { padding: 0 16px; }
+}
+
 /* WI-2.20 暗色模式 — follows system only (per requirement 2.9) */
 @media (prefers-color-scheme: dark) {
   :root {
