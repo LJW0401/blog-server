@@ -1,0 +1,63 @@
+{{ define "title" }}日记 — Penguin{{ end }}
+{{ define "body_class" }}page-diary{{ end }}
+{{ define "head" }}
+<meta name="csrf" content="{{ .Data.CSRF }}" />
+<script src="/static/js/diary.js" defer></script>
+{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<div class="diary-shell" data-today="{{ .Today }}"{{ if .FocusDate }} data-focus-date="{{ .FocusDate }}"{{ end }}>
+  <header class="diary-header">
+    <div class="diary-nav">
+      <a class="diary-nav-btn" href="{{ .PrevURL }}" aria-label="上个月">‹ 上个月</a>
+      <h1 class="diary-title">{{ .Year }} 年 {{ .Month }} 月</h1>
+      <a class="diary-nav-btn" href="{{ .NextURL }}" aria-label="下个月">下个月 ›</a>
+    </div>
+    <div class="diary-sub">
+      <a class="diary-link-plain" href="{{ .ThisURL }}">回到本月</a>
+      <span class="diary-muted">今天是 {{ .Today }}</span>
+    </div>
+  </header>
+
+  <div class="diary-grid-wrap">
+    <button type="button" class="diary-week-btn diary-week-prev" aria-label="上一周">‹</button>
+    <table class="diary-calendar" aria-label="月历">
+      <thead>
+        <tr>
+          <th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th><th>日</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range .Grid }}
+        <tr>
+          {{ range . }}
+          <td class="diary-cell{{ if not .InMonth }} diary-out-of-month{{ end }}{{ if .IsToday }} diary-today{{ end }}"
+              data-date="{{ .ISODate }}">
+            <span class="diary-day-num">{{ .DayNum }}</span>
+            {{ if .HasEntry }}<span class="diary-dot" aria-label="当天有日记"></span>{{ end }}
+          </td>
+          {{ end }}
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    <button type="button" class="diary-week-btn diary-week-next" aria-label="下一周">›</button>
+  </div>
+
+  <section class="diary-editor" hidden>
+    <div class="diary-editor-head">
+      <h2 class="diary-editor-date" data-date="">选择日期开始编辑</h2>
+      <span class="diary-status" data-state="idle"></span>
+    </div>
+    <textarea class="diary-textarea" placeholder="这一天在想什么？" rows="12"></textarea>
+    <div class="diary-editor-actions">
+      <button type="button" class="btn btn-primary diary-save-btn">保存</button>
+      <button type="button" class="btn btn-ghost diary-delete-btn">清空这一天</button>
+      <button type="button" class="btn btn-ghost diary-promote-btn">转正为文档</button>
+      <span class="diary-hint">Ctrl + S / Cmd + S 也可保存；离开编辑器时会自动保存</span>
+    </div>
+  </section>
+</div>
+{{ end }}
+{{ end }}

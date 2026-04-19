@@ -10,6 +10,7 @@
 /trash/
 /tmp/
 /images/
+/content/diary/
 # content/ 下的 MD 默认随仓库一起管理（既是项目代码也是内容种子）。
 # 若希望把个人文章从 Git 中排除，取消下面两行注释：
 # /content/docs/*.md

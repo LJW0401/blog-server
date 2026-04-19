@@ -537,6 +537,220 @@ body.page-admin { background: var(--bg-alt); }
 .notfound-sub { font-size: 16px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 32px; }
 .notfound-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 
+/* 日记页 /diary — Apple-style 月视图 */
+body.page-diary { background: var(--bg); }
+.diary-shell {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 88px 40px 72px;
+}
+
+/* 顶部导航：主色渐淡 title + 极简翻页按钮 */
+.diary-header { margin-bottom: 36px; }
+.diary-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px; margin-bottom: 10px;
+}
+.diary-title {
+  font-size: clamp(30px, 3.6vw, 40px);
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  line-height: 1.1;
+  background: linear-gradient(180deg, #1d1d1f 0%, #434344 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  padding: 0 4px;
+}
+.diary-nav-btn {
+  display: inline-flex; align-items: center;
+  height: 32px; padding: 0 14px;
+  font-size: 13px; color: var(--accent);
+  text-decoration: none; border-radius: 980px;
+  background: transparent;
+  transition: background 0.22s var(--ease), transform 0.2s var(--ease);
+  white-space: nowrap;
+}
+.diary-nav-btn:hover {
+  background: rgba(0,113,227,0.08);
+  transform: translateY(-0.5px);
+}
+.diary-sub {
+  display: flex; gap: 16px; align-items: center;
+  font-size: 12.5px; color: var(--ink-soft);
+  padding-left: 4px;
+}
+.diary-link-plain {
+  color: var(--accent); text-decoration: none;
+  font-weight: 500;
+}
+.diary-link-plain:hover { text-decoration: underline; }
+.diary-muted {
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 日历网格 */
+.diary-calendar {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 8px;
+  font-variant-numeric: tabular-nums;
+  table-layout: fixed;
+}
+.diary-calendar th {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-faint);
+  letter-spacing: 0.12em;
+  padding: 4px 0 14px;
+  text-align: center;
+}
+.diary-cell {
+  position: relative;
+  height: 72px;
+  vertical-align: top;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 0.22s var(--ease),
+              box-shadow 0.22s var(--ease),
+              transform 0.2s var(--ease);
+}
+.diary-cell:hover {
+  border-color: rgba(0,0,0,0.12);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transform: translateY(-1px);
+}
+/* 跨月占位日（上月末 / 下月初）：统一按和本月一样的可点外观渲染，
+   只通过日期数字稍浅暗示 "不属于本月"。点击走 /diary?date= 跳转。 */
+.diary-out-of-month {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  cursor: pointer;
+}
+.diary-today {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, rgba(0,113,227,0.06) 0%, rgba(0,113,227,0.02) 100%);
+}
+.diary-today .diary-day-num {
+  color: var(--accent);
+  font-weight: 600;
+}
+.diary-day-num {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.diary-out-of-month .diary-day-num {
+  color: var(--ink-faint);
+  opacity: 0.85;
+  font-weight: 500;
+}
+.diary-dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #30d158; /* iOS 系统绿 */
+  box-shadow: 0 0 0 2px #fff;
+}
+.diary-cell-selected {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(0,113,227,0.14) !important;
+}
+
+/* 日期点击后的周视图折叠 + 下方编辑器 */
+.diary-week-mode .diary-calendar { margin-bottom: 32px; }
+.diary-editor {
+  margin-top: 8px;
+  padding: 24px 28px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: var(--radius-lg);
+}
+.diary-editor[hidden] { display: none; }
+.diary-editor-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.diary-editor-date {
+  font-size: 18px; font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+/* 月视图 / 周视图共用的外壳：7 日表格 + 左右切周按钮 */
+.diary-grid-wrap {
+  display: flex; align-items: center; gap: 10px;
+}
+.diary-grid-wrap .diary-calendar { flex: 1; min-width: 0; }
+.diary-week-btn {
+  display: none; /* 默认隐藏；周视图才出现 */
+  align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  flex: 0 0 32px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: var(--bg);
+  color: var(--ink-soft);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 20px; line-height: 1;
+  padding: 0;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease),
+              transform 0.15s var(--ease), border-color 0.2s var(--ease);
+}
+.diary-week-mode .diary-week-btn {
+  display: inline-flex; /* 只有周视图模式下露脸 */
+}
+.diary-week-btn:hover {
+  background: var(--bg-alt);
+  color: var(--ink);
+  border-color: rgba(0,0,0,0.15);
+  transform: translateY(-0.5px);
+}
+.diary-week-btn:active { transform: translateY(0); }
+.diary-status {
+  font-size: 12px; color: var(--ink-faint);
+  cursor: default;
+  transition: color 0.2s var(--ease);
+}
+.diary-status[data-state="editing"] { color: var(--ink-soft); }
+.diary-status[data-state="saving"]  { color: var(--ink-soft); }
+.diary-status[data-state="saved"]   { color: #30d158; }
+.diary-status[data-state="error"]   { color: #ff3b30; cursor: pointer; text-decoration: underline; }
+.diary-status[data-state="loading"] { color: var(--ink-faint); }
+
+.diary-textarea {
+  width: 100%;
+  min-height: 260px;
+  padding: 14px 16px;
+  background: var(--bg-alt);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink);
+  resize: vertical;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.diary-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+}
+.diary-editor-actions {
+  display: flex; align-items: center; gap: 14px;
+  margin-top: 14px;
+}
+.diary-save-btn { padding: 0 22px; }
+.diary-hint { font-size: 12px; color: var(--ink-faint); }
+
 /* WI-2.20 暗色模式 — follows system only (per requirement 2.9) */
 @media (prefers-color-scheme: dark) {
   :root {
@@ -581,6 +795,52 @@ body.page-admin { background: var(--bg-alt); }
   .readme-excerpt-box code { background: rgba(255,255,255,0.06); color: var(--ink); }
   .readme-excerpt-box pre { background: rgba(255,255,255,0.04); }
   .readme-excerpt { border-top-color: rgba(255,255,255,0.06); }
+  .diary-cell {
+    background: #1c1c1e;
+    border-color: rgba(255,255,255,0.08);
+  }
+  .diary-cell:hover {
+    border-color: rgba(255,255,255,0.18);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+  }
+  .diary-out-of-month {
+    background: #1c1c1e;
+    border-color: rgba(255,255,255,0.08);
+  }
+  .diary-out-of-month:hover {
+    border-color: rgba(255,255,255,0.18);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+  }
+  .diary-today {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, rgba(41,151,255,0.14) 0%, rgba(41,151,255,0.04) 100%);
+  }
+  .diary-nav-btn:hover { background: rgba(41,151,255,0.12); }
+  .diary-title {
+    background: linear-gradient(180deg, #f5f5f7 0%, #a1a1a6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  .diary-dot { box-shadow: 0 0 0 2px #1c1c1e; }
+  .diary-editor {
+    background: #1c1c1e;
+    border-color: rgba(255,255,255,0.08);
+  }
+  .diary-textarea {
+    background: #151518;
+    color: var(--ink);
+    border-color: transparent;
+  }
+  .diary-textarea:focus { background: #26262a; border-color: var(--accent); }
+  .diary-week-btn {
+    background: #151518;
+    border-color: rgba(255,255,255,0.1);
+    color: var(--ink-soft);
+  }
+  .diary-week-btn:hover {
+    background: #26262a;
+    color: var(--ink);
+  }
   .default-password-banner { background: #332b00; color: #ffd280; border-bottom-color: #664d00; }
   .draft-banner { background: #332b00; color: #ffd280; }
   .archived-banner { background: #2c2c2e; color: #a1a1a6; }

@@ -22,6 +22,7 @@ import (
 	"github.com/penguin/blog-server/internal/backup"
 	"github.com/penguin/blog-server/internal/config"
 	"github.com/penguin/blog-server/internal/content"
+	"github.com/penguin/blog-server/internal/diary"
 	gh "github.com/penguin/blog-server/internal/github"
 	"github.com/penguin/blog-server/internal/middleware"
 	"github.com/penguin/blog-server/internal/public"
@@ -181,6 +182,19 @@ func main() {
 	mux.HandleFunc("/projects/", ph.ProjectDetail)
 	mux.HandleFunc("/rss.xml", ph.RSS)
 	mux.HandleFunc("/sitemap.xml", ph.Sitemap)
+
+	// Diary: /diary 是认证 only 的顶层路由；cookie scope 已是 `/`，与
+	// /manage/* 共享 session。Handler 内部自己判未登录并 302 到登录页。
+	diaryStore, err := diary.NewStore(cfg.DataDir)
+	if err != nil {
+		logger.Error("diary.store.init", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
+	diaryH := diary.New(diaryStore, tpl, authStore, logger)
+	mux.HandleFunc("/diary", diaryH.Page)
+	mux.HandleFunc("/diary/api/day", diaryH.APIDay)
+	mux.HandleFunc("/diary/api/save", diaryH.APISave)
+	mux.HandleFunc("/diary/api/delete", diaryH.APIDelete)
 
 	// Admin routes: public login/password-reset endpoints are at /manage/login;
 	// the authGate middleware protects everything else under /manage.

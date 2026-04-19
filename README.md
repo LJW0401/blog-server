@@ -9,6 +9,7 @@
 - **内容**：Markdown + YAML frontmatter；`draft / published / archived` 三态；fsnotify 热加载；goldmark + chroma 代码高亮
 - **项目页**：本地 MD 长文 + GitHub API 数据（Star/Fork/语言/push 时间）渲染期合并；ETag 条件请求，每 30 分钟同步，429 退避
 - **管理后台**：`/manage` 服务端鉴权（HMAC 签名 Cookie + 每会话 CSRF + IP 级登录限流）；文档/项目编辑器、图片管理、站点设置、修改密码；password_changed_at banner 机制
+- **私密日记**：`/diary` 复用 /manage 登录态；月历视图 + 点击折叠当周 + textarea 编辑；debounce 自动保存 + Ctrl+S + 显式保存按钮；可"转正"为 docs 草稿做后续发布；`content/diary/` 进 gitignore 不入库，公共路由硬断言保证零泄露
 - **统计**：文档阅读数（IP+UA 指纹 60 分钟去重，爬虫 UA 过滤）
 - **备份**：每日 03:00 tar.gz 冷备份，保留 7 份，WAL checkpoint 保证 SQLite 一致
 - **发布周边**：RSS 2.0、Sitemap Protocol、OG/Twitter meta、gzip、静态资源长缓存、暗色模式（跟随系统）
@@ -47,10 +48,11 @@ blog-server/
 │   ├── middleware/            安全响应头 + slog + gzip + panic recover
 │   ├── public/                公开页 handler（主页/文档/项目/RSS/sitemap）
 │   ├── admin/                 后台 handler（登录/文档/项目/图片/设置）
+│   ├── diary/                 私密日记（/diary + JSON API + 文件系统存储）
 │   ├── backup/                每日冷备份
 │   ├── settings/              site_settings KV 跨包共享
 │   └── assets/                go:embed 模板 + 静态资源
-├── content/                   MD 文件（docs/ + projects/）
+├── content/                   MD 文件（docs/ + projects/ + diary/<私密，gitignored>）
 ├── images/                    上传图片
 ├── backups/                   tar.gz 冷备份
 ├── scripts/                   check-headers.sh / lighthouse.sh / migrate-test.sh

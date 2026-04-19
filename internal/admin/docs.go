@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -54,11 +55,54 @@ func (d *DocHandlers) DocsList(w http.ResponseWriter, r *http.Request) {
 }
 
 // NewDoc handles GET /manage/docs/new.
+// 如果 URL 携带 ?diary_date=YYYY-MM-DD 且对应日记文件存在，body 预填为
+// 默认 frontmatter + 日记正文，让 diary → docs 的"转正"流程无需前置表单，
+// 直接进来文档编辑器一次填完 title / slug / category 即可（替代原来的 3 连 prompt）。
 func (d *DocHandlers) NewDoc(w http.ResponseWriter, r *http.Request) {
 	sess, _ := d.Parent.Auth.ParseSession(r)
 	body := defaultDocFrontmatter()
+	if date := r.URL.Query().Get("diary_date"); date != "" {
+		if diaryBody, ok := readDiarySeed(d.DataDir, date); ok {
+			body = defaultDocFrontmatter() + "\n" + diaryBody + "\n"
+		}
+	}
 	data := docEditData{IsNew: true, Slug: "", Body: body, CSRF: sess.CSRF, Kind: "doc"}
 	d.renderEditor(w, r, data)
+}
+
+// readDiarySeed 用严格的 YYYY-MM-DD 正则挡住路径穿越，再读
+// <DataDir>/content/diary/<date>.md，剥掉 frontmatter 返回 body。
+// 即便 diary_date 非法或文件不存在也返回 ok=false；调用方此时回退到默认
+// frontmatter，绝不因转正入口崩。
+func readDiarySeed(dataDir, date string) (string, bool) {
+	if !diaryDateRe.MatchString(date) {
+		return "", false
+	}
+	if _, err := time.Parse("2006-01-02", date); err != nil {
+		return "", false
+	}
+	path := filepath.Join(dataDir, "content", "diary", date+".md")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", false
+	}
+	return stripYAMLFrontmatter(string(raw)), true
+}
+
+var diaryDateRe = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+
+// stripYAMLFrontmatter 如果开头是 `---\n...\n---\n` 就剥掉，否则原文返回。
+// 和 internal/diary/store.go 里的等价函数保持一致的小函数形态，避免给 admin
+// 增加 diary 包依赖。
+func stripYAMLFrontmatter(raw string) string {
+	if !strings.HasPrefix(raw, "---\n") {
+		return strings.TrimSpace(raw)
+	}
+	end := strings.Index(raw[4:], "\n---\n")
+	if end < 0 {
+		return strings.TrimSpace(raw)
+	}
+	return strings.TrimSpace(raw[4+end+5:])
 }
 
 // EditDoc handles GET /manage/docs/:slug/edit.

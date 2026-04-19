@@ -493,3 +493,115 @@
 - **紧急程度**：低
 
 - 2026-04-19 快速功能 login-prefill-username 完成，无 learnings（已执行反思清单）
+
+## 2026-04-19 · 日记功能 Stage 1 完成
+
+### 架构洞察：auth.Store.ParseSession 对 User-Agent 指纹绑定
+- **发现于**：WI-1.10/11 handlers_test.go 编写过程
+- **描述**：第一版测试注入了 cookie 但没设 User-Agent 头，所有 authenticated 请求都被 302 到登录页，初看像 cookie 格式错误。根因：`ParseSession` 会比对 cookie 里的 UA 指纹和请求 UA 指纹，httptest 默认 UA 为空 → fingerprint mismatch。测试 helper 里调 `IssueSession("admin", "test/ua")`，请求里也必须 `req.Header.Set("User-Agent", "test/ua")` 才能匹配
+- **建议处理方式**：diary 测试已局部搞定；后续如果其它包做类似集成测试，**应考虑抽一个共用 `newAuthenticatedRequest(cookie, ua)` helper**，避免每个包重新踩坑。或者在 diary 包内提升到 testutil 子包
+- **紧急程度**：低
+
+### 技术债：测试请求里重复写 "test/ua"
+- **类型**：技术债
+- **描述**：`handlers_test.go` 里每个 authenticated 用例都重复 `req.Header.Set("User-Agent", "test/ua")`，共 8 处。能跑但不够好
+- **建议处理方式**：抽一个 `newAuthenticatedRequest(method, url, cookie)` helper。Stage 2/3 新加的 API 用例会多，届时顺手重构
+- **紧急程度**：低
+
+## 2026-04-19 · 日记功能 Stage 2 完成
+
+### 架构洞察：XHR 端点的未登录响应要 401 JSON，不能 302 HTML
+- **发现于**：WI-2.1 APIDay/APISave 设计
+- **描述**：与 `Page` handler 不同，API 端点给 fetch 调用；如果未登录回 302，浏览器会跟随跳转到 `/manage/login`，JSON 解析失败，客户端拿不到"未登录"信号。必须返回 401 + JSON body，让前端状态机能识别并引导重新登录
+- **建议处理方式**：已落实。后续所有 XHR 端点（/diary/api/* + 后续的 delete/promote）都遵循"HTML 路由 302、API 路由 401 JSON"的约定
+- **紧急程度**：低（已实现）
+
+### 技术债：测试 helper setupHandlers 扩成两份
+- **发现于**：WI-2.2/2.3 api_test.go 需要 CSRF token
+- **描述**：Stage 1 的 `setupHandlers` 只返回 (h, dir, cookie)；Stage 2 的 POST 测试要 CSRF，为了向后兼容又加了 `setupHandlersWithCSRF` 并让前者调用后者。这种"包装一层给老调用方"的做法有点技术债感
+- **建议处理方式**：Stage 3 无论如何都要用 CSRF，届时可以把旧 `setupHandlers` 删掉，统一用带 CSRF 的版本
+- **紧急程度**：低
+
+### 架构洞察：beforeunload flush 靠 sendBeacon 而不是 fetch
+- **发现于**：WI-2.5 diary.js 实现
+- **描述**：页面关闭时 fetch 往往会被浏览器取消（特别是长链接）；`navigator.sendBeacon` 是专为此类场景设计的 fire-and-forget 端点，被浏览器保证在卸载过程也能送达。需要传 Blob + 对应的 Content-Type
+- **建议处理方式**：已用 sendBeacon。静态扫描测试未覆盖这个（只能靠人工审查），写进 learnings 方便下次
+- **紧急程度**：低
+
+## 2026-04-19 · 日记功能 Stage 3 完成（MVP 可发布）
+
+### 架构洞察：公共路由硬断言独立 fixture 而非复用 setup
+- **发现于**：WI-3.14 实现过程
+- **描述**：初版想复用现有 public_test 里的 setup()，但 setup 不返回 dir，需要绕一圈反射或预留出口，最后决定**独立构造 fixture**（自己的 t.TempDir + cstore + tpl + storage + handlers）。结果测试更独立、意图更清晰、未来 setup 重构也不影响它。对"安全底线断言"这种不该被任何其它用例污染的测试尤其合适
+- **建议处理方式**：未来类似"跨包安全断言"类测试都采用独立 fixture 模式，不复用通用 setup
+- **紧急程度**：低
+
+### 技术债：escapeYAML 是最小化实现，未覆盖所有边角
+- **发现于**：WI-3.5 APIPromote 实现
+- **描述**：为避免日记 title / category 含冒号等破坏 docs frontmatter，写了一个极简的 `escapeYAML` 函数（只在含 `:`/#/"`/换行 时加双引号）。但它不处理：1）开头是 YAML 保留字（`true/false/null/~`）；2）纯数字会被 YAML 解析成整数；3）开头 `-`/`?` 等有语义的字符。现阶段单管理员 + 普通标题场景够用
+- **建议处理方式**：长期可以改用 gopkg.in/yaml.v3 的 encoder 做正经 marshal；或让用户自己输入时就避免这些边角
+- **紧急程度**：低
+
+### 架构洞察：整页刷新比局部 DOM 更新更简单
+- **发现于**：WI-3.1 清空日记按钮 + WI-3.5 转正按钮
+- **描述**：清空后要更新月视图绿点；转正后要跳转到 docs 编辑页。两处都直接 `window.location.href` / `window.location.reload()`，没做 SPA 式局部刷新。相比维护 DOM 同步，整页刷新代码量 / bug 面都小得多，也契合站点 SSR 优先的架构立场
+- **建议处理方式**：短期没必要优化；若日后编辑器要避免刷新损失状态，再引入局部更新
+- **紧急程度**：低
+
+### 架构洞察：错误态粘滞 = 状态机要显式读前值
+- **发现于**：WI-3.9 保存失败反馈
+- **描述**：原实现 input 事件一律 `setStatus('editing')`，覆盖了 error。修复方式是 input 事件前先读 `status.getAttribute('data-state')` 看是不是 error 态，是就跳过。这是"状态机 previous-state 依赖"的典型例子——以后任何需要"粘滞"的状态都要在覆写入口前读旧值
+- **建议处理方式**：已落实；若以后状态变多，考虑引入一个小的 state 对象统一管理
+- **紧急程度**：低
+
+### 快速功能：promote-direct-redirect — 用 SSR query 预填比 JSON API + client redirect 简单
+- **类型**：架构洞察
+- **描述**：原 Stage 3 里做的"转正"是客户端 3 个 prompt 采集 title/slug/category → POST /api/promote 写 docs → 跳编辑页；现在改成"点按钮 → GET /manage/docs/new?diary_date=XXX → 后端读日记预填 body"，流程少一半、无 prompt 体验串串、代码少一半。删掉了 APIPromote + escapeYAML + isValidDocSlug + categoryLine（100 行左右）+ 7 条 promote_test.go 用例
+- **建议处理方式**：以后遇到"跨区块搬一份数据 + 让用户继续编辑" 类需求，优先考虑 query 参数 + SSR 预填，而不是 JSON API + client 跳转。admin 表单本身已经有完整的 CRUD 校验，再来一层 promote API 是重复
+- **紧急程度**：低（已完成）
+
+### 技术债（已还）：Stage 3 的 APIPromote 其实是过度设计
+- **类型**：技术债（已解决）
+- **描述**：当初按"需求文档 2.5.1 转正弹窗"落地成独立 API，但需求定义里没说一定要 JSON API。用户看到 UX 串 prompt 才提出改进。原来那套有完整的 slug 冲突 / 非法 title / YAML escape 检测，堆积了一堆"因为不走现有表单所以要复刻校验"的代码
+- **建议处理方式**：已删光。回溯需求文档 §2.5.1 应该把"通过 /manage/docs/new 路径 + query 预填"作为实现方式在 §7 设计决策里写清，避免下次开发再走弯路 —— 但文档已是 v1.1 已审核状态，暂不回改
+- **紧急程度**：低
+
+### 快速功能：diary-week-keyboard-nav — SSR 预填 data-* + 页面重载代替客户端局部更新
+- **类型**：架构洞察
+- **描述**：给日记周视图加 ← / → 箭头键切周，原本可以在客户端用 DOM 操作（隐藏/显示不同周的行）实现同月切换，跨月才重载。但实际实现里干脆**所有切周都走完整 `location.href = /diary?date=...`**——服务端根据 date 决定月份，模板通过 `data-focus-date` 让 JS 在加载后自动进入周视图。好处：1）代码量减半；2）跨月无特殊分支；3）切周前天然 flush 未保存的 textarea 内容（因为页面要刷新）。代价：每次切周有一次网络往返，但本地 SSR 下 P95 <100ms，体验无感
+- **建议处理方式**：固定成模式 —— 日记这类"同一入口不同视图参数"的 SSR 页面优先考虑 query-driven reload，不要为了"平滑过渡"硬上客户端 state machine
+- **紧急程度**：低
+
+### Bug 修复：日记周视图下跨月占位日灰掉不可点
+- **发现于**：用户报告（26 年 4-5 月交接那周看到 May 1-3 灰色且点不了）
+- **现象**：周视图显示的那一行 7 天里，属于上月末 / 下月初的占位格子视觉上置灰（opacity 0.55 + cursor default），点了也没反应
+- **根因**：`diary.js:onCellClick` 老代码 `if (!cell || cell.classList.contains('diary-out-of-month')) return;` 把所有跨月格点击早退；CSS 又给 `.diary-out-of-month` 独立灰化样式。两者叠加 → 用户感知"灰色不可点"。月视图下这还合规（经典日历风），但周视图下一个"7 天一周"里夹杂几天不可点违反直觉
+- **修复**：
+  1. `diary.js:onCellClick` 改成对跨月格走 `location.href = /diary?date=...`，复用 ← / → 箭头切周那条重载路径，服务端决定目标月份并自动进入周视图
+  2. CSS 加 `.diary-week-mode .diary-out-of-month` 覆盖，周视图下颜色/光标/hover 阴影全部恢复正常；数字稍浅保留"不是本月"的微弱暗示
+- **回归测试**：`internal/diary/cross_month_click_test.go:TestCrossMonthClick_Regression_OutOfMonthCellIsNavigable`
+  - 静态扫描 `diary.js` 里不再有 `classList.contains('diary-out-of-month')) return`
+  - 必须含 `'/diary?date=' +` 导航入口
+  - `theme.css` 必须含 `.diary-week-mode .diary-out-of-month` 覆盖
+- **为什么原测试没覆盖**：Stage 1/2 的测试全在 Go 层（server handler + 静态 JS 扫描），没模拟任何"真实 DOM + 真实点击"语义。而这个 bug 是"静态 code 合法 + 动态交互结果违和" —— 纯静态扫描抓不到。需要手动浏览器 smoke 或引入真正的浏览器测试（Playwright 之类）才能未来自动捕获这类
+- **紧急程度**：中（影响跨月周的可用性，但有 workaround：先用月翻页按钮切换月份再进周视图）
+- **衍生改进建议**：
+  1. 考虑在 CI 里加一层基于 Playwright 的 E2E 冒烟（至少覆盖"月视图点格 → 周视图出现 → 切一下日期 → 保存"这条主路径）
+  2. `.diary-out-of-month` 在月视图下也让它可点会更好用 —— 目前月视图下点 5-1 占位仍然无反应。本次不扩大范围，留待后续
+
+- 2026-04-19 快速功能 月视图跨月格同风格 完成：把 `.diary-out-of-month` 基础样式改为和本月格一致的可点外观（仅日期数字稍浅提示"非本月"），删除周视图专属覆盖。衍生建议 2 落地。无其他 learnings（已执行反思清单）
+
+## 2026-04-19
+
+### Bug 修复：/manage/login?next=/diary 登录后跳回 /manage 而非 /diary
+- **发现于**：用户手动测试
+- **现象**：访问 http://127.0.0.1:8391/manage/login?next=/diary，输入账号密码登录成功，浏览器落到 /manage 而不是 /diary
+- **根因**：`internal/admin/admin.go` 两处 `strings.HasPrefix(target, "/manage")` 白名单把非 `/manage` 前缀一律拍回 `/manage`。diary 上线前后端整合时，漏了"next 白名单需要同步扩列"这一步。`LoginSubmit` 成功分支 和 `nextFrom`（已登录访问 login 页）两处都有
+- **修复**：抽成 `isSafeNext(n)` 帮助函数，统一处理空串 / 协议相对 URL (`//evil.com`) / 带 scheme 的外链 / 白名单前缀 (`/manage`、`/diary`)。`LoginSubmit` 和 `nextFrom` 都改用该函数
+- **回归测试**：`internal/admin/login_next_diary_test.go:TestLogin_Regression_NextDiaryRespected`（3 条断言：POST 成功分支 / 已登录 GET 分支 / 外链挡回默认页）
+- **为什么原测试没覆盖**：
+  1. admin 包的 login 测试只测了"登录成功默认去 /manage"和异常路径（密码错、空字段、限流），没有参数化 `next` 字段的测试
+  2. diary feature 的测试在 `internal/diary/`，只测了 /diary 的未登录 302 跳走，没覆盖"登录回跳 /diary"这条跨包往返路径
+  3. 跨模块集成点（/diary 未登录 → /manage/login?next=/diary → 登录成功 → /diary）没有单一 handler 拥有端到端责任，两端都各自通过了自己的单测，漏掉了中间的握手
+- **紧急程度**：中（影响用户体验但无数据/安全后果；已在白名单内兜底外链）
+- **衍生改进建议**：未来再加需要登录的顶层路由时，除了在 isSafeNext 里加前缀，也要在 login 测试里加一条 next= 该路由的 smoke case。或者上一层："登录回跳"本身值得一个专门的 E2E 覆盖矩阵，参数化列出所有需要登录的入口
