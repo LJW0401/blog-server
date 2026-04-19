@@ -407,3 +407,17 @@
 - **描述**：引入了第二份 goldmark 实例（`NewMarkdownUnsafe`，开启 `WithUnsafe`）来让 admin 能在 bio 里写 `<span style="color:...">`。docs 的渲染仍走安全版 `NewMarkdown`，`TestMarkdown_Edge_ScriptEscaped` 照常通过，两套管线互不污染。这条边界要守住：后续任何公开可投稿的入口都不得用 `markdownUnsafe`
 - **建议处理方式**：`markdownUnsafe` 的 godoc 已注明 "Never use this on user-submitted content"；后续如果引入评论/访客留言，必须在代码评审中卡住
 - **紧急程度**：低
+
+## 2026-04-19
+
+### Bug 修复：暗色模式下"关于我"卡片仍是白底
+- **发现于**：用户报告
+- **现象**：系统切到深色模式后，主页"关于我"三张 `.about-card` 背景仍是白色，与周围暗色页面反差刺眼
+- **根因**：`theme.css:263` 把 `.about-card` 的背景写死 `background: #fff`，而 `@media (prefers-color-scheme: dark)` block（487-524）只覆盖了 `.repo-card/.project-card/.doc-item/.proj`，漏了 `.about-card`。亮色规则硬编码颜色 + 暗色规则漏写覆盖，白色就透了过来
+- **修复**：在暗色 block 加 `.about-card { background: #151518; border-color: rgba(255,255,255,0.06); }`，与 `.repo-card/.project-card` 同风格
+- **回归测试**：`internal/assets/about_card_dark_mode_test.go:TestTheme_Regression_AboutCardDarkModeOverride`（扫 `@media (prefers-color-scheme: dark)` 块必须包含 `.about-card` 及 `background`）
+- **为什么原测试没覆盖**：项目既有的 CSS 测试都是"功能型"（banner 淡出、form-err 不自动消失），没有**覆盖清单**式的暗色规则校验。硬编码颜色只在渲染时可见，Go 测试跑不出来，靠人眼观察 + 视觉回归才能发现，两者都没建
+- **紧急程度**：中（不影响功能，但用户观感问题明显）
+- **衍生改进建议**：
+  1. `.about-card .pill` 在 262-274 块里也写死了 `background: #f0f0f2`，暗色下会是亮灰底 — 本次未改，下次可顺手
+  2. 所有卡片类（含 `.contact-table td`、`.featured` 等）都应统一用 `var(--bg-alt)` 或走"亮色 + 暗色覆盖对列表"，避免再漏。可以加一条元测试："凡是选择器里含 `-card` 且在亮色块设了 `background: #xxx`，必须在暗色块有对应 `background` 覆盖"

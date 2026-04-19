@@ -501,6 +501,8 @@ body.page-admin { background: var(--bg-alt); }
   .page-2 { background: var(--bg); border-top: 1px solid rgba(255,255,255,0.05); }
   .hero-left h1, .page-head h1 { background: linear-gradient(180deg, #f5f5f7 0%, #a1a1a6 100%); -webkit-background-clip: text; background-clip: text; }
   .repo-card, .project-card { background: #151518; border-color: rgba(255,255,255,0.06); }
+  .about-card { background: #151518; border-color: rgba(255,255,255,0.06); }
+  .about-card .pill { background: #26262a; color: var(--ink); }
   .doc-item, .tag, .doc-row .meta .tag-mini, .doc-header .tag-mini { background: #1c1c1e; color: var(--ink); }
   .doc-item:hover { background: #2a2a2d; }
   .tag.active { background: var(--ink); color: #000; }
