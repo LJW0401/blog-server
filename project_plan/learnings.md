@@ -553,3 +553,15 @@
 - **描述**：原实现 input 事件一律 `setStatus('editing')`，覆盖了 error。修复方式是 input 事件前先读 `status.getAttribute('data-state')` 看是不是 error 态，是就跳过。这是"状态机 previous-state 依赖"的典型例子——以后任何需要"粘滞"的状态都要在覆写入口前读旧值
 - **建议处理方式**：已落实；若以后状态变多，考虑引入一个小的 state 对象统一管理
 - **紧急程度**：低
+
+### 快速功能：promote-direct-redirect — 用 SSR query 预填比 JSON API + client redirect 简单
+- **类型**：架构洞察
+- **描述**：原 Stage 3 里做的"转正"是客户端 3 个 prompt 采集 title/slug/category → POST /api/promote 写 docs → 跳编辑页；现在改成"点按钮 → GET /manage/docs/new?diary_date=XXX → 后端读日记预填 body"，流程少一半、无 prompt 体验串串、代码少一半。删掉了 APIPromote + escapeYAML + isValidDocSlug + categoryLine（100 行左右）+ 7 条 promote_test.go 用例
+- **建议处理方式**：以后遇到"跨区块搬一份数据 + 让用户继续编辑" 类需求，优先考虑 query 参数 + SSR 预填，而不是 JSON API + client 跳转。admin 表单本身已经有完整的 CRUD 校验，再来一层 promote API 是重复
+- **紧急程度**：低（已完成）
+
+### 技术债（已还）：Stage 3 的 APIPromote 其实是过度设计
+- **类型**：技术债（已解决）
+- **描述**：当初按"需求文档 2.5.1 转正弹窗"落地成独立 API，但需求定义里没说一定要 JSON API。用户看到 UX 串 prompt 才提出改进。原来那套有完整的 slug 冲突 / 非法 title / YAML escape 检测，堆积了一堆"因为不走现有表单所以要复刻校验"的代码
+- **建议处理方式**：已删光。回溯需求文档 §2.5.1 应该把"通过 /manage/docs/new 路径 + query 预填"作为实现方式在 §7 设计决策里写清，避免下次开发再走弯路 —— 但文档已是 v1.1 已审核状态，暂不回改
+- **紧急程度**：低

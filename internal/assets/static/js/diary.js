@@ -182,55 +182,12 @@
 
   async function promoteDay() {
     if (!currentDate) return;
-    // MVP 弹窗：3 个 prompt 依次收集 title / slug / category。后续可换成自定义 modal。
-    const title = window.prompt('转正为文档 —— 填入标题：');
-    if (title === null) return;
-    if (!title.trim()) {
-      window.alert('标题不能为空');
-      return;
-    }
-    const slug = window.prompt('输入 slug（小写字母/数字/-，唯一）：');
-    if (slug === null) return;
-    if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) {
-      window.alert('slug 格式非法：必须以小写字母或数字开头，只含 a–z、0–9、-');
-      return;
-    }
-    const category = window.prompt('输入 category（可留空）：') || '';
-
-    // 先把当前内容存好再转正，避免丢稿
+    // 先 flush 当前未保存内容，避免带进来的 body 过时
     await saveDay();
-    setStatus('saving', '转正中...');
-    const body = new URLSearchParams();
-    body.set('date', currentDate);
-    body.set('title', title.trim());
-    body.set('slug', slug);
-    body.set('category', category.trim());
-    body.set('csrf', csrf);
-    try {
-      const res = await fetch('/diary/api/promote', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString(),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        if (data && data.error === 'slug_conflict') {
-          setStatus('error', 'slug 冲突');
-          window.alert('slug "' + slug + '" 已被占用，请换一个');
-        } else {
-          setStatus('error', '转正失败');
-          window.alert('转正失败：' + (data && data.error ? data.error : res.status));
-        }
-        return;
-      }
-      setStatus('saved', '已转正');
-      // 跳到新建的文档编辑页，让用户继续打磨
-      window.location.href = '/manage/docs/' + encodeURIComponent(data.slug) + '/edit';
-    } catch (err) {
-      setStatus('error', '转正失败，点击重试');
-      console.error('[diary] promoteDay', err);
-    }
+    // 直接跳到 /manage/docs/new，通过 query 让后端读同一条日记做 body 预填；
+    // title / slug / category 等元数据在文档编辑器里一次填完，比先在这里
+    // 串着弹 3 个 prompt 体验好得多（用户请求）
+    window.location.href = '/manage/docs/new?diary_date=' + encodeURIComponent(currentDate);
   }
 
   if (promoteBtn) {

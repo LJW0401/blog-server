@@ -49,7 +49,7 @@ func setupHandlersWithCSRF(t *testing.T) (*diary.Handlers, string, *http.Cookie,
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	h := diary.New(store, tpl, authStore, logger, filepath.Join(dir, "content", "docs"))
+	h := diary.New(store, tpl, authStore, logger)
 	// 固定 "今天" 为 2026-04-19，便于断言
 	h.Now = func() time.Time { return time.Date(2026, time.April, 19, 12, 0, 0, 0, time.UTC) }
 

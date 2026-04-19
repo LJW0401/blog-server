@@ -190,12 +190,11 @@ func main() {
 		logger.Error("diary.store.init", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
-	diaryH := diary.New(diaryStore, tpl, authStore, logger, filepath.Join(cfg.DataDir, "content", "docs"))
+	diaryH := diary.New(diaryStore, tpl, authStore, logger)
 	mux.HandleFunc("/diary", diaryH.Page)
 	mux.HandleFunc("/diary/api/day", diaryH.APIDay)
 	mux.HandleFunc("/diary/api/save", diaryH.APISave)
 	mux.HandleFunc("/diary/api/delete", diaryH.APIDelete)
-	mux.HandleFunc("/diary/api/promote", diaryH.APIPromote)
 
 	// Admin routes: public login/password-reset endpoints are at /manage/login;
 	// the authGate middleware protects everything else under /manage.

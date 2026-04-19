@@ -2,12 +2,8 @@ package diary
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -22,25 +18,21 @@ type Handlers struct {
 	Tpl    *render.Templates
 	Auth   *auth.Store
 	Logger *slog.Logger
-	// DocsRoot 指向 content/docs/ 的绝对路径；APIPromote 直接 os.WriteFile
-	// 到这个目录，避免侵入 content 包（架构 §2"不改 internal/content/" 决策）。
-	DocsRoot string
 	// Now 允许测试注入固定时间；生产下为 nil 时走 time.Now()。
 	Now func() time.Time
 }
 
 // New 构造 Handlers，确保 logger 非 nil，Now 有默认。
-func New(store *Store, tpl *render.Templates, authStore *auth.Store, logger *slog.Logger, docsRoot string) *Handlers {
+func New(store *Store, tpl *render.Templates, authStore *auth.Store, logger *slog.Logger) *Handlers {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	return &Handlers{
-		Store:    store,
-		Tpl:      tpl,
-		Auth:     authStore,
-		Logger:   logger,
-		DocsRoot: docsRoot,
-		Now:      func() time.Time { return time.Now() },
+		Store:  store,
+		Tpl:    tpl,
+		Auth:   authStore,
+		Logger: logger,
+		Now:    func() time.Time { return time.Now() },
 	}
 }
 
@@ -150,158 +142,10 @@ func (h *Handlers) APIDelete(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 0, map[string]any{"ok": true})
 }
 
-// APIPromote 把一条日记作为种子复制到 content/docs/<slug>.md（状态 draft）。
-// 日记原件**不变**，docs frontmatter 里**不写反向引用**（架构 §7 决策 6）。
-//
-// 成功：200 {"ok":true,"slug":"..."}；
-// slug 冲突：409 {"ok":false,"error":"slug_conflict"}；
-// 非法字段：400；没找到日记：404。
-func (h *Handlers) APIPromote(w http.ResponseWriter, r *http.Request) {
-	sess, ok := h.session(r)
-	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "unauthorized"})
-		return
-	}
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"ok": false, "error": "method_not_allowed"})
-		return
-	}
-	if err := r.ParseForm(); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "bad_form"})
-		return
-	}
-	if !auth.CSRFValid(sess, r.Form.Get("csrf")) {
-		writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "csrf"})
-		return
-	}
-	date := r.Form.Get("date")
-	title := r.Form.Get("title")
-	slug := r.Form.Get("slug")
-	category := r.Form.Get("category")
-
-	if _, err := h.Store.Validate(date); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_date"})
-		return
-	}
-	if len(title) == 0 || len(title) > 200 {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_title"})
-		return
-	}
-	if !isValidDocSlug(slug) {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_slug"})
-		return
-	}
-
-	body, exists, err := h.Store.Get(date)
-	if err != nil {
-		h.Logger.Error("diary.api.promote.get", slog.String("date", date), slog.String("err", err.Error()))
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "read_failed"})
-		return
-	}
-	if !exists {
-		writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "diary_not_found"})
-		return
-	}
-
-	docPath := filepath.Join(h.DocsRoot, slug+".md")
-	if _, err := os.Stat(docPath); err == nil {
-		writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "slug_conflict"})
-		return
-	} else if !errors.Is(err, os.ErrNotExist) {
-		h.Logger.Error("diary.api.promote.stat", slog.String("err", err.Error()))
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "stat_failed"})
-		return
-	}
-
-	today := h.Now().Format("2006-01-02")
-	out := fmt.Sprintf(
-		`---
-title: %s
-slug: %s
-%screated: %s
-updated: %s
-status: draft
----
-
-%s
-`,
-		escapeYAML(title),
-		slug,
-		categoryLine(category),
-		today,
-		today,
-		body,
-	)
-	if err := os.MkdirAll(h.DocsRoot, 0o755); err != nil {
-		h.Logger.Error("diary.api.promote.mkdir", slog.String("err", err.Error()))
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "mkdir_failed"})
-		return
-	}
-	if err := os.WriteFile(docPath, []byte(out), 0o644); err != nil {
-		h.Logger.Error("diary.api.promote.write", slog.String("err", err.Error()))
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "write_failed"})
-		return
-	}
-	writeJSON(w, 0, map[string]any{"ok": true, "slug": slug})
-}
-
-// isValidDocSlug 复用 internal/content 包的 slug 规则但本地实现，
-// 避免 diary 包反向依赖 content 包（架构决策：diary 不侵入 content）。
-func isValidDocSlug(s string) bool {
-	if s == "" || len(s) > 128 {
-		return false
-	}
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		ok := (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-'
-		if !ok {
-			return false
-		}
-	}
-	if s[0] == '-' || s[len(s)-1] == '-' {
-		return false
-	}
-	return true
-}
-
-// categoryLine 仅在 category 非空时产生 "category: xxx\n"，否则空字符串。
-// 这样 frontmatter 里不会出现 "category: " 空值污染。
-func categoryLine(c string) string {
-	if c == "" {
-		return ""
-	}
-	return "category: " + escapeYAML(c) + "\n"
-}
-
-// escapeYAML 对 YAML 字符串做最小化的安全处理：含冒号/井号/引号时加双引号并转义。
-// 日记转正进来的 title / category 经此处理，避免破坏 docs frontmatter。
-func escapeYAML(s string) string {
-	needsQuote := false
-	for _, r := range s {
-		if r == ':' || r == '#' || r == '"' || r == '\n' || r == '\'' {
-			needsQuote = true
-			break
-		}
-	}
-	if !needsQuote {
-		return s
-	}
-	// 用双引号包裹，转义内部双引号和反斜杠
-	escaped := ""
-	for _, r := range s {
-		switch r {
-		case '"':
-			escaped += `\"`
-		case '\\':
-			escaped += `\\`
-		case '\n':
-			escaped += `\n`
-		default:
-			escaped += string(r)
-		}
-	}
-	return `"` + escaped + `"`
-}
+// (APIPromote 已删除 — 原来的"3 连 prompt 弹窗 + server 直接写 docs"流程
+// 被换成了"/manage/docs/new?diary_date=..." 的 SSR 预填路径，入口放在
+// internal/admin/docs.go:NewDoc。这样用户可以在熟悉的文档编辑器里一次
+// 填完 title/slug/category，避免串着弹 3 个 prompt。)
 
 // Page 处理 GET /diary。未登录 302 到 /manage/login?next=/diary；否则根据
 // ?year&month 渲染月视图日历。非法参数按需求 2.1.2 回落到当前月。
