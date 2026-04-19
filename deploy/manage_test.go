@@ -52,11 +52,11 @@ func seedInstallDir(t *testing.T) string {
 		}
 	}
 	writes := map[string]string{
-		"content/docs/hello.md":   "---\ntitle: Hello\n---\nbody\n",
-		"content/projects/p1.md":  "# project 1\n",
-		"images/a.png":            "\x89PNG fakebinary",
-		"data.sqlite":             "SQLite format 3\x00 fake",
-		"config.yaml":             "admin_password_bcrypt: \"$2a$10$fakehash\"\n",
+		"content/docs/hello.md":  "---\ntitle: Hello\n---\nbody\n",
+		"content/projects/p1.md": "# project 1\n",
+		"images/a.png":           "\x89PNG fakebinary",
+		"data.sqlite":            "SQLite format 3\x00 fake",
+		"config.yaml":            "admin_password_bcrypt: \"$2a$10$fakehash\"\n",
 	}
 	for p, body := range writes {
 		full := filepath.Join(d, p)
@@ -230,4 +230,3 @@ func TestManage_Edge_ExportMissingInstallDirErrors(t *testing.T) {
 		t.Errorf("error message should reference INSTALL_DIR; got: %s", logs)
 	}
 }
-
