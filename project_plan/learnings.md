@@ -447,3 +447,21 @@
 - **描述**：遍历攻击测试 `TestDocDetail_Edge_TraversalSlugRendersBrandedNotFound` 顺带断言 body 不含 `/etc/` 或 `passwd`——这是把安全断言和 UI 断言捏在一起的好做法。早期 `http.NotFound` 会把原路径回显到 body，品牌化后天然没有这个问题，但这条断言能卡住未来如果有人回归去回显 url 的情况
 - **建议处理方式**：在其他涉及用户输入 → 错误页的测试里也加"body 不得回显输入"的断言，作为一种 XSS / 信息泄露的轻量防线
 - **紧急程度**：低
+
+### Bug 修复：admin 改完站点设置后底部 30s 内看到的是旧值
+- **发现于**：用户报告（添加 qq 群号后底部没更新）
+- **现象**：在 `/manage/settings` 保存新的 qq 群号（或任意 settings 字段）后，立即刷新主页，底部仍显示旧值；得等约 30s 才更新
+- **根因**：`internal/public/public.go:resolveSettings` 有 30s 内存 TTL 缓存（注释 "(per requirement 2.4.5)"），但 `internal/admin/settings.go:SettingsSubmit` 在 `SetMany` 成功后**没有通知公共侧失效**。写路径与读路径靠时间耦合，中间存在最多 30s 的读到旧值窗口
+- **修复**：
+  1. public 侧新增 `Handlers.InvalidateSettings()` 方法（重置 cachedAt）
+  2. admin 侧 `SettingsHandlers` 加可选 `Invalidate func()` 回调，`SettingsSubmit` 在 `SetMany` 成功后调用；验证失败路径不调用（避免无谓清空缓存）
+  3. `cmd/server/main.go` 将两侧连起来：`Invalidate: ph.InvalidateSettings`
+- **回归测试**：
+  - `internal/public/settings_cache_invalidation_test.go:TestSettings_Regression_FooterQQUpdatesAfterInvalidate`（public 层：缓存热 → 改库 → 未 invalidate 仍为旧值 → Invalidate 后为新值）
+  - `internal/admin/settings_invalidate_test.go`（admin 层：成功调回调、验证失败不调、nil 回调不 panic）
+- **为什么原测试没覆盖**：既有的 `TestSettings_Smoke_Roundtrip` 只测"保存后通过 SettingsPage (admin) 读回"，完全不走 public 侧渲染。写-读耦合路径跨了 admin / public 两个包，单元测试被包边界切开了；又没有 end-to-end 集成测试把两侧串起来，所以这条"跨包状态同步"的缺陷只能靠人眼发现
+- **紧急程度**：中（实际是体验 bug，用户会以为保存没成功反复提交；不影响正确性）
+- **衍生改进建议**：
+  1. public 还有其它缓存（RecentRepos、GitHub cache 等）可能存在类似"写入方不通知读取方"的问题，建议统一梳理一遍数据时效策略
+  2. 目前 `Invalidate` 是手写回调，规模再大可以换成更通用的 pub/sub 或观察者；现阶段一个 func() 足够
+  3. "跨包状态同步"这一类别值得加到测试清单的固定检查项：凡是一侧写、另一侧读且存在缓存的路径，都应有集成测试覆盖"写完立即读"

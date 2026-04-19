@@ -14,6 +14,10 @@ import (
 type SettingsHandlers struct {
 	Parent   *Handlers
 	Settings *settings.Store
+	// Invalidate is called after a successful save so downstream consumers
+	// (e.g. public handlers' 30s site-settings cache) drop their stale copy
+	// immediately instead of waiting out the TTL. Optional; nil is a no-op.
+	Invalidate func()
 }
 
 // SettingsKeys defines the canonical set of user-editable keys. The about_*
@@ -78,6 +82,9 @@ func (sh *SettingsHandlers) SettingsSubmit(w http.ResponseWriter, r *http.Reques
 		sh.Parent.Logger.Error("admin.settings.save", slog.String("err", err.Error()))
 		http.Redirect(w, r, "/manage/settings?e="+URLEscape("保存失败："+err.Error()), http.StatusSeeOther)
 		return
+	}
+	if sh.Invalidate != nil {
+		sh.Invalidate()
 	}
 	http.Redirect(w, r, "/manage/settings?m="+URLEscape("已保存"), http.StatusSeeOther)
 }

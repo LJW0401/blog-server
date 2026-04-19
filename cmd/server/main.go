@@ -155,7 +155,7 @@ func main() {
 	adminH := admin.New(authStore, cfg, *cfgPath, tpl, logger)
 	docsAdmin := &admin.DocHandlers{Parent: adminH, Content: cstore, DataDir: cfg.DataDir}
 	imagesAdmin := &admin.ImageHandlers{Parent: adminH, DataDir: cfg.DataDir}
-	settingsAdmin := &admin.SettingsHandlers{Parent: adminH, Settings: settingsStore}
+	settingsAdmin := &admin.SettingsHandlers{Parent: adminH, Settings: settingsStore, Invalidate: ph.InvalidateSettings}
 	projectsAdmin := &admin.ProjectHandlers{
 		Parent: adminH, Content: cstore, DataDir: cfg.DataDir,
 		GitHubClient: ghClient, GitHubCache: ghCache,

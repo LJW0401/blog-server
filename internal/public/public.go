@@ -91,6 +91,16 @@ func NewHandlers(cs *content.Store, tpl *render.Templates, logger *slog.Logger) 
 	return h
 }
 
+// InvalidateSettings drops the in-memory site-settings cache so the next
+// resolveSettings call re-reads from SettingsDB. Called by the admin
+// SettingsSubmit handler after a successful write so front-end footer /
+// hero values refresh immediately rather than waiting out the 30s TTL.
+func (h *Handlers) InvalidateSettings() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.cachedAt = time.Time{}
+}
+
 // resolveSettings merges DefaultSettings with DB overrides, cached for 30s.
 func (h *Handlers) resolveSettings() SiteSettings {
 	h.mu.Lock()
