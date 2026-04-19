@@ -70,9 +70,22 @@ die()   { err "$*"; exit 1; }
 
 # ---------- 前置检查 ----------
 require_root() {
+    # MANAGE_SKIP_ROOT=1 允许测试在非 root 下跑 export/import，不要在生产使用。
+    if [[ "${MANAGE_SKIP_ROOT:-0}" == "1" ]]; then return; fi
     if [[ $EUID -ne 0 ]]; then
         die "需要 root 权限，请用 sudo 运行：sudo bash $0 $CMD"
     fi
+}
+
+# 控制 service 的小包装。测试场景下可通过 MANAGE_SKIP_SYSTEMCTL=1 完全跳过，
+# export/import 仍会按流程执行，但不会真的去触碰 systemd。
+_svc() {
+    if [[ "${MANAGE_SKIP_SYSTEMCTL:-0}" == "1" ]]; then return 0; fi
+    systemctl "$@"
+}
+_svc_is_active() {
+    if [[ "${MANAGE_SKIP_SYSTEMCTL:-0}" == "1" ]]; then return 1; fi
+    systemctl is-active --quiet "$SERVICE_NAME.service"
 }
 
 detect_arch() {
@@ -689,7 +702,9 @@ cmd_uninstall() {
     # PURGE 模式：同时清数据和用户（需显式启用）
     if [[ "${PURGE:-0}" == "1" ]]; then
         if [[ -d "$INSTALL_DIR" ]]; then
-            local archive="/tmp/blog-server-uninstall-$(date +%Y%m%d-%H%M%S).tar.gz"
+            # 把归档放在 INSTALL_DIR 同级目录，而不是系统 /tmp，方便管理
+            local archive
+            archive="$(dirname "$INSTALL_DIR")/blog-server-uninstall-$(date +%Y%m%d-%H%M%S).tar.gz"
             info "PURGE：归档数据到 $archive"
             tar czf "$archive" -C "$(dirname "$INSTALL_DIR")" "$(basename "$INSTALL_DIR")" 2>/dev/null || true
             info "PURGE：删除 $INSTALL_DIR"
@@ -732,6 +747,200 @@ cmd_logs() {
     fi
 }
 
+# ---------- 数据导出 / 导入 ----------
+# 导出数据结构（压包成 tar.gz）：
+#   blog-server-export/
+#     ├── MANIFEST         固定标识行 + 元信息（版本/时间/打包项）
+#     ├── data.sqlite      主库快照（为保一致性要求 service 已停或使用 --no-stop 风险自负）
+#     ├── config.yaml      管理账号/GitHub token，默认包含；--no-config 可排除
+#     ├── content/         Markdown 源文件（docs + projects）
+#     └── images/          上传的图片
+# 不含：blog-server 二进制（另装）、backups/（冗余）、trash/（软删）
+EXPORT_MAGIC="blog-server-export/v1"
+
+cmd_export() {
+    require_root
+
+    local out="" include_config=1 stop_service=1
+    while (( $# > 0 )); do
+        case "$1" in
+            --no-config) include_config=0; shift ;;
+            --no-stop)   stop_service=0;   shift ;;
+            -*) die "未知选项：$1（支持 --no-config / --no-stop）" ;;
+            *)  out="$1"; shift ;;
+        esac
+    done
+    if [[ -z "$out" ]]; then
+        out="$(pwd -P)/blog-server-export-$(date +%Y%m%d-%H%M%S).tar.gz"
+    fi
+
+    [[ -d "$INSTALL_DIR" ]] || die "INSTALL_DIR 不存在：$INSTALL_DIR"
+
+    local was_active=0
+    if _svc_is_active; then was_active=1; fi
+
+    if (( stop_service )) && (( was_active )); then
+        info "停止 $SERVICE_NAME.service 以获得一致的 sqlite 快照"
+        _svc stop "$SERVICE_NAME.service" || warn "停止失败，继续（快照一致性可能下降）"
+    elif (( was_active )); then
+        warn "--no-stop：服务仍在运行，data.sqlite 快照可能不完全一致"
+    fi
+
+    local stage
+    stage=$(mktemp -d)
+    trap "rm -rf $stage" RETURN
+
+    local root="$stage/blog-server-export"
+    mkdir -p "$root"
+
+    # 数据拷贝（带 . 通配空目录也 ok）
+    local bundled_items=()
+    if [[ -f "$INSTALL_DIR/data.sqlite" ]]; then
+        cp "$INSTALL_DIR/data.sqlite" "$root/data.sqlite"
+        bundled_items+=("data.sqlite")
+    fi
+    if (( include_config )) && [[ -f "$INSTALL_DIR/config.yaml" ]]; then
+        cp "$INSTALL_DIR/config.yaml" "$root/config.yaml"
+        bundled_items+=("config.yaml")
+    fi
+    if [[ -d "$INSTALL_DIR/content" ]]; then
+        cp -a "$INSTALL_DIR/content" "$root/content"
+        bundled_items+=("content/")
+    fi
+    if [[ -d "$INSTALL_DIR/images" ]]; then
+        cp -a "$INSTALL_DIR/images" "$root/images"
+        bundled_items+=("images/")
+    fi
+
+    # MANIFEST（import 用第一行魔数校验）
+    cat > "$root/MANIFEST" <<EOF
+$EXPORT_MAGIC
+created_at: $(date -Iseconds)
+hostname: $(hostname 2>/dev/null || echo unknown)
+source_install_dir: $INSTALL_DIR
+service_user: $SERVICE_USER
+bundled: ${bundled_items[*]:-(空)}
+include_config: $include_config
+EOF
+
+    info "打包到 $out"
+    mkdir -p "$(dirname "$out")"
+    ( cd "$stage" && tar czf "$out" blog-server-export )
+
+    # 附带 sha256（方便跨机校验）
+    if command -v sha256sum >/dev/null; then
+        ( cd "$(dirname "$out")" && sha256sum "$(basename "$out")" > "$(basename "$out").sha256" )
+    fi
+
+    # 重启服务（如果我们主动停了它）
+    if (( stop_service )) && (( was_active )); then
+        info "重启服务"
+        _svc start "$SERVICE_NAME.service" || warn "启动失败，请手动检查"
+    fi
+
+    rm -rf "$stage"
+    trap - RETURN
+
+    ok "导出完成：$out"
+    info "要恢复到另一台机器："
+    info "  scp $out other-host:/tmp/"
+    info "  ssh other-host 'cd /path/to/install && sudo bash manage.sh import /tmp/$(basename "$out")'"
+}
+
+cmd_import() {
+    require_root
+    local src="${1:-}"
+    [[ -n "$src" ]] || die "用法：sudo bash $0 import <bundle.tar.gz>"
+    [[ -f "$src" ]] || die "文件不存在：$src"
+
+    # SHA256 旁证（如果有同名 .sha256）
+    local sha_file="${src}.sha256"
+    if [[ -f "$sha_file" ]] && command -v sha256sum >/dev/null; then
+        info "校验 SHA256"
+        ( cd "$(dirname "$src")" && sha256sum -c "$(basename "$sha_file")" >/dev/null ) \
+            || die "SHA256 校验失败：bundle 可能损坏或被篡改"
+        ok "SHA256 通过"
+    fi
+
+    local stage
+    stage=$(mktemp -d)
+    trap "rm -rf $stage" RETURN
+
+    info "解压到临时目录"
+    tar xzf "$src" -C "$stage" || die "解包失败：不是合法的 tar.gz"
+
+    local root="$stage/blog-server-export"
+    [[ -d "$root" ]] || die "bundle 结构非法（缺少顶层 blog-server-export/ 目录），可能不是本脚本生成"
+    [[ -f "$root/MANIFEST" ]] || die "缺少 MANIFEST，拒绝导入（避免把任意 tarball 解到数据目录）"
+    local first_line
+    first_line=$(head -1 "$root/MANIFEST")
+    if [[ "$first_line" != "$EXPORT_MAGIC" ]]; then
+        die "MANIFEST 魔数不匹配：期望 $EXPORT_MAGIC，实际 $first_line"
+    fi
+    info "MANIFEST 校验通过"
+    cat "$root/MANIFEST" | sed 's/^/    /'
+
+    # 现役数据先行备份到 /tmp，防止灾难性误操作
+    local existing=()
+    for item in content images data.sqlite config.yaml; do
+        [[ -e "$INSTALL_DIR/$item" ]] && existing+=("$item")
+    done
+    if (( ${#existing[@]} > 0 )); then
+        local backup_dir="$INSTALL_DIR/tmp"
+        mkdir -p "$backup_dir"
+        local pre_backup="$backup_dir/blog-server-preimport-$(date +%Y%m%d-%H%M%S).tar.gz"
+        info "将当前数据先备份到 $pre_backup"
+        ( cd "$INSTALL_DIR" && tar czf "$pre_backup" "${existing[@]}" 2>/dev/null ) \
+            || warn "预备份失败，继续但无回滚"
+    fi
+
+    local was_active=0
+    if _svc_is_active; then was_active=1; fi
+    if (( was_active )); then
+        info "停止服务以替换数据"
+        _svc stop "$SERVICE_NAME.service"
+    fi
+
+    mkdir -p "$INSTALL_DIR"
+    # data.sqlite：简单覆盖；同时删除 -wal/-shm 残留，否则会污染新快照
+    if [[ -f "$root/data.sqlite" ]]; then
+        rm -f "$INSTALL_DIR/data.sqlite" "$INSTALL_DIR/data.sqlite-wal" "$INSTALL_DIR/data.sqlite-shm"
+        cp "$root/data.sqlite" "$INSTALL_DIR/data.sqlite"
+        info "恢复：data.sqlite"
+    fi
+    if [[ -f "$root/config.yaml" ]]; then
+        cp "$root/config.yaml" "$INSTALL_DIR/config.yaml"
+        chmod 0600 "$INSTALL_DIR/config.yaml" 2>/dev/null || true
+        info "恢复：config.yaml（权限 600）"
+    fi
+    if [[ -d "$root/content" ]]; then
+        rm -rf "$INSTALL_DIR/content"
+        cp -a "$root/content" "$INSTALL_DIR/content"
+        info "恢复：content/"
+    fi
+    if [[ -d "$root/images" ]]; then
+        rm -rf "$INSTALL_DIR/images"
+        cp -a "$root/images" "$INSTALL_DIR/images"
+        info "恢复：images/"
+    fi
+
+    # 修正所有权（只在有权限时）
+    if id -u "$SERVICE_USER" >/dev/null 2>&1 && [[ $EUID -eq 0 ]]; then
+        chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/content" "$INSTALL_DIR/images" \
+            "$INSTALL_DIR/data.sqlite" "$INSTALL_DIR/config.yaml" 2>/dev/null || true
+    fi
+
+    if (( was_active )); then
+        info "重启服务"
+        _svc start "$SERVICE_NAME.service" || warn "启动失败，请手动检查 journalctl"
+    fi
+
+    rm -rf "$stage"
+    trap - RETURN
+    ok "=== 导入完成 ==="
+    info "如果有问题要回滚，使用 $INSTALL_DIR/tmp/blog-server-preimport-*.tar.gz"
+}
+
 cmd_help() {
     cat <<EOF
 blog-server 管理脚本
@@ -749,6 +958,16 @@ blog-server 管理脚本
     disable    关闭开机自启
     status     状态 + 最近日志 + 二进制信息
     logs [N]   实时查看日志；给 N 则只显示最近 N 行
+
+数据迁移：
+    export [PATH] [--no-config] [--no-stop]
+               把 content/ + images/ + data.sqlite + config.yaml 打包成
+               blog-server-export-<时间>.tar.gz。默认会先停服务以获得
+               一致快照，完成后自动重启。附带 .sha256 方便跨机校验。
+    import <PATH>
+               把通过 export 产出的 bundle 恢复到本机 INSTALL_DIR。
+               会先把现有数据备份到 /tmp/blog-server-preimport-*.tar.gz，
+               再覆盖。自动校验 MANIFEST 魔数，防止误导入任意 tarball。
 
 其他：
     help       显示本帮助
@@ -795,6 +1014,8 @@ case "$CMD" in
     enable)    cmd_enable ;;
     disable)   cmd_disable ;;
     logs)      cmd_logs "${1:-}" ;;
+    export)    cmd_export "$@" ;;
+    import)    cmd_import "${1:-}" ;;
     help|-h|--help) cmd_help ;;
     *) err "未知子命令：$CMD"; cmd_help; exit 1 ;;
 esac

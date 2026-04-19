@@ -473,3 +473,21 @@
 - **紧急程度**：低
 
 - 2026-04-19 快速功能 readme-excerpt-card 完成，6 项反思其余条目均为"无"
+
+### 快速功能：manage-export-import — SQLite 一致性依赖停服
+- **类型**：技术债
+- **描述**：`export` 的做法是 `systemctl stop → cp data.sqlite → systemctl start`。如果用户加 `--no-stop`，在 WAL 模式下拷出的 data.sqlite 可能不完整（WAL 变更未 checkpoint）。更稳妥的做法是 `sqlite3 data.sqlite ".backup out.sqlite"`（online backup API），但需要 sqlite3 CLI 且增加一次依赖
+- **建议处理方式**：后续加依赖检测，有 sqlite3 时优先用 `.backup`；无则退回 stop/cp。目前的降级是 warn 后继续，可接受
+- **紧急程度**：低
+
+### 快速功能：manage-export-import — 测试用环境变量绕开 root/systemctl
+- **类型**：架构洞察
+- **描述**：给 shell 脚本做单元测试的难点是 `require_root` 和 `systemctl`。本次用了 `MANAGE_SKIP_ROOT` / `MANAGE_SKIP_SYSTEMCTL` 两个环境变量做"测试钩子"，在 go test 里通过 exec.Command 注入环境变量走通。这种 "env-var seams for shell testability" 的模式够轻，值得在以后 shell 功能里沿用
+- **建议处理方式**：其它 shell skill（deploy、安装脚本）如果要加测试，可以参照这个模式
+- **紧急程度**：低
+
+### 快速功能：manage-export-import — deploy 包只有测试的占位 go 文件
+- **类型**：技术债（轻微）
+- **描述**：为了让 `go test ./...` 自动涵盖 deploy 目录下的 bash 脚本测试，添加了一个空的 `deploy/deploy.go` 占位 package。这不是运行时代码，纯粹是 Go 工具链的仪式
+- **建议处理方式**：接受即可；如果后续真在 deploy 里放运行时 Go 代码，占位文件可以删除
+- **紧急程度**：低
