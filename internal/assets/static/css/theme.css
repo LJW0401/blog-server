@@ -624,15 +624,12 @@ body.page-diary { background: var(--bg); }
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   transform: translateY(-1px);
 }
+/* 跨月占位日（上月末 / 下月初）：统一按和本月一样的可点外观渲染，
+   只通过日期数字稍浅暗示 "不属于本月"。点击走 /diary?date= 跳转。 */
 .diary-out-of-month {
-  background: transparent;
-  border-color: transparent;
-  cursor: default;
-}
-.diary-out-of-month:hover {
-  border-color: transparent;
-  box-shadow: none;
-  transform: none;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  cursor: pointer;
 }
 .diary-today {
   border-color: var(--accent);
@@ -650,8 +647,8 @@ body.page-diary { background: var(--bg); }
 }
 .diary-out-of-month .diary-day-num {
   color: var(--ink-faint);
-  opacity: 0.55;
-  font-weight: 400;
+  opacity: 0.85;
+  font-weight: 500;
 }
 .diary-dot {
   position: absolute;
@@ -670,27 +667,6 @@ body.page-diary { background: var(--bg); }
 
 /* 日期点击后的周视图折叠 + 下方编辑器 */
 .diary-week-mode .diary-calendar { margin-bottom: 32px; }
-/* 周视图下，跨月占位日恢复正常可点样式 —— 对 4-5 月交接那种包含下月
-   前几天 / 上月末几天的周特别重要，否则视觉上灰掉且按老逻辑拦截 click。
-   修复后 onCellClick 已经改为跨月格走 /diary?date= 跳转，这里让它看起来
-   可点，避免用户以为坏了。 */
-.diary-week-mode .diary-out-of-month {
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.06);
-  opacity: 1;
-  cursor: pointer;
-}
-.diary-week-mode .diary-out-of-month:hover {
-  border-color: rgba(0,0,0,0.12);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  transform: translateY(-1px);
-}
-/* 依旧留一点 "不是本月" 的微弱暗示：数字颜色稍浅 */
-.diary-week-mode .diary-out-of-month .diary-day-num {
-  color: var(--ink-faint);
-  opacity: 0.85;
-  font-weight: 500;
-}
 .diary-editor {
   margin-top: 8px;
   padding: 24px 28px;
@@ -827,8 +803,13 @@ body.page-diary { background: var(--bg); }
     border-color: rgba(255,255,255,0.18);
     box-shadow: 0 2px 10px rgba(0,0,0,0.4);
   }
-  .diary-out-of-month, .diary-out-of-month:hover {
-    background: transparent; border-color: transparent; box-shadow: none;
+  .diary-out-of-month {
+    background: #1c1c1e;
+    border-color: rgba(255,255,255,0.08);
+  }
+  .diary-out-of-month:hover {
+    border-color: rgba(255,255,255,0.18);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.4);
   }
   .diary-today {
     border-color: var(--accent);
@@ -859,14 +840,6 @@ body.page-diary { background: var(--bg); }
   .diary-week-btn:hover {
     background: #26262a;
     color: var(--ink);
-  }
-  .diary-week-mode .diary-out-of-month {
-    background: #1c1c1e;
-    border-color: rgba(255,255,255,0.08);
-  }
-  .diary-week-mode .diary-out-of-month:hover {
-    border-color: rgba(255,255,255,0.18);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.4);
   }
   .default-password-banner { background: #332b00; color: #ffd280; border-bottom-color: #664d00; }
   .draft-banner { background: #332b00; color: #ffd280; }

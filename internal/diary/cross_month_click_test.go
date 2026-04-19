@@ -1,6 +1,7 @@
 package diary_test
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -31,10 +32,11 @@ func TestCrossMonthClick_Regression_OutOfMonthCellIsNavigable(t *testing.T) {
 		t.Errorf("diary.js 缺少 /diary?date=... 跳转入口，跨月格点击无法导航")
 	}
 
-	// 3. CSS 在周视图下把 .diary-out-of-month 的禁用态解除
+	// 3. CSS 把 .diary-out-of-month 渲染成可点外观（月视图 / 周视图统一样式）
 	css := readTheme(t)
-	// 必须有一条规则在 .diary-week-mode 上下文里覆盖 .diary-out-of-month 的 opacity / cursor
-	if !strings.Contains(css, ".diary-week-mode .diary-out-of-month") {
-		t.Errorf("theme.css 缺少 .diary-week-mode .diary-out-of-month 覆盖，跨月格在周视图下仍显灰")
+	// 基础规则必须给 .diary-out-of-month 一个 cursor: pointer（不再 default/disabled）
+	re := regexp.MustCompile(`(?s)\.diary-out-of-month\s*\{[^}]*cursor:\s*pointer`)
+	if !re.MatchString(css) {
+		t.Errorf("theme.css 的 .diary-out-of-month 未设为 cursor: pointer，跨月格仍显禁用态")
 	}
 }
