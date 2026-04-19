@@ -1,0 +1,41 @@
+{{ define "title" }}日记 — Penguin{{ end }}
+{{ define "body_class" }}page-diary{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<div class="diary-shell">
+  <header class="diary-header">
+    <div class="diary-nav">
+      <a class="diary-nav-btn" href="{{ .PrevURL }}" aria-label="上个月">‹ 上个月</a>
+      <h1 class="diary-title">{{ .Year }} 年 {{ .Month }} 月</h1>
+      <a class="diary-nav-btn" href="{{ .NextURL }}" aria-label="下个月">下个月 ›</a>
+    </div>
+    <div class="diary-sub">
+      <a class="diary-link-plain" href="{{ .ThisURL }}">回到本月</a>
+      <span class="diary-muted">今天是 {{ .Today }}</span>
+    </div>
+  </header>
+
+  <table class="diary-calendar" aria-label="月历">
+    <thead>
+      <tr>
+        <th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th><th>日</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{ range .Grid }}
+      <tr>
+        {{ range . }}
+        <td class="diary-cell{{ if not .InMonth }} diary-out-of-month{{ end }}{{ if .IsToday }} diary-today{{ end }}"
+            data-date="{{ .ISODate }}">
+          <span class="diary-day-num">{{ .DayNum }}</span>
+          {{ if .HasEntry }}<span class="diary-dot" aria-label="当天有日记"></span>{{ end }}
+        </td>
+        {{ end }}
+      </tr>
+      {{ end }}
+    </tbody>
+  </table>
+</div>
+{{ end }}
+{{ end }}

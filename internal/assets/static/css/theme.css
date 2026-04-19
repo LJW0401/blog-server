@@ -537,6 +537,60 @@ body.page-admin { background: var(--bg-alt); }
 .notfound-sub { font-size: 16px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 32px; }
 .notfound-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 
+/* 日记页 /diary — Stage 1 月视图 */
+.diary-shell { max-width: 960px; margin: 0 auto; padding: 88px 32px 64px; }
+.diary-header { margin-bottom: 28px; }
+.diary-nav {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 18px; margin-bottom: 10px;
+}
+.diary-title { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+.diary-nav-btn {
+  font-size: 13px; color: var(--accent); text-decoration: none;
+  padding: 4px 10px; border-radius: var(--radius-sm);
+  transition: background 0.2s var(--ease);
+}
+.diary-nav-btn:hover { background: rgba(0,113,227,0.08); }
+.diary-sub {
+  display: flex; gap: 18px; align-items: baseline;
+  font-size: 13px; color: var(--ink-soft);
+}
+.diary-link-plain { color: var(--accent); text-decoration: none; }
+.diary-link-plain:hover { text-decoration: underline; }
+.diary-muted { color: var(--ink-faint); }
+
+.diary-calendar {
+  width: 100%; border-collapse: separate; border-spacing: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.diary-calendar th {
+  font-size: 12px; font-weight: 500; color: var(--ink-faint);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 6px 0 12px; text-align: center;
+}
+.diary-cell {
+  position: relative;
+  height: 76px; vertical-align: top;
+  padding: 10px 12px;
+  background: var(--bg-alt);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.diary-cell:hover { background: #eceef0; }
+.diary-out-of-month { opacity: 0.4; background: transparent; }
+.diary-today {
+  background: rgba(0,113,227,0.08);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.diary-day-num { font-size: 14px; font-weight: 500; color: var(--ink); }
+.diary-out-of-month .diary-day-num { color: var(--ink-faint); }
+.diary-dot {
+  position: absolute; top: 10px; right: 10px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #35c759; /* Apple-green */
+}
+
 /* WI-2.20 暗色模式 — follows system only (per requirement 2.9) */
 @media (prefers-color-scheme: dark) {
   :root {
@@ -581,6 +635,11 @@ body.page-admin { background: var(--bg-alt); }
   .readme-excerpt-box code { background: rgba(255,255,255,0.06); color: var(--ink); }
   .readme-excerpt-box pre { background: rgba(255,255,255,0.04); }
   .readme-excerpt { border-top-color: rgba(255,255,255,0.06); }
+  .diary-cell { background: #151518; }
+  .diary-cell:hover { background: #1f1f22; }
+  .diary-out-of-month { background: transparent; }
+  .diary-today { background: rgba(41,151,255,0.12); box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .diary-nav-btn:hover { background: rgba(41,151,255,0.12); }
   .default-password-banner { background: #332b00; color: #ffd280; border-bottom-color: #664d00; }
   .draft-banner { background: #332b00; color: #ffd280; }
   .archived-banner { background: #2c2c2e; color: #a1a1a6; }

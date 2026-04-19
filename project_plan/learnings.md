@@ -493,3 +493,17 @@
 - **紧急程度**：低
 
 - 2026-04-19 快速功能 login-prefill-username 完成，无 learnings（已执行反思清单）
+
+## 2026-04-19 · 日记功能 Stage 1 完成
+
+### 架构洞察：auth.Store.ParseSession 对 User-Agent 指纹绑定
+- **发现于**：WI-1.10/11 handlers_test.go 编写过程
+- **描述**：第一版测试注入了 cookie 但没设 User-Agent 头，所有 authenticated 请求都被 302 到登录页，初看像 cookie 格式错误。根因：`ParseSession` 会比对 cookie 里的 UA 指纹和请求 UA 指纹，httptest 默认 UA 为空 → fingerprint mismatch。测试 helper 里调 `IssueSession("admin", "test/ua")`，请求里也必须 `req.Header.Set("User-Agent", "test/ua")` 才能匹配
+- **建议处理方式**：diary 测试已局部搞定；后续如果其它包做类似集成测试，**应考虑抽一个共用 `newAuthenticatedRequest(cookie, ua)` helper**，避免每个包重新踩坑。或者在 diary 包内提升到 testutil 子包
+- **紧急程度**：低
+
+### 技术债：测试请求里重复写 "test/ua"
+- **类型**：技术债
+- **描述**：`handlers_test.go` 里每个 authenticated 用例都重复 `req.Header.Set("User-Agent", "test/ua")`，共 8 处。能跑但不够好
+- **建议处理方式**：抽一个 `newAuthenticatedRequest(method, url, cookie)` helper。Stage 2/3 新加的 API 用例会多，届时顺手重构
+- **紧急程度**：低
