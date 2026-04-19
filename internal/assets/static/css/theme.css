@@ -478,6 +478,23 @@ body.page-admin { background: var(--bg-alt); }
 .editor-form textarea:focus { outline: none; border-color: var(--accent); }
 .editor-actions { display: flex; justify-content: flex-end; gap: 12px; align-items: center; }
 
+/* Editor tabs: toggle between MD source and rendered preview */
+.editor-tabs { display: inline-flex; gap: 2px; padding: 3px; background: var(--bg-alt); border: 1px solid var(--line); border-radius: var(--radius-sm); align-self: flex-start; }
+.editor-tab {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  padding: 6px 14px; font: inherit; font-size: 13px; color: var(--ink-soft);
+  border-radius: 6px; transition: background 0.15s, color 0.15s;
+}
+.editor-tab:hover { color: var(--ink); }
+.editor-tab.is-active { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+.editor-preview {
+  min-height: 480px; padding: 24px 28px;
+  background: #fff; color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  overflow: auto;
+}
+.editor-preview:empty::before { content: "空白"; color: var(--ink-faint); }
+
 /* Settings form */
 .settings-form { display: flex; flex-direction: column; gap: 12px; }
 .settings-form h2 { margin-top: 12px; font-size: 16px; }
@@ -790,6 +807,10 @@ body.page-diary { background: var(--bg); }
   .orb { mix-blend-mode: screen; filter: blur(80px) saturate(0.55) brightness(0.7); }
   .admin-card, .admin-section { background: #1f1f22; border-color: rgba(255,255,255,0.09); box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset; }
   .admin-card input:focus { background: #151518; }
+  .editor-form textarea { background: #151518; color: var(--ink); border-color: rgba(255,255,255,0.08); }
+  .editor-tabs { background: #151518; border-color: rgba(255,255,255,0.08); }
+  .editor-tab.is-active { background: #2a2a2d; color: var(--ink); box-shadow: none; }
+  .editor-preview { background: #151518; color: var(--ink); border-color: rgba(255,255,255,0.08); }
   .admin-table th, .admin-table td { border-bottom-color: rgba(255,255,255,0.08); }
   .readme-excerpt-box { background: #1c1c1e; border-color: rgba(255,255,255,0.06); color: var(--ink-soft); }
   .readme-excerpt-box code { background: rgba(255,255,255,0.06); color: var(--ink); }

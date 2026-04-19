@@ -208,6 +208,65 @@ func (d *DocHandlers) editorError(w http.ResponseWriter, r *http.Request, isNew 
 	_ = d.Parent.Tpl.Render(w, r, http.StatusBadRequest, "admin_doc_edit.html", data)
 }
 
+// --- Preview --------------------------------------------------------------
+
+// Preview handles POST /manage/docs/preview. Takes `body` form field (full MD
+// source with optional frontmatter) and returns the rendered HTML fragment so
+// the editor can show a WYSIWYG preview without leaving the page. Reuses the
+// same goldmark instance the public /docs page uses, guaranteeing the preview
+// matches production output.
+func (d *DocHandlers) Preview(w http.ResponseWriter, r *http.Request) {
+	sess, ok := d.Parent.Auth.ParseSession(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	if !auth.CSRFValid(sess, r.Form.Get("csrf")) {
+		http.Error(w, "csrf", http.StatusForbidden)
+		return
+	}
+	body := stripFrontmatter(r.Form.Get("body"))
+	html, err := d.Parent.Tpl.Markdown().ToHTML(body)
+	if err != nil {
+		d.Parent.Logger.Warn("admin.docs.preview", slog.String("err", err.Error()))
+		http.Error(w, "render failed", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write([]byte(html))
+}
+
+// stripFrontmatter removes a leading `---\n ... \n---\n` block if present.
+// Unclosed or absent frontmatter is returned unchanged so the preview still
+// shows something reasonable while the user is in the middle of typing.
+func stripFrontmatter(body string) string {
+	s := strings.TrimLeft(body, " \t\r\n")
+	if !strings.HasPrefix(s, "---") {
+		return body
+	}
+	nl := strings.Index(s, "\n")
+	if nl < 0 {
+		return body
+	}
+	rest := s[nl+1:]
+	end := strings.Index(rest, "\n---")
+	if end < 0 {
+		return body
+	}
+	tail := rest[end+len("\n---"):]
+	tail = strings.TrimLeft(tail, "\r\n")
+	return tail
+}
+
 // --- Delete ---------------------------------------------------------------
 
 // DeleteDoc handles POST /manage/docs/:slug/delete.

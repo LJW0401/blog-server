@@ -605,3 +605,22 @@
   3. 跨模块集成点（/diary 未登录 → /manage/login?next=/diary → 登录成功 → /diary）没有单一 handler 拥有端到端责任，两端都各自通过了自己的单测，漏掉了中间的握手
 - **紧急程度**：中（影响用户体验但无数据/安全后果；已在白名单内兜底外链）
 - **衍生改进建议**：未来再加需要登录的顶层路由时，除了在 isSafeNext 里加前缀，也要在 login 测试里加一条 next= 该路由的 smoke case。或者上一层："登录回跳"本身值得一个专门的 E2E 覆盖矩阵，参数化列出所有需要登录的入口
+
+### 快速功能：文档编辑器 编辑/预览 切换
+- **类型**：重构机会 + 架构洞察
+- **描述**：
+  1. frontmatter 剥离逻辑在本次预览端点里又写了一份 (`stripFrontmatter`)，而 `internal/content/content.go` 已有私有 `splitFrontmatter`、`internal/admin/docs.go` 已有 `extractSlugFromBody`。三处解析大同小异但语义略不同（一个返回 body、一个返回 fm 字节、一个抽 slug），临时共用会把接口拧成复合返回反而更糟。下次若有第四处 frontmatter 消费再抽公共 util
+  2. 架构洞察：`render.Templates.Markdown()` 已暴露共享 goldmark 实例，任何需要 server-side 渲染 MD 片段的 handler 直接取用即可，不用自己 new。后续同类需求（例如 settings 页的"介绍"实时预览）也可复用
+- **建议处理方式**：记录即可，无需立即动作
+- **紧急程度**：低
+
+- 2026-04-19 快速功能 编辑/预览切换 完成：新增 `/manage/docs/preview` (POST, CSRF+auth)，共享公共 /docs 的 goldmark safe 渲染器；模板加 tab 切换 + 小段内联 JS。异常测试 7 条覆盖 CSRF/401/边界/未闭合 frontmatter/XSS/405
+
+### Bug（本次修复内发现）：ParseForm 不解析 multipart body
+- **发现于**：编辑/预览切换功能手动测试
+- **现象**：点预览按钮返回 403 Forbidden
+- **根因**：前端用 `new FormData()` + `fetch` → 浏览器自动设成 `multipart/form-data`。服务端 `r.ParseForm()` 只处理 `application/x-www-form-urlencoded`，读不到 csrf 字段 → CSRF 校验不过
+- **修复**：前端改用 `URLSearchParams`，显式 `Content-Type: application/x-www-form-urlencoded`
+- **回归测试**：`TestPreview_Regression_MultipartRejected` 钉死契约
+- **紧急程度**：低（一次性修复，模式清晰）
+- **衍生建议**：若未来要支持图片上传等二进制场景，handler 这边要改用 `r.FormValue()` 或显式 `r.ParseMultipartForm()`；`r.Form.Get` 静默失败是个陷阱

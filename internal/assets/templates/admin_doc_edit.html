@@ -16,8 +16,13 @@
   <form class="admin-section editor-form" method="POST"
         action="{{ if eq .Kind "project" }}{{ if .IsNew }}/manage/projects/new{{ else }}/manage/projects/{{ .Slug }}/edit{{ end }}{{ else }}{{ if .IsNew }}/manage/docs/new{{ else }}/manage/docs/{{ .Slug }}/edit{{ end }}{{ end }}">
     <input type="hidden" name="csrf" value="{{ .CSRF }}" />
-    <label class="editor-label">MD 源码（frontmatter + 正文）</label>
+    <div class="editor-tabs" role="tablist">
+      <button type="button" class="editor-tab is-active" data-mode="edit" role="tab" aria-selected="true">编辑</button>
+      <button type="button" class="editor-tab" data-mode="preview" role="tab" aria-selected="false">预览</button>
+    </div>
+    <label class="editor-label" data-for="edit">MD 源码（frontmatter + 正文）</label>
     <textarea name="body" spellcheck="false" autofocus>{{ .Body }}</textarea>
+    <div class="editor-preview doc-body" hidden aria-live="polite"></div>
     <div class="editor-actions">
       <a class="btn btn-ghost" href="{{ if eq .Kind "project" }}/manage/projects{{ else }}/manage/docs{{ end }}">取消</a>
       <button class="btn btn-primary" type="submit">保存</button>
@@ -26,4 +31,5 @@
   </form>
 </div>
 {{ end }}
+<script src="/static/js/doc_edit.js" defer></script>
 {{ end }}

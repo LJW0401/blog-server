@@ -45,6 +45,7 @@ func buildAdminMux(
 
 	// Docs
 	mux.HandleFunc("/manage/docs", docs.DocsList)
+	mux.HandleFunc("/manage/docs/preview", docs.Preview)
 	mux.HandleFunc("/manage/docs/new", postOrGet(docs.SaveDoc, docs.NewDoc))
 	mux.HandleFunc("/manage/docs/", func(w http.ResponseWriter, r *http.Request) {
 		switch {
