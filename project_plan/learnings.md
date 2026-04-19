@@ -681,3 +681,13 @@
   - Pager 链接改成保留全部现有 query + 覆盖/追加 `page` 参数。最简做法是 handler 把完整 href 字符串（`/docs?view=tag&tag=foo&page=2`）预算好塞进 `pager`，template 直接 `href="{{ .Pager.PrevHref }}"`
   - 做个小扫描：其他 view 是不是也有"数据到了但没展示"的潜在 UX 坑（category/archive 似乎各自只渲染树结构，和 tag 同模式，都该考虑选中后要不要展示命中列表）
 - **紧急程度**：中（分页 bug 一旦筛选结果 >10 篇立刻复现）
+
+### 快速功能：首页从 footer 往回滑吸附到 page-2 底部
+- **类型**：架构洞察 + 测试缺口
+- **描述**：
+  1. **CSS scroll-snap 非对称方向吸附技巧**：`.page` 和 `.footer` 原有 `scroll-snap-align: start`，向下滚时每段顶部对齐；但从 footer 往回滚时，下一个上方 snap 点是 page-2 的 START（page-2 顶部），用户看不到刚才滑离的 page-2 底部、要再往下才能回到原位置。解决办法是塞一个 0 高 sentinel `<div>` 在 page-2 和 footer 之间，用 `scroll-snap-align: end` 把 page-2 的 BOTTOM 也注册成吸附点；`scroll-snap-stop: normal` 保证向下滚时不被它强制挡停。这是做"非对称吸附方向"的标准套路，以后类似需求直接照搬
+  2. **系统性测试缺口**：整个项目没有任何 headless browser e2e（Playwright / Cypress / Chromedp）。所有纯 UI 交互（本次的 scroll-snap、前面 KaTeX 的公式渲染、CodeMirror 编辑器预期接入等）都只能"人眼 + 重启服务手测"。server-side 测试最多能到"元素/CSS 规则存在"这一层，没法验证运行时滚动/交互/渲染是否真 work。已有两次累积（KaTeX、scroll-snap）提示这是项目级测试资产缺口
+- **建议处理方式**：
+  - scroll-snap 本次不扩大范围，CSS 方案够用
+  - 长期看应评估：加 Playwright e2e（Go 生态可用 `chromedp` 或 `rod`），专跑"浏览器执行后才能验证的行为"。暂列高优先级 **衍生任务**
+- **紧急程度**：中（scroll-snap 本身够用；测试缺口已累积两次，再不处理还会继续踩）

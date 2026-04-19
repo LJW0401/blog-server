@@ -35,6 +35,11 @@ body { overflow-x: hidden; min-height: 100%; }
 html.snap-y { height: 100%; scroll-snap-type: y mandatory; }
 html.snap-y body { height: 100%; overflow-y: scroll; scroll-behavior: smooth; }
 html.snap-y .page, html.snap-y .footer { scroll-snap-align: start; scroll-snap-stop: always; }
+/* 0-height 哨兵节点放在 page-2 和 footer 之间：用 snap-align: end 把 page-2 的底边
+   也注册成一个吸附点。从 footer 往回滑时，最近的上方吸附点就是它——viewport
+   底部对齐 page-2 底部 = 看到 page-2 最后一屏内容，而不是 page-2 最顶。
+   scroll-snap-stop: normal 让向下滑时不会被它强制挡停，不干扰正常向下浏览。 */
+html.snap-y .page-2-sentinel { display: block; height: 0; scroll-snap-align: end; scroll-snap-stop: normal; }
 a { color: inherit; }
 
 /* Default password banner */
