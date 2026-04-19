@@ -27,6 +27,7 @@ func buildAdminMux(
 	images *admin.ImageHandlers,
 	settings *admin.SettingsHandlers,
 	projects *admin.ProjectHandlers,
+	trash *admin.TrashHandlers,
 ) *http.ServeMux {
 	mux := http.NewServeMux()
 
@@ -66,6 +67,11 @@ func buildAdminMux(
 
 	// Settings
 	mux.HandleFunc("/manage/settings", postOrGet(settings.SettingsSubmit, settings.SettingsPage))
+
+	// Trash
+	mux.HandleFunc("/manage/trash", trash.TrashList)
+	mux.HandleFunc("/manage/trash/restore", trash.Restore)
+	mux.HandleFunc("/manage/trash/purge", trash.Purge)
 
 	// Projects
 	mux.HandleFunc("/manage/repos", projects.ReposList)

@@ -1,0 +1,57 @@
+{{ define "title" }}回收站 — Penguin{{ end }}
+{{ define "body_class" }}page-admin{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+{{ $csrf := .CSRF }}
+<div class="admin-shell">
+  <header class="admin-header">
+    <h1>回收站</h1>
+    <div class="admin-session">
+      <a href="/manage">← 返回面板</a>
+    </div>
+  </header>
+
+  {{ if .Error }}<div class="form-err">{{ .Error }}</div>{{ end }}
+  {{ if .Info }}<div class="form-info">{{ .Info }}</div>{{ end }}
+
+  <section class="admin-section">
+    <p class="note">文档 / 项目被"删除"后会软删到这里（<code>$DataDir/trash/</code>）。可恢复回原路径，也可彻底清除。彻底删除后无法撤销。</p>
+    {{ if .Entries }}
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>类型</th><th>原 slug</th><th>删除时间 (UTC)</th><th>大小</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range .Entries }}
+        <tr>
+          <td><span class="status-badge status-{{ if eq .Kind "doc" }}published{{ else }}active{{ end }}">{{ if eq .Kind "doc" }}文档{{ else }}项目{{ end }}</span></td>
+          <td><code>{{ .Slug }}</code></td>
+          <td>{{ .TrashedStr }}</td>
+          <td>{{ .Size }} B</td>
+          <td>
+            <form method="POST" action="/manage/trash/restore" style="display:inline;" data-confirm="恢复 {{ .Slug }} 到 {{ if eq .Kind "doc" }}content/docs/{{ else }}content/projects/{{ end }}？">
+              <input type="hidden" name="csrf" value="{{ $csrf }}" />
+              <input type="hidden" name="filename" value="{{ .Filename }}" />
+              <button class="link-primary" type="submit">恢复</button>
+            </form>
+            <form method="POST" action="/manage/trash/purge" style="display:inline;" data-confirm="彻底删除 {{ .Slug }}？此操作不可撤销。">
+              <input type="hidden" name="csrf" value="{{ $csrf }}" />
+              <input type="hidden" name="filename" value="{{ .Filename }}" />
+              <button class="link-danger" type="submit">彻底删除</button>
+            </form>
+          </td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    {{ else }}
+    <p class="note">回收站为空。</p>
+    {{ end }}
+  </section>
+</div>
+{{ end }}
+<script defer src="/static/js/confirm_submit.js"></script>
+{{ end }}

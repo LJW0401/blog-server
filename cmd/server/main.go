@@ -161,6 +161,7 @@ func main() {
 		Parent: adminH, Content: cstore, DataDir: cfg.DataDir,
 		GitHubClient: ghClient, GitHubCache: ghCache,
 	}
+	trashAdmin := &admin.TrashHandlers{Parent: adminH, Content: cstore, DataDir: cfg.DataDir}
 
 	mux := http.NewServeMux()
 	healthzBody := fmt.Sprintf("ok blog-server %s\n", resolveVersion())
@@ -207,7 +208,7 @@ func main() {
 	})
 	mux.HandleFunc("/manage/logout", adminH.Logout)
 
-	protected := buildAdminMux(adminH, docsAdmin, imagesAdmin, settingsAdmin, projectsAdmin)
+	protected := buildAdminMux(adminH, docsAdmin, imagesAdmin, settingsAdmin, projectsAdmin, trashAdmin)
 	// /images/* static file serving (uploaded content).
 	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(filepath.Join(cfg.DataDir, "images")))))
 
