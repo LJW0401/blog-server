@@ -49,12 +49,22 @@
   }
 
   // --- 日历点击：切到周视图 + 加载当天内容 ------------------------------
-  function onCellClick(e) {
+  async function onCellClick(e) {
     const cell = e.target.closest('.diary-cell');
-    if (!cell || cell.classList.contains('diary-out-of-month')) return;
+    if (!cell) return;
     const date = cell.getAttribute('data-date');
     if (!date) return;
-    // 切日期前 flush 当前正在编辑的内容
+
+    // 跨月占位格（上一月末尾 / 下一月开头）：不走本地 DOM，直接走
+    // /diary?date=... 让服务端切到对应月份并在加载后自动进入周视图。
+    // 这样 4-5 月交接那周里的 May 1-3 也能被正常点击。
+    if (cell.classList.contains('diary-out-of-month')) {
+      await saveDay(); // 先 flush 当前未保存内容，避免跳转前丢稿
+      window.location.href = '/diary?date=' + encodeURIComponent(date);
+      return;
+    }
+
+    // 本月内切日期：flush → 本地折叠成周视图 → 加载当天
     flushIfDirty();
     enterWeekMode(date);
     loadDay(date);

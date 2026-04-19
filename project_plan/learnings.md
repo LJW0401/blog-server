@@ -571,3 +571,20 @@
 - **描述**：给日记周视图加 ← / → 箭头键切周，原本可以在客户端用 DOM 操作（隐藏/显示不同周的行）实现同月切换，跨月才重载。但实际实现里干脆**所有切周都走完整 `location.href = /diary?date=...`**——服务端根据 date 决定月份，模板通过 `data-focus-date` 让 JS 在加载后自动进入周视图。好处：1）代码量减半；2）跨月无特殊分支；3）切周前天然 flush 未保存的 textarea 内容（因为页面要刷新）。代价：每次切周有一次网络往返，但本地 SSR 下 P95 <100ms，体验无感
 - **建议处理方式**：固定成模式 —— 日记这类"同一入口不同视图参数"的 SSR 页面优先考虑 query-driven reload，不要为了"平滑过渡"硬上客户端 state machine
 - **紧急程度**：低
+
+### Bug 修复：日记周视图下跨月占位日灰掉不可点
+- **发现于**：用户报告（26 年 4-5 月交接那周看到 May 1-3 灰色且点不了）
+- **现象**：周视图显示的那一行 7 天里，属于上月末 / 下月初的占位格子视觉上置灰（opacity 0.55 + cursor default），点了也没反应
+- **根因**：`diary.js:onCellClick` 老代码 `if (!cell || cell.classList.contains('diary-out-of-month')) return;` 把所有跨月格点击早退；CSS 又给 `.diary-out-of-month` 独立灰化样式。两者叠加 → 用户感知"灰色不可点"。月视图下这还合规（经典日历风），但周视图下一个"7 天一周"里夹杂几天不可点违反直觉
+- **修复**：
+  1. `diary.js:onCellClick` 改成对跨月格走 `location.href = /diary?date=...`，复用 ← / → 箭头切周那条重载路径，服务端决定目标月份并自动进入周视图
+  2. CSS 加 `.diary-week-mode .diary-out-of-month` 覆盖，周视图下颜色/光标/hover 阴影全部恢复正常；数字稍浅保留"不是本月"的微弱暗示
+- **回归测试**：`internal/diary/cross_month_click_test.go:TestCrossMonthClick_Regression_OutOfMonthCellIsNavigable`
+  - 静态扫描 `diary.js` 里不再有 `classList.contains('diary-out-of-month')) return`
+  - 必须含 `'/diary?date=' +` 导航入口
+  - `theme.css` 必须含 `.diary-week-mode .diary-out-of-month` 覆盖
+- **为什么原测试没覆盖**：Stage 1/2 的测试全在 Go 层（server handler + 静态 JS 扫描），没模拟任何"真实 DOM + 真实点击"语义。而这个 bug 是"静态 code 合法 + 动态交互结果违和" —— 纯静态扫描抓不到。需要手动浏览器 smoke 或引入真正的浏览器测试（Playwright 之类）才能未来自动捕获这类
+- **紧急程度**：中（影响跨月周的可用性，但有 workaround：先用月翻页按钮切换月份再进周视图）
+- **衍生改进建议**：
+  1. 考虑在 CI 里加一层基于 Playwright 的 E2E 冒烟（至少覆盖"月视图点格 → 周视图出现 → 切一下日期 → 保存"这条主路径）
+  2. `.diary-out-of-month` 在月视图下也让它可点会更好用 —— 目前月视图下点 5-1 占位仍然无反应。本次不扩大范围，留待后续
