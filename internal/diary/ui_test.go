@@ -135,6 +135,35 @@ func TestUI_Edge_AllFetchesCarryCredentials(t *testing.T) {
 	}
 }
 
+// 保存失败反馈（WI-3.10）：diary.js 必须
+//  1. catch fetch 错误 → 将 status 设为 error 态
+//  2. error 状态粘滞：input 事件不能把 error 切回 editing（除非已 clear）
+//  3. 点击 error 状态栏能触发重试
+//
+// CSS 中必须有 .diary-status 的 error 变体（视觉上要区分）。
+func TestUI_Smoke_SaveFailureStickyState(t *testing.T) {
+	js := readStatic(t, "js/diary.js")
+
+	// 1. catch → set error
+	if !strings.Contains(js, "setStatus('error'") {
+		t.Errorf("diary.js 缺少保存失败 → error 状态的分支")
+	}
+	// 2. input 事件里要先判断当前状态不是 error 才覆盖
+	if !strings.Contains(js, "!== 'error'") && !strings.Contains(js, "!==\"error\"") {
+		t.Errorf("diary.js 未守卫 error 粘滞（input 事件应检查当前非 error 才能覆盖状态）")
+	}
+	// 3. 点击 status → 重试 saveDay
+	if !strings.Contains(js, "status.addEventListener('click'") {
+		t.Errorf("diary.js 缺少 status 点击重试监听")
+	}
+
+	// CSS 必须有 error 态样式
+	css := readTheme(t)
+	if !strings.Contains(css, `diary-status[data-state="error"]`) {
+		t.Errorf("theme.css 缺少 .diary-status[data-state=\"error\"] 样式")
+	}
+}
+
 // debounce 时间应为合理值（[500, 5000]ms 区间），避免写死过激进或过保守。
 func TestUI_Edge_DebounceInReasonableRange(t *testing.T) {
 	src := readStatic(t, "js/diary.js")

@@ -21,6 +21,8 @@
   const editorDate = document.querySelector('.diary-editor-date');
   const textarea = document.querySelector('.diary-textarea');
   const saveBtn = document.querySelector('.diary-save-btn');
+  const deleteBtn = document.querySelector('.diary-delete-btn');
+  const promoteBtn = document.querySelector('.diary-promote-btn');
   const status = document.querySelector('.diary-status');
 
   const csrfMeta = document.querySelector('meta[name="csrf"]');
@@ -128,7 +130,11 @@
   if (textarea) {
     textarea.addEventListener('input', () => {
       dirty = true;
-      setStatus('editing', '编辑中...');
+      // "error" 状态粘滞：用户重试成功或手动保存前，不被 "编辑中..." 覆盖
+      // (需求 2.3.3：后续输入不会覆盖错误态直到成功)
+      if (status && status.getAttribute('data-state') !== 'error') {
+        setStatus('editing', '编辑中...');
+      }
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         if (dirty) saveDay();
@@ -139,6 +145,96 @@
 
   if (saveBtn) {
     saveBtn.addEventListener('click', saveDay);
+  }
+
+  async function deleteDay() {
+    if (!currentDate) return;
+    // 浏览器原生 confirm —— 需求 2.4.1 明确用这个而不是自定义 modal
+    if (!window.confirm('确定要清空 ' + currentDate + ' 的日记？此操作不可恢复')) return;
+    setStatus('saving', '删除中...');
+    const body = new URLSearchParams();
+    body.set('date', currentDate);
+    body.set('csrf', csrf);
+    try {
+      const res = await fetch('/diary/api/delete', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+      if (!res.ok) throw new Error('http ' + res.status);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'unknown');
+      textarea.value = '';
+      dirty = false;
+      setStatus('saved', '已清空');
+      // 整页刷新让月视图绿点重算，最简一致
+      window.location.reload();
+    } catch (err) {
+      setStatus('error', '删除失败，点击重试');
+      console.error('[diary] deleteDay', err);
+    }
+  }
+
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', deleteDay);
+  }
+
+  async function promoteDay() {
+    if (!currentDate) return;
+    // MVP 弹窗：3 个 prompt 依次收集 title / slug / category。后续可换成自定义 modal。
+    const title = window.prompt('转正为文档 —— 填入标题：');
+    if (title === null) return;
+    if (!title.trim()) {
+      window.alert('标题不能为空');
+      return;
+    }
+    const slug = window.prompt('输入 slug（小写字母/数字/-，唯一）：');
+    if (slug === null) return;
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) {
+      window.alert('slug 格式非法：必须以小写字母或数字开头，只含 a–z、0–9、-');
+      return;
+    }
+    const category = window.prompt('输入 category（可留空）：') || '';
+
+    // 先把当前内容存好再转正，避免丢稿
+    await saveDay();
+    setStatus('saving', '转正中...');
+    const body = new URLSearchParams();
+    body.set('date', currentDate);
+    body.set('title', title.trim());
+    body.set('slug', slug);
+    body.set('category', category.trim());
+    body.set('csrf', csrf);
+    try {
+      const res = await fetch('/diary/api/promote', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        if (data && data.error === 'slug_conflict') {
+          setStatus('error', 'slug 冲突');
+          window.alert('slug "' + slug + '" 已被占用，请换一个');
+        } else {
+          setStatus('error', '转正失败');
+          window.alert('转正失败：' + (data && data.error ? data.error : res.status));
+        }
+        return;
+      }
+      setStatus('saved', '已转正');
+      // 跳到新建的文档编辑页，让用户继续打磨
+      window.location.href = '/manage/docs/' + encodeURIComponent(data.slug) + '/edit';
+    } catch (err) {
+      setStatus('error', '转正失败，点击重试');
+      console.error('[diary] promoteDay', err);
+    }
+  }
+
+  if (promoteBtn) {
+    promoteBtn.addEventListener('click', promoteDay);
   }
 
   // Ctrl+S / Cmd+S → 保存（阻止浏览器原生"保存网页为文件"对话框）
