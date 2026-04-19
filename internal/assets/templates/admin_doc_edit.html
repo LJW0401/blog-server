@@ -1,5 +1,6 @@
 {{ define "title" }}{{ if .Data.IsNew }}新建{{ else }}编辑{{ end }}{{ if eq .Data.Kind "project" }}项目{{ else }}文档{{ end }} — Penguin{{ end }}
 {{ define "body_class" }}page-admin{{ end }}
+{{ define "head" }}<link rel="stylesheet" href="/static/math/katex.min.css" />{{ end }}
 
 {{ define "content" }}
 {{ with .Data }}
@@ -31,5 +32,8 @@
   </form>
 </div>
 {{ end }}
-<script src="/static/js/doc_edit.js" defer></script>
+<script defer src="/static/math/katex.min.js"></script>
+<script defer src="/static/math/auto-render.min.js"></script>
+<script defer src="/static/math/math-init.js"></script>
+<script defer src="/static/js/doc_edit.js"></script>
 {{ end }}

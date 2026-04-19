@@ -624,3 +624,23 @@
 - **回归测试**：`TestPreview_Regression_MultipartRejected` 钉死契约
 - **紧急程度**：低（一次性修复，模式清晰）
 - **衍生建议**：若未来要支持图片上传等二进制场景，handler 这边要改用 `r.FormValue()` 或显式 `r.ParseMultipartForm()`；`r.Form.Get` 静默失败是个陷阱
+
+## 2026-04-19
+
+### Bug 修复：markdown 公式 $..$ / $$..$$ 不渲染
+- **发现于**：用户手动测试新搭建的博客
+- **现象**：文档里写 `$E=mc^2$`、`$$x_i=y_j$$` 保存后，公开 /docs/:slug 页只显示字面 `$E=mc^2$`，没有数学符号渲染
+- **根因**：不是服务端解析 bug。goldmark 默认**透传**了 `$...$` 和 `$$...$$`（没把下划线吃成 emphasis），但项目本身就没有客户端数学渲染器。换言之这是**缺一个前端渲染层**，不是"解析出错"
+- **修复**：embed KaTeX 0.16.11（JS 275K + CSS 23K + auto-render 3.5K + 20 个 woff2 字体 ~300K，合计 ~604K）到 `internal/assets/static/math/`。在 `doc_detail.html` 和 `admin_doc_edit.html` 挂 CSS/JS，新增 `math-init.js` 用 auto-render 扫描 `$..$` / `$$..$$` / `\(..\)` / `\[..\]` 四种分隔符，throwOnError:false 让错误公式不整页崩。admin 编辑器 Tab 切到预览时 fetch 注入 HTML 后重新调 `window.renderKatexIn(preview)` 对新节点再渲染一次
+- **回归测试**：
+  - `internal/public/doc_math_render_test.go:TestDocDetail_Regression_KatexAssetsEmbedded`：断言 /docs/:slug 页 HTML 含 katex.min.css/js/auto-render.min.js/math-init.js 四个资源引用，且 `$...$` 原样保留（证明 goldmark 没吃）
+  - `internal/admin/doc_preview_test.go:TestEditor_Regression_MathAssetsEmbedded`：断言 /manage/docs/new 编辑页 HTML 含同四件套 + doc_edit.js
+- **为什么原测试没覆盖**：
+  1. 项目过往没有"文档内含公式"这种输入用例；所有 doc 测试正文都用的普通中文 + markdown，从没 $...$
+  2. 渲染层的"功能性"只被间接测过（页面能返回 200、含 article 标签），没断言过任何可选渲染器资源（代码高亮 CSS、数学公式 JS 等）。这是一类"前端功能资源 embed"的系统性覆盖缺口
+  3. 根因是"缺前端渲染器"而不是"代码渲染错"——这种"缺"型 bug 最容易逃过 server-side 测试，必须靠"资源引用断言"兜底
+- **紧急程度**：中（个人博客写带公式的技术笔记属核心用例）
+- **衍生改进建议**：
+  1. 后续凡是依赖 client-side JS 做渲染的功能（code 高亮自定义、图表、diagram、音视频嵌入等），都应该有一个"资源引用断言"型的 regression test，即便内容本身要浏览器才能看见
+  2. 考虑加 CSP font-src 的检查测试：现在 CSP 是 font-src 'self'，embed 的 KaTeX woff2 走 /static/math/fonts/...  满足 self 同源，OK；但未来若有人引入 CDN 字体会静默被拒绝
+  3. 当前 init 只扫 `.doc-body, .diary-preview, .editor-preview` 三种容器。如果未来在 /projects/:slug 或 README 摘要等地方也要支持公式，需扩展选择器

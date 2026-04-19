@@ -30,7 +30,10 @@
         credentials: 'same-origin'
       })
         .then(function(r){ return r.ok ? r.text() : Promise.reject(r.status + ' ' + r.statusText); })
-        .then(function(html){ preview.innerHTML = html; })
+        .then(function(html){
+          preview.innerHTML = html;
+          if (typeof window.renderKatexIn === 'function') window.renderKatexIn(preview);
+        })
         .catch(function(err){ preview.textContent = '预览失败：' + err; });
     } else {
       preview.hidden = true;

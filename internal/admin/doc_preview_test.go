@@ -116,6 +116,32 @@ func TestPreview_Edge_ScriptEscaped(t *testing.T) {
 	}
 }
 
+// Regression：编辑器页面必须 embed KaTeX（CSS/JS）+ math-init + doc_edit.js，
+// 否则公式预览不出来、Tab 切换按钮不工作。
+func TestEditor_Regression_MathAssetsEmbedded(t *testing.T) {
+	b := crudSetup(t)
+	req := httptest.NewRequest("GET", "/manage/docs/new", nil)
+	req.Header.Set("User-Agent", "test/ua")
+	req.AddCookie(b.Cookie)
+	rr := httptest.NewRecorder()
+	b.Docs.NewDoc(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status %d", rr.Code)
+	}
+	out := rr.Body.String()
+	for _, want := range []string{
+		`href="/static/math/katex.min.css"`,
+		`src="/static/math/katex.min.js"`,
+		`src="/static/math/auto-render.min.js"`,
+		`src="/static/math/math-init.js"`,
+		`src="/static/js/doc_edit.js"`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("admin editor missing asset %q", want)
+		}
+	}
+}
+
 // Regression：前端必须用 urlencoded 发 preview，而不是 multipart/FormData；
 // r.ParseForm() 不解析 multipart body，会读不到 csrf 直接 403。这条用例钉死
 // content-type 契约，前端一旦改回 FormData 立刻挂。

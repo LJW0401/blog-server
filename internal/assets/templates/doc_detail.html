@@ -11,6 +11,11 @@
 <meta name="twitter:description" content="{{ .Data.Doc.Excerpt }}" />
 {{ end }}
 
+{{ define "head" }}
+<meta property="og:site_name" content="Penguin" />
+<link rel="stylesheet" href="/static/math/katex.min.css" />
+{{ end }}
+
 {{ define "content" }}
 {{ with .Data }}
 <article class="doc-detail">
@@ -46,4 +51,7 @@
   {{ end }}
 </article>
 {{ end }}
+<script defer src="/static/math/katex.min.js"></script>
+<script defer src="/static/math/auto-render.min.js"></script>
+<script defer src="/static/math/math-init.js"></script>
 {{ end }}
