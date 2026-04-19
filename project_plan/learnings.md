@@ -493,3 +493,15 @@
 - **紧急程度**：低
 
 - 2026-04-19 快速功能 login-prefill-username 完成，无 learnings（已执行反思清单）
+
+### 快速功能：mouse-side-buttons-nav — 站点开始引入 JS
+- **类型**：架构洞察
+- **描述**：此前站点纯服务端渲染 + CSS，无任何 JS。本次加了第一段 JS（16 行，IIFE）处理鼠标侧键。虽然小，但这建立了"站点可以有 JS"的先例。值得思考：后续如果 JS 越堆越多，是否需要一个简单的命名空间 / 模块化约定；以及 layout.html 的 `<script defer>` 只有一个，若加多了应考虑合并或 bundle
+- **建议处理方式**：暂时不动，继续以"每个 JS 独立 IIFE、按需 `<script defer>` 引入"为默认。JS 超过 3 个再考虑合并
+- **紧急程度**：低
+
+### 快速功能：mouse-side-buttons-nav — Go 测试搜索注释 false match
+- **类型**：Bug（已修正）
+- **描述**：第一版测试用 `strings.Index(src, "history.back")` 定位代码中的调用点，结果匹到了源文件顶部的注释里 "history.back/forward 能让行为..."，导致 prefix 不含 `=== 3` 守卫，测试假报错。改成搜 `history.back()` 带括号即可只命中代码调用
+- **建议处理方式**：以后对源码做文本扫描断言时，带上最小的语法上下文（括号、尾分号等）来避免与注释/字符串 false match
+- **紧急程度**：低
