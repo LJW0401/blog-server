@@ -112,7 +112,7 @@ func (h *Handlers) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, cookie)
 	h.Auth.ClearFailures(ip)
 	target := r.Form.Get("next")
-	if target == "" || !strings.HasPrefix(target, "/manage") {
+	if !isSafeNext(target) {
 		target = "/manage"
 	}
 	http.Redirect(w, r, target, http.StatusSeeOther)
@@ -227,10 +227,33 @@ func redirectWithError(w http.ResponseWriter, r *http.Request, msg, next string)
 
 func nextFrom(r *http.Request) string {
 	n := r.URL.Query().Get("next")
-	if strings.HasPrefix(n, "/manage") {
+	if isSafeNext(n) {
 		return n
 	}
 	return "/manage"
+}
+
+// isSafeNext 判定 login 后跳转目标是否安全：必须是本站已知的顶层路由前缀，
+// 并拒绝协议相对 URL（`//evil.com`）和带 scheme 的外链。挡在 LoginSubmit /
+// LoginPage 两个出口，避免 open-redirect。
+//
+// 目前只放行 /manage 和 /diary —— 这是站内仅有的两个需要登录的入口。
+// 新增需要登录的顶层路由时，在这里加一条即可（不会误放行外链因为前置
+// 协议相对 / 绝对 URL 检查会先挡掉）。
+func isSafeNext(n string) bool {
+	if n == "" {
+		return false
+	}
+	// 协议相对 URL（`//host/...`）被浏览器当作跨域跳转
+	if strings.HasPrefix(n, "//") {
+		return false
+	}
+	// 任何带 scheme 的都视为外链（http:、https:、javascript:、data: 等）
+	if strings.Contains(n, ":") {
+		return false
+	}
+	// 白名单前缀：必须以 / 开头接已知路由段
+	return strings.HasPrefix(n, "/manage") || strings.HasPrefix(n, "/diary")
 }
 
 // urlq escapes a string for use as a URL query value; tiny wrapper to keep

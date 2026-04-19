@@ -590,3 +590,18 @@
   2. `.diary-out-of-month` 在月视图下也让它可点会更好用 —— 目前月视图下点 5-1 占位仍然无反应。本次不扩大范围，留待后续
 
 - 2026-04-19 快速功能 月视图跨月格同风格 完成：把 `.diary-out-of-month` 基础样式改为和本月格一致的可点外观（仅日期数字稍浅提示"非本月"），删除周视图专属覆盖。衍生建议 2 落地。无其他 learnings（已执行反思清单）
+
+## 2026-04-19
+
+### Bug 修复：/manage/login?next=/diary 登录后跳回 /manage 而非 /diary
+- **发现于**：用户手动测试
+- **现象**：访问 http://127.0.0.1:8391/manage/login?next=/diary，输入账号密码登录成功，浏览器落到 /manage 而不是 /diary
+- **根因**：`internal/admin/admin.go` 两处 `strings.HasPrefix(target, "/manage")` 白名单把非 `/manage` 前缀一律拍回 `/manage`。diary 上线前后端整合时，漏了"next 白名单需要同步扩列"这一步。`LoginSubmit` 成功分支 和 `nextFrom`（已登录访问 login 页）两处都有
+- **修复**：抽成 `isSafeNext(n)` 帮助函数，统一处理空串 / 协议相对 URL (`//evil.com`) / 带 scheme 的外链 / 白名单前缀 (`/manage`、`/diary`)。`LoginSubmit` 和 `nextFrom` 都改用该函数
+- **回归测试**：`internal/admin/login_next_diary_test.go:TestLogin_Regression_NextDiaryRespected`（3 条断言：POST 成功分支 / 已登录 GET 分支 / 外链挡回默认页）
+- **为什么原测试没覆盖**：
+  1. admin 包的 login 测试只测了"登录成功默认去 /manage"和异常路径（密码错、空字段、限流），没有参数化 `next` 字段的测试
+  2. diary feature 的测试在 `internal/diary/`，只测了 /diary 的未登录 302 跳走，没覆盖"登录回跳 /diary"这条跨包往返路径
+  3. 跨模块集成点（/diary 未登录 → /manage/login?next=/diary → 登录成功 → /diary）没有单一 handler 拥有端到端责任，两端都各自通过了自己的单测，漏掉了中间的握手
+- **紧急程度**：中（影响用户体验但无数据/安全后果；已在白名单内兜底外链）
+- **衍生改进建议**：未来再加需要登录的顶层路由时，除了在 isSafeNext 里加前缀，也要在 login 测试里加一条 next= 该路由的 smoke case。或者上一层："登录回跳"本身值得一个专门的 E2E 覆盖矩阵，参数化列出所有需要登录的入口
