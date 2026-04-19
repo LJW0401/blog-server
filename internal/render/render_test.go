@@ -84,6 +84,36 @@ func TestMarkdown_Edge_JavascriptURLSanitized(t *testing.T) {
 	}
 }
 
+// --- MarkdownUnsafe --------------------------------------------------------
+
+// Smoke: 允许原始 HTML 透传，用于 admin-authored bio 的颜色/span 注入。
+func TestMarkdownUnsafe_Smoke_AllowsRawHTML(t *testing.T) {
+	md := render.NewMarkdownUnsafe()
+	h, err := md.ToHTML(`**粗** 和 <span style="color:red">红</span>`)
+	if err != nil {
+		t.Fatalf("ToHTML: %v", err)
+	}
+	s := string(h)
+	if !strings.Contains(s, "<strong>粗</strong>") {
+		t.Errorf("bold not rendered: %s", s)
+	}
+	if !strings.Contains(s, `<span style="color:red">红</span>`) {
+		t.Errorf("raw span passed through but not verbatim: %s", s)
+	}
+}
+
+// Edge（边界值）：空串 → 空 HTML，不应 panic。
+func TestMarkdownUnsafe_Edge_Empty(t *testing.T) {
+	md := render.NewMarkdownUnsafe()
+	h, err := md.ToHTML("")
+	if err != nil {
+		t.Fatalf("ToHTML: %v", err)
+	}
+	if string(h) != "" {
+		t.Errorf("empty input should yield empty HTML, got %q", h)
+	}
+}
+
 // --- Templates --------------------------------------------------------------
 
 func TestTemplates_Smoke_RenderLayoutWithPage(t *testing.T) {

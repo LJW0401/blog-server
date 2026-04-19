@@ -60,12 +60,12 @@
         <h2>关于我</h2>
         <a class="see-all" href="#contact">联系 ›</a>
       </div>
-      <p class="about-bio">
-        {{ if .About.Bio }}{{ .About.Bio }}{{ else }}
-        一名长期专注于<strong>后端工程与开发者工具</strong>的开发者，相信好的代码和好的文字同样重要。
-        <span class="muted">业余时间用来写博客、打磨开源项目，并记录思考与方法。</span>
+      <div class="about-bio">
+        {{ if .About.Bio }}{{ markdownUnsafe .About.Bio }}{{ else }}
+        <p>一名长期专注于<strong>后端工程与开发者工具</strong>的开发者，相信好的代码和好的文字同样重要。
+        <span class="muted">业余时间用来写博客、打磨开源项目，并记录思考与方法。</span></p>
         {{ end }}
-      </p>
+      </div>
       <div class="about-grid">
         <div class="about-card">
           <div class="kicker">Stack</div>

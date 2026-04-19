@@ -32,7 +32,7 @@
 
     <h2>关于我（主页第二页卡片区）</h2>
     <label class="block-label"><span>自我介绍段落</span>
-      <textarea name="about_bio" rows="3" placeholder="默认：一名长期专注于后端工程与开发者工具的开发者……（留空则用默认）">{{ index .Values "about_bio" }}</textarea>
+      <textarea name="about_bio" rows="4" placeholder="支持 Markdown：**加粗** *斜体* [链接](url)，以及 &lt;span style=&quot;color:#c00&quot;&gt;自定义颜色&lt;/span&gt;。留空则使用默认文案。">{{ index .Values "about_bio" }}</textarea>
     </label>
     <label class="block-label"><span>技能栈</span>
       <textarea name="about_stack" rows="2" placeholder="逗号分隔，例：TypeScript, Go, Python, Node.js">{{ index .Values "about_stack" }}</textarea>

@@ -106,6 +106,7 @@ func (t *Templates) Markdown() *Markdown { return t.md }
 // --- FuncMap ---------------------------------------------------------------
 
 func funcMap(md *Markdown) template.FuncMap {
+	mdUnsafe := NewMarkdownUnsafe()
 	return template.FuncMap{
 		"formatDate": func(t time.Time, layout string) string {
 			if t.IsZero() {
@@ -121,6 +122,9 @@ func funcMap(md *Markdown) template.FuncMap {
 		"join":  strings.Join,
 		"markdown": func(s string) (template.HTML, error) {
 			return md.ToHTML(s)
+		},
+		"markdownUnsafe": func(s string) (template.HTML, error) {
+			return mdUnsafe.ToHTML(s)
 		},
 		"readingTime": func(s string) int {
 			words := len(strings.Fields(s))

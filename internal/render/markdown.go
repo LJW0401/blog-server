@@ -45,6 +45,27 @@ func NewMarkdown() *Markdown {
 	return &Markdown{md: m}
 }
 
+// NewMarkdownUnsafe is like NewMarkdown but passes raw HTML in the source
+// through verbatim. Used for admin-authored short-form content (e.g. the
+// "关于我" bio) where inline HTML is needed to tweak colour / span styling.
+// Never use this on user-submitted content.
+func NewMarkdownUnsafe() *Markdown {
+	m := goldmark.New(
+		goldmark.WithExtensions(
+			extension.GFM,
+			extension.Footnote,
+			extension.Typographer,
+			extension.DefinitionList,
+		),
+		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
+		goldmark.WithRendererOptions(
+			ghtml.WithXHTML(),
+			ghtml.WithUnsafe(),
+		),
+	)
+	return &Markdown{md: m}
+}
+
 // ToHTML renders Markdown source to safe HTML. The output is wrapped in
 // template.HTML so templates can inject it without re-escaping — goldmark's
 // default renderer escapes HTML in the source, so the resulting string is

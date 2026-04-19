@@ -395,3 +395,15 @@
 
 - 2026-04-19 快速功能 home-doc-excerpt 完成，无 learnings（已执行反思清单）
 - 2026-04-19 快速功能 home-doc-title-bigger 完成，无 learnings（已执行反思清单）
+
+### 快速功能：about-bio-markdown — 默认文案分支与 markdown 路径不一致
+- **类型**：技术债
+- **描述**：home.html 的 `.about-bio` 容器里，当 `about_bio` 为空时走硬编码的默认 HTML（含 `<strong>` 与 `<span class="muted">`），与"用户填写→走 `markdownUnsafe`"是两条独立渲染路径。想统一默认文案样式（例如加颜色）要改两个地方，容易漏
+- **建议处理方式**：把默认文案改为一段 Markdown 常量，同样经过 `markdownUnsafe` 渲染；或把它搬到 settings 默认值里做 seed
+- **紧急程度**：低
+
+### 快速功能：about-bio-markdown — Unsafe renderer 的作用域约束
+- **类型**：架构洞察
+- **描述**：引入了第二份 goldmark 实例（`NewMarkdownUnsafe`，开启 `WithUnsafe`）来让 admin 能在 bio 里写 `<span style="color:...">`。docs 的渲染仍走安全版 `NewMarkdown`，`TestMarkdown_Edge_ScriptEscaped` 照常通过，两套管线互不污染。这条边界要守住：后续任何公开可投稿的入口都不得用 `markdownUnsafe`
+- **建议处理方式**：`markdownUnsafe` 的 godoc 已注明 "Never use this on user-submitted content"；后续如果引入评论/访客留言，必须在代码评审中卡住
+- **紧急程度**：低
