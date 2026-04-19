@@ -465,3 +465,11 @@
   1. public 还有其它缓存（RecentRepos、GitHub cache 等）可能存在类似"写入方不通知读取方"的问题，建议统一梳理一遍数据时效策略
   2. 目前 `Invalidate` 是手写回调，规模再大可以换成更通用的 pub/sub 或观察者；现阶段一个 func() 足够
   3. "跨包状态同步"这一类别值得加到测试清单的固定检查项：凡是一侧写、另一侧读且存在缓存的路径，都应有集成测试覆盖"写完立即读"
+
+### 快速功能：readme-excerpt-card — 内容裁剪后的 Markdown 可能结构不完整
+- **类型**：技术债
+- **描述**：`internal/github/client.go:GetReadmeExcerpt` 按 rune 数截断 README（再加省略号 `…`）。一旦截断点落在代码块、列表项、链接中间，goldmark 渲染出的 HTML 可能出现未闭合的 `<pre>` / 悬挂的 `[text`，虽然模板用 `.readme-excerpt-box` 做了 `overflow: hidden` 兜底，但视觉上可能出现"半截代码块"这种奇怪态
+- **建议处理方式**：截断时尽量在段落边界处停（遇到 `\n\n` 就截），或者改成在服务端先渲染 HTML 再按可视长度裁剪；短期可接受
+- **紧急程度**：低
+
+- 2026-04-19 快速功能 readme-excerpt-card 完成，6 项反思其余条目均为"无"

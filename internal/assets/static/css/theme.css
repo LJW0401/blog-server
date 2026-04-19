@@ -370,7 +370,43 @@ body.page-projects .status-list .sc { margin-left: auto; font-size: 11px; color:
 
 /* Readme excerpt block on project detail */
 .readme-excerpt { margin-top: 48px; padding-top: 32px; border-top: 1px solid rgba(0,0,0,0.06); }
-.readme-excerpt h2 { font-size: 20px; margin-bottom: 12px; }
+.readme-excerpt h2 { font-size: 20px; margin-bottom: 14px; }
+.readme-excerpt-box {
+  background: var(--bg-alt);
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  overflow: hidden;
+}
+.readme-excerpt-box > *:last-child { margin-bottom: 0; }
+.readme-excerpt-box p { margin-bottom: 10px; }
+.readme-excerpt-box h1, .readme-excerpt-box h2, .readme-excerpt-box h3,
+.readme-excerpt-box h4, .readme-excerpt-box h5, .readme-excerpt-box h6 {
+  font-size: 15px; font-weight: 600; color: var(--ink);
+  margin: 14px 0 8px; letter-spacing: -0.005em;
+}
+.readme-excerpt-box ul, .readme-excerpt-box ol { margin: 8px 0 12px 22px; }
+.readme-excerpt-box li { margin-bottom: 4px; }
+.readme-excerpt-box a { color: var(--accent); text-decoration: none; }
+.readme-excerpt-box a:hover { text-decoration: underline; }
+.readme-excerpt-box code {
+  background: rgba(0,0,0,0.05); padding: 1px 6px; border-radius: 4px;
+  font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px;
+  color: var(--ink);
+}
+.readme-excerpt-box pre {
+  background: rgba(0,0,0,0.04); padding: 12px 14px; border-radius: var(--radius-sm);
+  overflow-x: auto; font-size: 12.5px; margin: 10px 0;
+}
+.readme-excerpt-box pre code { background: transparent; padding: 0; }
+.readme-excerpt-box blockquote {
+  border-left: 3px solid var(--line); padding-left: 12px;
+  color: var(--ink-faint); margin: 10px 0;
+}
+.readme-excerpt-box img { max-width: 100%; border-radius: var(--radius-sm); }
 
 /* --- Admin --- */
 body.page-admin-login { background: var(--bg); }
@@ -541,6 +577,10 @@ body.page-admin { background: var(--bg-alt); }
   .admin-card, .admin-section { background: #1f1f22; border-color: rgba(255,255,255,0.09); box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset; }
   .admin-card input:focus { background: #151518; }
   .admin-table th, .admin-table td { border-bottom-color: rgba(255,255,255,0.08); }
+  .readme-excerpt-box { background: #1c1c1e; border-color: rgba(255,255,255,0.06); color: var(--ink-soft); }
+  .readme-excerpt-box code { background: rgba(255,255,255,0.06); color: var(--ink); }
+  .readme-excerpt-box pre { background: rgba(255,255,255,0.04); }
+  .readme-excerpt { border-top-color: rgba(255,255,255,0.06); }
   .default-password-banner { background: #332b00; color: #ffd280; border-bottom-color: #664d00; }
   .draft-banner { background: #332b00; color: #ffd280; }
   .archived-banner { background: #2c2c2e; color: #a1a1a6; }

@@ -42,9 +42,9 @@
   </section>
 
   {{ if and .Info .Info.ReadmeExcerpt }}
-  <section class="doc-body readme-excerpt">
+  <section class="readme-excerpt">
     <h2>README 摘要</h2>
-    <p>{{ .Info.ReadmeExcerpt }}</p>
+    <div class="readme-excerpt-box">{{ markdown .Info.ReadmeExcerpt }}</div>
   </section>
   {{ end }}
 
