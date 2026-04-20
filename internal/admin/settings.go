@@ -26,6 +26,7 @@ type SettingsHandlers struct {
 var SettingsKeys = []string{
 	// Hero + footer contact.
 	"name", "tagline", "location", "direction", "status",
+	"avatar_url", // 绝对 URL 或 /images/... 相对路径；留空前台不显示头像
 	"qq_group",
 	"media_github", "media_gitee",
 	"media_bilibili", "media_douyin", "media_xiaohongshu",
@@ -107,6 +108,12 @@ func validateSettings(v map[string]string) error {
 	}
 	if qq := v["qq_group"]; qq != "" && !qqRe.MatchString(qq) {
 		return errMsg("QQ 群号必须为 5–12 位纯数字")
+	}
+	// 头像允许 http(s) 绝对 URL 或以 / 开头的站内相对路径（比如上传到 /images/avatar.png）。
+	if av := v["avatar_url"]; av != "" {
+		if !(urlRe.MatchString(av) || strings.HasPrefix(av, "/")) {
+			return errMsg("头像 URL 必须以 http://、https:// 或 / 开头")
+		}
 	}
 	return nil
 }

@@ -164,6 +164,10 @@ func main() {
 	trashAdmin := &admin.TrashHandlers{Parent: adminH, Content: cstore, DataDir: cfg.DataDir}
 	aboutAdmin := &admin.AboutHandlers{Parent: adminH, DataDir: cfg.DataDir}
 	ph.AboutPath = filepath.Join(cfg.DataDir, "content", "about.md")
+	avatarAdmin := &admin.AvatarHandlers{
+		Parent: adminH, DataDir: cfg.DataDir,
+		Settings: settingsStore, Invalidate: ph.InvalidateSettings,
+	}
 
 	mux := http.NewServeMux()
 	healthzBody := fmt.Sprintf("ok blog-server %s\n", resolveVersion())
@@ -211,7 +215,7 @@ func main() {
 	})
 	mux.HandleFunc("/manage/logout", adminH.Logout)
 
-	protected := buildAdminMux(adminH, docsAdmin, imagesAdmin, settingsAdmin, projectsAdmin, trashAdmin, aboutAdmin)
+	protected := buildAdminMux(adminH, docsAdmin, imagesAdmin, settingsAdmin, projectsAdmin, trashAdmin, aboutAdmin, avatarAdmin)
 	// /images/* static file serving (uploaded content).
 	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(filepath.Join(cfg.DataDir, "images")))))
 

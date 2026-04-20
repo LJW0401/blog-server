@@ -29,6 +29,7 @@ func buildAdminMux(
 	projects *admin.ProjectHandlers,
 	trash *admin.TrashHandlers,
 	about *admin.AboutHandlers,
+	avatar *admin.AvatarHandlers,
 ) *http.ServeMux {
 	mux := http.NewServeMux()
 
@@ -68,6 +69,8 @@ func buildAdminMux(
 
 	// Settings
 	mux.HandleFunc("/manage/settings", postOrGet(settings.SettingsSubmit, settings.SettingsPage))
+	mux.HandleFunc("/manage/avatar/upload", avatar.Upload)
+	mux.HandleFunc("/manage/avatar/delete", avatar.Delete)
 
 	// About page (单独管理，不与 docs 混）
 	mux.HandleFunc("/manage/about", postOrGet(about.AboutSubmit, about.AboutPage))

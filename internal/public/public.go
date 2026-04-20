@@ -25,6 +25,7 @@ type SiteSettings struct {
 	Location   string
 	Direction  string
 	Status     string
+	AvatarURL  string // 主页 hero 头像；空字符串代表不渲染 <img>
 	ContactQQ  string
 	OSSLinks   []MediaLink // 开源项目列：GitHub, Gitee
 	MediaLinks []MediaLink // 媒体列：B站, 抖音, 小红书
@@ -129,6 +130,9 @@ func (h *Handlers) resolveSettings() SiteSettings {
 		}
 		if v := kv["status"]; v != "" {
 			s.Status = v
+		}
+		if v := kv["avatar_url"]; v != "" {
+			s.AvatarURL = v
 		}
 		if v := kv["qq_group"]; v != "" {
 			s.ContactQQ = v

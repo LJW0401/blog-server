@@ -793,3 +793,27 @@
   - 落实到代码：前台 `trimmed == ""` 即回退；后台只在 `os.ReadFile` err（文件不存在）时回退，文件存在即使内容空也原样显示。这种"前后台对同一个数据的可见性故意不一致"以前没写过，但逻辑上是对的
 - **建议处理方式**：下次再遇到"嵌入默认内容 + 用户可覆盖"的模式，按这个骨架抄即可。嵌默认用 `//go:embed`，覆盖用 DataDir 下的同名文件
 - **紧急程度**：低
+
+
+## 2026-04-21（续 4）
+
+### 快速功能：主页 hero 头像
+- **类型**：技术债
+- **描述**：`resolveSettings` 对 `avatar_url` 仅用 `v != ""` 判空，不 TrimSpace；admin `SettingsSubmit` 在 POST 时对所有字段统一 TrimSpace 后落库，所以正常路径不会存"   "。但如果有人直接改 DB、或者将来绕过 admin 写入，前台会输出 `<img src="   ">` 这种空盒子。resolveSettings 里 7 个 `if v != ""` 是同款写法，都没有 TrimSpace
+- **建议处理方式**：下次整理 settings KV 时把 resolveSettings 里的判空改成 `if v := strings.TrimSpace(kv[...]); v != ""`，统一一份；当前留 `TestHome_Edge_AvatarWhitespaceNotShownAsEmptyBox` 作为未来回归锚点——改完后 flip 断言即可
+- **紧急程度**：低
+
+
+## 2026-04-21（续 5）
+
+### 快速功能：头像点击上传
+- **类型**：重构机会
+- **描述**：`internal/admin/avatar.go` 的 MIME 嗅探 + SVG 特判段（约 25 行：`DetectContentType`、`text/xml` / `text/plain` + `.svg` 后缀兜底、`allowedImageMIMEs` 查表、sniff 后 `file.Seek(0)`）是从 `images.go` 直接复制的。当前两个入口（`/manage/images/upload` + `/manage/avatar/upload`）相似度高但各自独立；将来再加一个（比如 favicon / OG cover 上传），就值得抽 `validateAndNormalizeImage(header, file) (ext string, err error)` 这种 helper。现在 2 处还能接受
+- **建议处理方式**：等第 3 个入口出现时抽；现有两处留为"重复代码观察样本"
+- **紧急程度**：低
+
+### 快速功能：头像点击上传 — 测试缺口
+- **类型**：测试/文档缺口
+- **描述**：avatar.go 里有个"文件已落盘但 settings.Set 失败"的降级路径（不 remove 文件，前端还能拿到 url 手动保存），测试没覆盖 —— 因为要注入会返回 error 的 settings.Store mock，而当前 admin 测试都用真 storage，改动比较大。属于"防御性分支但不敏感"的测试债
+- **建议处理方式**：下次 settings 层若要改接口，顺手加个 `type SettingsWriter interface { Set(k, v string) error }`，让 AvatarHandlers 依赖接口而非具体类型，测试时注 mock
+- **紧急程度**：低

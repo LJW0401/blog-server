@@ -21,6 +21,25 @@
     <label><span>坐标</span><input name="location" value="{{ index .Values "location" }}" /></label>
     <label><span>方向</span><input name="direction" value="{{ index .Values "direction" }}" /></label>
     <label><span>现状</span><input name="status" value="{{ index .Values "status" }}" /></label>
+    <label class="avatar-row"><span>头像</span>
+      <span class="avatar-control">
+        <button type="button" id="avatar-thumb"
+                class="avatar-thumb {{ if not (index .Values "avatar_url") }}is-empty{{ end }}"
+                data-csrf="{{ .CSRF }}"
+                data-src="{{ index .Values "avatar_url" }}"
+                title="点击上传新头像"
+                aria-label="上传头像">
+          {{ if index .Values "avatar_url" }}<img src="{{ index .Values "avatar_url" }}" alt="当前头像" />{{ else }}<span class="avatar-thumb-hint">点击上传</span>{{ end }}
+        </button>
+        <input type="file" id="avatar-file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" hidden />
+        <input name="avatar_url" id="avatar-url" value="{{ index .Values "avatar_url" }}" placeholder="上传后自动填入，也可手填 /images/... 或 https://..." />
+        <span class="avatar-actions">
+          <button type="button" id="avatar-delete" class="btn btn-ghost btn-sm"
+                  {{ if not (index .Values "avatar_url") }}hidden{{ end }}>删除头像</button>
+          <span id="avatar-status" class="avatar-status" role="status" aria-live="polite"></span>
+        </span>
+      </span>
+    </label>
 
     <h2>联系 / 媒体</h2>
     <label><span>QQ 群号</span><input name="qq_group" value="{{ index .Values "qq_group" }}" placeholder="5–12 位数字" /></label>
@@ -52,4 +71,5 @@
   </form>
 </div>
 {{ end }}
+<script defer src="/static/js/avatar_upload.js"></script>
 {{ end }}
