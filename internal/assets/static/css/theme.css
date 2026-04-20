@@ -244,6 +244,7 @@ body.page-doc-detail { background: var(--bg); }
 .doc-body blockquote { border-left: 3px solid var(--line); padding-left: 18px; color: var(--ink-soft); margin-bottom: 20px; }
 .doc-nav { margin-top: 64px; display: flex; justify-content: space-between; gap: 24px; }
 .doc-nav a { font-size: 14px; color: var(--accent); text-decoration: none; max-width: 45%; }
+.doc-nav .next { margin-left: auto; text-align: right; }
 .doc-nav .prev::before { content: "‹ "; }
 .doc-nav .next::after { content: " ›"; }
 
