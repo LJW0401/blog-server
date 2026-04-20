@@ -66,6 +66,10 @@ type Handlers struct {
 	Stats       StatsRecorder
 	Settings    func() SiteSettings
 	Logger      *slog.Logger
+	// AboutPath points at a plain-markdown file (no frontmatter) read by
+	// the /about handler. Empty or missing ⇒ 404. Lives outside the
+	// content/docs tree so it is not indexed as a blog post.
+	AboutPath string
 
 	mu       sync.Mutex
 	cached   SiteSettings

@@ -13,6 +13,14 @@ var templatesFS embed.FS
 //go:embed static
 var staticFS embed.FS
 
+//go:embed defaults/about.md
+var defaultAboutMD string
+
+// DefaultAbout returns the fallback Markdown for the /about page shown when
+// no admin-authored content/about.md exists. Source lives at
+// internal/assets/defaults/about.md — edit that file to change the default.
+func DefaultAbout() string { return defaultAboutMD }
+
 // Templates returns an fs.FS rooted at the templates directory.
 func Templates() fs.FS {
 	sub, err := fs.Sub(templatesFS, "templates")

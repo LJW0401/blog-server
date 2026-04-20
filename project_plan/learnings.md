@@ -736,3 +736,60 @@
 - **为什么原测试没覆盖**：既有的 `TestDocDetail_Smoke_PrevNextNavigation` 只放了 3 篇都 published 的数据，没有测"异种状态混合"这一条清单项。属于"异常/边界测试场景清单不完整"——只覆盖了 happy path，边界值（状态混合）漏了。以后写 smoke 时应主动想：列表型功能是否存在可见性过滤？过滤跟导航是不是用的同一个数据源？
 - **紧急程度**：中（公开站直接可见，影响用户信任；但不会崩溃）
 - **衍生改进建议**：顺手扫了一眼同模块其它地方：`feeds.go:53` RSS 和 `feeds.go:121` sitemap 的 doc 循环各自内联过滤了 published（不是共享 helper，重复写了三遍）；但 `feeds.go:130` sitemap 的 project 循环**没有**按状态过滤，`public.go:223` 首页推荐位也值得再确认一遍。下次可以把 `filterByStatus` 抽出来让三处复用，顺带补 project sitemap 这个口子
+
+
+## 2026-04-21
+
+### 快速功能：关于我页面 (/about)
+- **类型**：重构机会
+- **描述**：About 的 status 访问控制（draft 仅登录可见、archived/published 公开、其它 404）跟 DocDetail 的 `switch e.Status { ... }` 几乎一模一样，这次直接在 about.go 里手写了一份。还没抽出来的原因是重复只有 2 处，硬抽 helper 边际收益低；如果将来再多一个入口（比如 /cv、/resume）就值得提一个 `canView(status, loggedIn) bool`
+- **建议处理方式**：等第 3 个复用点出现时一起抽
+- **紧急程度**：低
+
+### 快速功能：关于我页面 — About doc 在 /docs 列表/RSS/sitemap 里同时出现
+- **类型**：架构洞察
+- **描述**：/about 复用 content store 的 doc（slug=about）作为数据源，但这篇 doc 仍会被 `/docs` 列表、RSS feed、sitemap 当作普通博客文章展示 —— about 会出现在文档目录里，也会作为 prev/next 邻居出现在别的博客文章底部。用户报的"上下篇按钮" bug 那次我把 draft/archived 过滤了，但 about 是 published 状态的正常 doc，过滤不到它。这属于"一个 slug 同时承担两种语义"的设计债
+- **建议处理方式**：两个候选。(a) 用户自律：把 about 设为 status=archived，就不会进 /docs 列表/RSS/sitemap，但归档横幅也跟着出现在 /about，体验差。(b) 代码里特判：在 docs list / RSS / sitemap / prev-next 里显式过滤 `slug != "about"`，但多处特判是技术债开始。(c) 换个存储位置：让 about 不用 content/docs 而是存在比如 content/pages/ 里，彻底分离。长远看 (c) 最干净，需要 content store 支持 page kind
+- **紧急程度**：中（功能可用，但有副作用需要用户知道；优先级取决于用户是否真的把 about 写成很不像博客的内容）
+
+
+## 2026-04-21（续）
+
+### 快速功能：/about 从 content/docs 迁到 settings
+- **类型**：架构洞察
+- **描述**：原来想用 content/docs 存 about（slug=about），一次实现就报告过两个副作用（它会漏进 /docs 列表/RSS/sitemap/prev-next）。用户明确"单独管理，不跟其他文档混"后，这次直接换成 `about_detail` 写到 `site_settings` KV。重构范围：admin/settings.go 加 key；admin_settings.html 加 textarea（rows=16）；public.AboutData 加 `Detail` 字段 + 解析；public/about.go 改从 `h.about().Detail` 读；about.html 去掉 doc 相关的条件（draft/archived banner）；测试全量重写（6 个用例覆盖：渲染 / 空 404 / 仅空白 404 / 原始 HTML 不破页 / 导航链接 / 确认 content/docs/about.md 不再被读取）
+- **新理解**：以后写"定位是 site-meta 的独立页面"（关于我 / 简历 / 订阅须知 / 友链），默认走 settings KV + 专属 handler；只有"博客/文章语义，需要标签/状态/归档/阅读数"的内容才用 content/docs。判断标准是：这篇内容应该出现在 /docs 列表里吗？如果不应该，就不该用 content store
+- **建议处理方式**：把"site-meta vs content 选型"这条默认规则补到 ARCHITECTURE.md 或 PURPOSE.md 的某一节；下次再加 /cv /links 这类页面时避免重蹈覆辙
+- **紧急程度**：低
+
+
+## 2026-04-21（续 2）
+
+### 快速功能：/about 再次迁移 — settings → content/about.md 裸文件 + 独立管理页
+- **类型**：架构洞察
+- **描述**：前一轮（续 1）把 about 放进 `site_settings.about_detail` KV，用户否决了该方案，要求"内容"维度管理且有编辑/预览功能。最终落地：文件 `{DataDir}/content/about.md`（裸 Markdown，无 frontmatter，不在 content/docs 子目录），admin 端加 `/manage/about` 独立页（AboutHandlers + admin_about_edit.html，复用 `.editor-tabs` + doc_edit.js + `/manage/docs/preview` 预览端点）；public 端 /about 直接 `os.ReadFile` 该文件，空或缺失 → 404。atomic 写用 temp-file + rename
+- **新理解**：项目内的"独立页面"有三种落脚点，各有适用场景：
+  1. **site_settings KV**（`about_bio` / `tagline` 等）：短字段、站点元数据、通常只读，不需要富文本编辑器。用 admin_settings.html 单表单多字段
+  2. **content/docs markdown**（带 frontmatter）：有标签/状态/归档/SEO/列表展示需求 → 走博客文档流水线
+  3. **content/ 根下的单文件 markdown + 独立 admin 页**（这次）：需要长文本 + 编辑预览 + 不想进博客列表/feed → 一次性的 site page。`/about` 是第一个，以后 `/cv`、`/subscribe`、`/links` 若也这么做，可考虑抽 `PageHandlers` + 共享编辑模板
+- **建议处理方式**：出现第 2 个同类页面时再抽象。`admin_doc_edit.html` 和 `admin_about_edit.html` 的 editor 区块重复度 70%，如果后续还要加 /cv 之类，值得抽一个 template block（Go template 虽无宏但可用 `{{ template "editor-shell" . }}` 组合）
+- **紧急程度**：低
+
+### 快速功能：/about — 回补测试清单
+- **类型**：测试/文档缺口
+- **描述**：本次异常测试比较完整（非法输入-空 path / 边界值-空白/空文件 / 权限-无 cookie 401 / 权限-CSRF 错 403 / 异常恢复-原子写 overwrite 不留 .tmp / 边界值-清空 body 允许），但有一条漏网的条件没测：预览端点 `/manage/docs/preview` 在 about 场景下被复用，约定了它对"无 frontmatter 的纯 markdown 正文"也能正确渲染。虽然 stripFrontmatter 的实现看起来对无 frontmatter 返回原文本，但没有专门针对"about 预览"路径的集成断言
+- **建议处理方式**：下次动 Preview 或 about 任一侧时，补一个"POST /manage/docs/preview body=纯 markdown → 返回 HTML 片段含 `<strong>`"的用例，作为两侧契约的锚点
+- **紧急程度**：低
+
+
+## 2026-04-21（续 3）
+
+### 快速功能：/about 加默认文案
+- **类型**：架构洞察
+- **描述**：初稿的 /about 在文件空/缺失时直接 404，新部署站点用户体验差。改成：把默认 Markdown 嵌在 `internal/assets/defaults/about.md`（embed 进二进制），两侧都能通过 `assets.DefaultAbout()` 拿到。前台 handler 在文件缺失 OR trim 后为空时回退到默认；admin 编辑器首次访问（文件不存在）预填默认让管理员"在模板上改"而非从空白开始
+- **新理解**："文件缺失"和"文件存在但空"是两个不同的语义状态，两端应该**分别处理**：
+  - **前台**统一回退到默认（给终端用户最友好的视觉）
+  - **后台**必须区分（否则管理员"显式清空"会被默认覆盖，永远清不掉）
+  - 落实到代码：前台 `trimmed == ""` 即回退；后台只在 `os.ReadFile` err（文件不存在）时回退，文件存在即使内容空也原样显示。这种"前后台对同一个数据的可见性故意不一致"以前没写过，但逻辑上是对的
+- **建议处理方式**：下次再遇到"嵌入默认内容 + 用户可覆盖"的模式，按这个骨架抄即可。嵌默认用 `//go:embed`，覆盖用 DataDir 下的同名文件
+- **紧急程度**：低

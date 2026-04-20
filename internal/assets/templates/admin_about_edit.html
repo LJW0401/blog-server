@@ -1,0 +1,38 @@
+{{ define "title" }}关于我 — Penguin{{ end }}
+{{ define "body_class" }}page-admin{{ end }}
+{{ define "head" }}<link rel="stylesheet" href="/static/math/katex.min.css" />{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<div class="admin-shell">
+  <header class="admin-header">
+    <h1>关于我</h1>
+    <div class="admin-session">
+      <a href="/manage">← 返回面板</a>
+    </div>
+  </header>
+
+  {{ if .Info }}<div class="form-info">已保存</div>{{ end }}
+
+  <form class="admin-section editor-form" method="POST" action="/manage/about">
+    <input type="hidden" name="csrf" value="{{ .CSRF }}" />
+    <div class="editor-tabs" role="tablist">
+      <button type="button" class="editor-tab is-active" data-mode="edit" role="tab" aria-selected="true">编辑</button>
+      <button type="button" class="editor-tab" data-mode="preview" role="tab" aria-selected="false">预览</button>
+    </div>
+    <label class="editor-label" data-for="edit">Markdown 正文（无 frontmatter，直接写内容）</label>
+    <textarea name="body" spellcheck="false" autofocus>{{ .Body }}</textarea>
+    <div class="editor-preview doc-body" hidden aria-live="polite"></div>
+    <div class="editor-actions">
+      <a class="btn btn-ghost" href="/manage">取消</a>
+      <button class="btn btn-primary" type="submit">保存</button>
+    </div>
+    <p class="note">保存后立即生效（无缓存）；留空则前台 /about 返回 404。预览端点复用 /manage/docs/preview，所见即所得。</p>
+  </form>
+</div>
+{{ end }}
+<script defer src="/static/math/katex.min.js"></script>
+<script defer src="/static/math/auto-render.min.js"></script>
+<script defer src="/static/math/math-init.js"></script>
+<script defer src="/static/js/doc_edit.js"></script>
+{{ end }}

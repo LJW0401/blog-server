@@ -224,8 +224,10 @@ body.page-docs .shell, body.page-projects .shell {
 .pager .current { background: var(--ink); color: #fff; }
 
 /* Doc detail */
-body.page-doc-detail { background: var(--bg); }
-.doc-detail { max-width: 740px; margin: 0 auto; padding: 120px 24px 96px; position: relative; z-index: 1; }
+body.page-doc-detail, body.page-about { background: var(--bg); }
+.doc-detail, .about-page { max-width: 740px; margin: 0 auto; padding: 120px 24px 96px; position: relative; z-index: 1; }
+.about-header { margin-bottom: 36px; border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 20px; }
+.about-header h1 { font-size: clamp(32px, 4vw, 48px); font-weight: 600; letter-spacing: -0.022em; line-height: 1.1; }
 .doc-header { margin-bottom: 48px; border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 24px; }
 .doc-header .kicker { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 14px; }
 .doc-header h1 { font-size: clamp(32px, 4vw, 48px); font-weight: 600; letter-spacing: -0.022em; line-height: 1.1; margin-bottom: 18px; }

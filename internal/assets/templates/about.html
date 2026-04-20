@@ -1,0 +1,30 @@
+{{ define "title" }}关于我 — Penguin{{ end }}
+{{ define "body_class" }}page-about{{ end }}
+{{ define "description" }}关于 Penguin 的详细介绍。{{ end }}
+{{ define "og" }}
+<meta property="og:site_name" content="Penguin" />
+<meta property="og:type" content="profile" />
+<meta property="og:title" content="关于我" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="关于我" />
+{{ end }}
+
+{{ define "head" }}
+<link rel="stylesheet" href="/static/math/katex.min.css" />
+{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<article class="about-page">
+  <header class="about-header">
+    <h1>关于我</h1>
+  </header>
+  <section class="about-body doc-body">
+    {{ markdownUnsafe .Body }}
+  </section>
+</article>
+{{ end }}
+<script defer src="/static/math/katex.min.js"></script>
+<script defer src="/static/math/auto-render.min.js"></script>
+<script defer src="/static/math/math-init.js"></script>
+{{ end }}
