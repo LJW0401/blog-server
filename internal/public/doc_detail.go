@@ -37,7 +37,12 @@ func (h *Handlers) DocDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prev, next := prevNext(h.Content.Docs().List(content.KindDoc), e)
+	// Prev/next navigate only among published entries, matching what users
+	// see on /docs and its archive/category views. Without this filter,
+	// drafts (admin-only) and archived docs leak into neighbour links and
+	// make the sequence look shuffled / jump to hidden pages.
+	siblings := filterByStatus(h.Content.Docs().List(content.KindDoc), content.StatusPublished)
+	prev, next := prevNext(siblings, e)
 
 	// Record a read — only for published (not draft preview or archived).
 	if e.Status == content.StatusPublished && h.Stats != nil {

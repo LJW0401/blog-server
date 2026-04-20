@@ -296,3 +296,34 @@ func TestDocDetail_Smoke_PrevNextNavigation(t *testing.T) {
 		t.Errorf("next link missing")
 	}
 }
+
+// Bug（状态过滤）：doc_detail 的上/下一篇曾直接遍历全量列表，导致 draft
+// 和 archived 的邻居会被当作导航目标，进而表现为"出现草稿"和"跳过连续
+// 文章的乱序"。回归：在 a/b/c 三篇 published 之间按时间插入一篇 draft
+// 和一篇 archived，要求 b 的 prev 仍是 a、next 仍是 c，不能指向 draft
+// 或 archived。
+func TestDocDetail_Bug_PrevNextSkipsNonPublished(t *testing.T) {
+	h := setup(t, map[string]string{
+		"a":       doc("a", "2026-04-10", "published", false, ""),
+		"draft-x": doc("draft-x", "2026-04-08", "draft", false, ""),
+		"b":       doc("b", "2026-04-05", "published", false, ""),
+		"arch-y":  doc("arch-y", "2026-04-04", "archived", false, ""),
+		"c":       doc("c", "2026-04-02", "published", false, ""),
+	}, nil)
+	req := httptest.NewRequest("GET", "/docs/b", nil)
+	w := httptest.NewRecorder()
+	h.DocDetail(w, req)
+	body := w.Body.String()
+	if !strings.Contains(body, `href="/docs/a"`) {
+		t.Errorf("prev should point to published 'a', body=%s", body)
+	}
+	if !strings.Contains(body, `href="/docs/c"`) {
+		t.Errorf("next should point to published 'c', body=%s", body)
+	}
+	if strings.Contains(body, `href="/docs/draft-x"`) {
+		t.Errorf("nav must not include draft 'draft-x'")
+	}
+	if strings.Contains(body, `href="/docs/arch-y"`) {
+		t.Errorf("nav must not include archived 'arch-y'")
+	}
+}

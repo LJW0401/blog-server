@@ -723,3 +723,16 @@
 - **紧急程度**：低
 
 - 2026-04-20 快速功能 new-doc-excerpt-field 完成，无 learnings（已执行反思清单）
+
+
+## 2026-04-20（续 2）
+
+### Bug 修复：文档详情页的上/下一篇混入 draft/archived
+- **发现于**：用户报告（"文档中上下切换会出现草稿状态的文章，还有上下切换会乱序"）
+- **现象**：在 `/docs/:slug` 点上一篇/下一篇时，会跳到未发布的 draft 或 archived 条目；更常见的表现是"跳过了本该相邻的一篇"——因为 draft 按 Updated desc 排序时插队到 published 之间，公开列表看不到它，用户感觉"顺序乱了"
+- **根因**：`internal/public/doc_detail.go:40` 直接把 `h.Content.Docs().List(KindDoc)`（全量，含 draft/archived）传给 `prevNext`。而 `/docs` 列表、archive 视图、category 视图都只展示 published，两边数据集不一致
+- **修复**：调 `prevNext` 前先 `filterByStatus(..., StatusPublished)`。一行改动。当前文档若是 draft/archived（管理员预览路径），过滤后列表里没它，prev/next 自然都是 nil，作为降级行为接受
+- **回归测试**：`internal/public/public_test.go::TestDocDetail_Bug_PrevNextSkipsNonPublished`——在 3 篇 published 之间插 1 篇 draft + 1 篇 archived，断言 b 的 prev/next 都指 published，且 HTML 里不出现 draft-x / arch-y 的 href
+- **为什么原测试没覆盖**：既有的 `TestDocDetail_Smoke_PrevNextNavigation` 只放了 3 篇都 published 的数据，没有测"异种状态混合"这一条清单项。属于"异常/边界测试场景清单不完整"——只覆盖了 happy path，边界值（状态混合）漏了。以后写 smoke 时应主动想：列表型功能是否存在可见性过滤？过滤跟导航是不是用的同一个数据源？
+- **紧急程度**：中（公开站直接可见，影响用户信任；但不会崩溃）
+- **衍生改进建议**：顺手扫了一眼同模块其它地方：`feeds.go:53` RSS 和 `feeds.go:121` sitemap 的 doc 循环各自内联过滤了 published（不是共享 helper，重复写了三遍）；但 `feeds.go:130` sitemap 的 project 循环**没有**按状态过滤，`public.go:223` 首页推荐位也值得再确认一遍。下次可以把 `filterByStatus` 抽出来让三处复用，顺带补 project sitemap 这个口子
