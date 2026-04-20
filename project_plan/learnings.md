@@ -712,3 +712,12 @@
 - **描述**：项目完全没有前端视觉回归测试，所有 CSS 改动都依赖人工在浏览器里拖窗口检查。本次改了 3 个断点覆盖 4 个页面类型（home/docs_list/projects_list + 可能还有 doc_detail），没有自动化手段验证"nav links 确实可见"、"sidebar 确实还在侧"这种断言
 - **建议处理方式**：如果后续再有多轮窄屏调整，可以考虑加一个 Playwright 最小集，跑几个固定宽度下的截图 diff（375/560/860/1280）。不紧急，但值得列入 backlog
 - **紧急程度**：低
+
+
+## 2026-04-20（续）
+
+### 快速功能：admin 窄屏适配
+- **类型**：技术债
+- **描述**：为了让手机也能横向滚动查看 `.admin-table`（文档列表/回收站等多列表格），偷懒在 560px 断点给整个 `.admin-section` 加了 `overflow-x: auto`。这个 section 里同时装着表格、表单、小组件，给整个容器加横滚会让非表格内容也可能意外产生滚动条，不干净。更规整的做法是在 admin_docs_list/admin_trash/admin_repos_list 这几个模板里，给 `<table class="admin-table">` 外套一层 `<div class="admin-table-wrap">`，单独给 wrap 加 overflow-x:auto
+- **建议处理方式**：下次动 admin 模板时顺手补 wrap div，然后把 CSS 里 `.admin-section { overflow-x: auto }` 换成 `.admin-table-wrap { overflow-x: auto }`
+- **紧急程度**：低

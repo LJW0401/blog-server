@@ -545,6 +545,21 @@ body.page-admin { background: var(--bg-alt); }
   .doc-row .date .my { margin-top: 0; }
   .featured { grid-template-columns: 1fr; padding: 32px; min-height: 240px; }
   .proj-grid { grid-template-columns: 1fr; }
+
+  /* Admin pages */
+  .admin-shell { padding: 80px 20px 56px; }
+  .admin-header { flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+  .admin-header h1 { font-size: 26px; }
+  .admin-section { padding: 20px 18px; }
+  .admin-login-wrap { padding: 72px 18px 40px; }
+  .admin-card { padding: 32px 24px; }
+  .editor-actions { flex-wrap: wrap; gap: 10px; }
+  .editor-form textarea { min-height: 360px; padding: 14px; }
+  .editor-preview { min-height: 360px; padding: 20px; }
+  .settings-form label { grid-template-columns: 1fr; align-items: stretch; gap: 6px; }
+  .admin-table th, .admin-table td { padding: 10px 10px; }
+  .image-upload { flex-wrap: wrap; }
+  .form-row { flex-wrap: wrap; }
 }
 
 @media (max-width: 560px) {
@@ -563,6 +578,22 @@ body.page-admin { background: var(--bg-alt); }
   .archive-list li { font-size: 12px; }
   .tag-list .tag, .tag-list a { font-size: 11px; }
   .featured { padding: 22px; }
+
+  /* Admin pages: phone portrait */
+  .admin-shell { padding: 64px 12px 40px; }
+  .admin-header h1 { font-size: 22px; }
+  .admin-section { padding: 16px 14px; border-radius: var(--radius-md); overflow-x: auto; }
+  .admin-section h2 { font-size: 16px; }
+  .admin-login-wrap { padding: 56px 12px 32px; }
+  .admin-card { padding: 24px 18px; }
+  .admin-card h1 { font-size: 24px; }
+  .editor-form textarea { min-height: 300px; padding: 12px; font-size: 14px; }
+  .editor-preview { min-height: 300px; padding: 16px; }
+  .editor-tabs { display: flex; align-self: stretch; }
+  .editor-tab { flex: 1; text-align: center; }
+  .admin-table { font-size: 13px; }
+  .admin-table th, .admin-table td { padding: 8px 8px; }
+  .admin-warning { padding: 10px 14px; font-size: 13px; }
 }
 
 /* 404 页面 */
