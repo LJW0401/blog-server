@@ -340,6 +340,7 @@ func defaultDocFrontmatter() string {
 		"slug: \n" +
 		"tags: []\n" +
 		"category: \n" +
+		"excerpt: \n" +
 		"created: " + today + "\n" +
 		"updated: " + today + "\n" +
 		"status: draft\n" +

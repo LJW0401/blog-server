@@ -721,3 +721,5 @@
 - **描述**：为了让手机也能横向滚动查看 `.admin-table`（文档列表/回收站等多列表格），偷懒在 560px 断点给整个 `.admin-section` 加了 `overflow-x: auto`。这个 section 里同时装着表格、表单、小组件，给整个容器加横滚会让非表格内容也可能意外产生滚动条，不干净。更规整的做法是在 admin_docs_list/admin_trash/admin_repos_list 这几个模板里，给 `<table class="admin-table">` 外套一层 `<div class="admin-table-wrap">`，单独给 wrap 加 overflow-x:auto
 - **建议处理方式**：下次动 admin 模板时顺手补 wrap div，然后把 CSS 里 `.admin-section { overflow-x: auto }` 换成 `.admin-table-wrap { overflow-x: auto }`
 - **紧急程度**：低
+
+- 2026-04-20 快速功能 new-doc-excerpt-field 完成，无 learnings（已执行反思清单）

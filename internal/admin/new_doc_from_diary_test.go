@@ -93,3 +93,20 @@ func TestNewDoc_Edge_MissingDiaryFileFallsBackToDefault(t *testing.T) {
 // 这一层由路由中间件保证。此处跳过 authGate 直接调 NewDoc 只验证渲染
 // 不因 diary_date 异常崩溃 — 认证拒绝路径已在 login 测试里覆盖。
 // （说明性注释，不落测试用例，避免重复覆盖。）
+
+// Smoke：新建文档的脚手架 frontmatter 里必须有 excerpt 字段占位，
+// 让作者一眼看到"这里可以写摘要"，不填时 content 层仍会自动截前 120 字。
+func TestNewDoc_Smoke_IncludesExcerptField(t *testing.T) {
+	b := crudSetup(t)
+	req := httptest.NewRequest("GET", "/manage/docs/new", nil)
+	req.Header.Set("User-Agent", "test/ua")
+	req.AddCookie(b.Cookie)
+	rr := httptest.NewRecorder()
+	b.Docs.NewDoc(rr, req)
+	if rr.Code != 200 {
+		t.Fatalf("status %d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "excerpt: ") {
+		t.Errorf("new doc scaffold missing `excerpt:` field; body=%q", rr.Body.String())
+	}
+}
