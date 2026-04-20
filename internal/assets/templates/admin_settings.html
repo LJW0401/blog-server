@@ -34,6 +34,14 @@
         <input type="file" id="avatar-file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" hidden />
         <input name="avatar_url" id="avatar-url" value="{{ index .Values "avatar_url" }}" placeholder="上传后自动填入，也可手填 /images/... 或 https://..." />
         <span class="avatar-actions">
+          <label class="avatar-show-toggle">
+            {{/* 复选框 + 同名 hidden fallback：勾选时表单先后有 true/false，
+                 Go 的 r.Form.Get 取第一个=true；未勾选只剩 hidden=false。 */}}
+            <input type="checkbox" name="avatar_show" value="true"
+                   {{ if ne (index .Values "avatar_show") "false" }}checked{{ end }} />
+            <input type="hidden" name="avatar_show" value="false" />
+            <span>在主页显示头像</span>
+          </label>
           <button type="button" id="avatar-delete" class="btn btn-ghost btn-sm"
                   {{ if not (index .Values "avatar_url") }}hidden{{ end }}>删除头像</button>
           <span id="avatar-status" class="avatar-status" role="status" aria-live="polite"></span>

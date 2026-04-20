@@ -26,7 +26,8 @@ type SettingsHandlers struct {
 var SettingsKeys = []string{
 	// Hero + footer contact.
 	"name", "tagline", "location", "direction", "status",
-	"avatar_url", // 绝对 URL 或 /images/... 相对路径；留空前台不显示头像
+	"avatar_url",  // 绝对 URL 或 /images/... 相对路径；留空前台不显示头像
+	"avatar_show", // "true" / "false"；仅 "false" 视为关，其它（含空、未存）默认开
 	"qq_group",
 	"media_github", "media_gitee",
 	"media_bilibili", "media_douyin", "media_xiaohongshu",

@@ -13,7 +13,7 @@
   </div>
   <div class="hero">
     <div class="hero-left">
-      {{ if .Settings.AvatarURL }}
+      {{ if and .Settings.AvatarURL .Settings.AvatarShow }}
       <div class="hero-greet-with-avatar">
         <img class="hero-avatar" src="{{ .Settings.AvatarURL }}" alt="{{ .Settings.Name }} 头像" loading="eager" />
         <div class="hero-greet-text">

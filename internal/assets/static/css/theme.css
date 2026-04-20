@@ -594,6 +594,20 @@ body.page-admin { background: var(--bg-alt); }
 .avatar-status-err { color: #c73737; }
 .avatar-status-info { color: var(--accent); }
 .avatar-actions { display: inline-flex; gap: 12px; align-items: center; }
+/* 注意：选择器必须用 label.avatar-show-toggle（或带 .settings-form 前缀），否则
+   会被 .settings-form label {display:grid; 180px 1fr} 以 (0,1,1) > (0,1,0) 压过，
+   复选框被塞进 180px 网格列、文字塞进 1fr 列，视觉上隔出一大块空白。 */
+label.avatar-show-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); cursor: pointer; user-select: none; grid-template-columns: none; }
+.avatar-show-toggle input[type="checkbox"] {
+  /* 覆盖 .settings-form input 的 text-input 外观（36px 高 + 12px 左右 padding
+     + 边框），否则复选框会被撑成一个大盒子，视觉上和文字隔很远。 */
+  width: auto; height: auto; margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  appearance: auto; -webkit-appearance: auto;
+}
 .btn-sm { height: 28px; font-size: 12px; padding: 0 10px; }
 #avatar-delete { color: #c73737; }
 #avatar-delete:hover { text-decoration: underline; }

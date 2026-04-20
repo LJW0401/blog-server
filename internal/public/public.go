@@ -25,7 +25,8 @@ type SiteSettings struct {
 	Location   string
 	Direction  string
 	Status     string
-	AvatarURL  string // 主页 hero 头像；空字符串代表不渲染 <img>
+	AvatarURL  string // 主页 hero 头像 URL；空字符串代表未上传
+	AvatarShow bool   // 主页是否显示头像；false 时即使 URL 非空也不渲染
 	ContactQQ  string
 	OSSLinks   []MediaLink // 开源项目列：GitHub, Gitee
 	MediaLinks []MediaLink // 媒体列：B站, 抖音, 小红书
@@ -40,12 +41,13 @@ type MediaLink struct {
 // DefaultSettings returns placeholder values for the MVP before M5 lands.
 func DefaultSettings() SiteSettings {
 	return SiteSettings{
-		Name:      "Penguin",
-		Tagline:   "一名热衷于开源与技术写作的开发者，探索代码与思考之间的联系。",
-		Location:  "中国",
-		Direction: "后端 / 工程化 / 开发者工具",
-		Status:    "活跃维护若干个人项目",
-		ContactQQ: "772436864",
+		Name:       "Penguin",
+		Tagline:    "一名热衷于开源与技术写作的开发者，探索代码与思考之间的联系。",
+		Location:   "中国",
+		Direction:  "后端 / 工程化 / 开发者工具",
+		Status:     "活跃维护若干个人项目",
+		AvatarShow: true,
+		ContactQQ:  "772436864",
 		OSSLinks: []MediaLink{
 			{Platform: "GitHub"},
 			{Platform: "Gitee"},
@@ -116,6 +118,11 @@ func (h *Handlers) resolveSettings() SiteSettings {
 	s := DefaultSettings()
 	if h.SettingsDB != nil {
 		kv := h.SettingsDB.All()
+		// avatar_show: 只有显式 "false" 才关，其它（空、未存、"true"）都视为开；
+		// DefaultSettings 默认已经是 true，这里只在显式关闭时覆盖为 false。
+		if kv["avatar_show"] == "false" {
+			s.AvatarShow = false
+		}
 		if v := kv["name"]; v != "" {
 			s.Name = v
 		}

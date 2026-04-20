@@ -819,3 +819,12 @@
 - **紧急程度**：低
 
 - 2026-04-21 快速功能 hero-avatar-layout-toggle 完成，无 learnings（已执行反思清单）
+
+## 2026-04-21（续 6）
+
+### 快速功能：主页头像显示开关
+- **类型**：架构洞察
+- **描述**：HTML 复选框在未勾选时不提交任何值，想要"勾选 = true / 未勾选 = false"的稳定三态表达，经典模式是 checkbox + 同名 hidden fallback。但在 Go 里要注意顺序：`r.Form.Get` 是 **first-wins**（返回第一个值），所以必须把 **checkbox 放在前、hidden 放在后**——勾选时提交顺序 `[true, false]` Get 得 "true"；未勾选时只剩 `[false]` Get 得 "false"。Rails 社区的习惯恰好相反（last-wins），移植过来会踩坑
+- **新理解**：以后要加任何"可开关设置"都用这个模式。避免的一种反模式是让后端解析时区分"键不存在"和"键存在且空"——增加了 resolveSettings 的复杂度，也让 `settings.Store.All()` 的消费者被动关心缺失语义
+- **建议处理方式**：需要第二个开关时，复用本次的约定：`name="<key>"` 的 checkbox 紧挨着 `type="hidden" name="<key>" value="false"`，resolveSettings 里 `kv["<key>"] == "false"` 视为关，其它都是开
+- **紧急程度**：低
