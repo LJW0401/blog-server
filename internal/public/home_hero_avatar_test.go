@@ -6,11 +6,13 @@ import (
 	"testing"
 )
 
-// Smoke：设置 avatar_url 后，主页第一屏 hero-left 里出现 <img class="hero-avatar">，
-// src 指向设置值。
-func TestHome_Smoke_AvatarRendersWhenConfigured(t *testing.T) {
+// Smoke：设置 avatar_url 后，hero 切换到"头像 + 名字 + tagline"布局：
+// hero-avatar img 出现、h1 里只剩 Name（不再有"你好，/我是"）、tagline 同行出现。
+func TestHome_Smoke_AvatarRendersWithNameAndTagline(t *testing.T) {
 	h := setup(t, nil, nil)
 	_ = h.SettingsDB.Set("avatar_url", "/images/avatar.png")
+	_ = h.SettingsDB.Set("name", "Penguin")
+	_ = h.SettingsDB.Set("tagline", "一名热衷于开源的开发者")
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
@@ -23,18 +25,47 @@ func TestHome_Smoke_AvatarRendersWhenConfigured(t *testing.T) {
 	if !strings.Contains(body, `src="/images/avatar.png"`) {
 		t.Errorf("avatar src 不对")
 	}
+	if !strings.Contains(body, "hero-greet-with-avatar") {
+		t.Errorf("有头像分支容器 .hero-greet-with-avatar 缺失")
+	}
+	if !strings.Contains(body, "<h1>Penguin</h1>") {
+		t.Errorf("有头像时 h1 应只含 Name，实得 body=%s", body)
+	}
+	// 必须丢掉"你好，/我是"前缀
+	if strings.Contains(body, "你好，") {
+		t.Errorf("有头像时不应出现 '你好，' 前缀")
+	}
+	if strings.Contains(body, "我是 Penguin") {
+		t.Errorf("有头像时不应出现 '我是 Penguin' 行")
+	}
+	if !strings.Contains(body, "一名热衷于开源的开发者") {
+		t.Errorf("tagline 缺失")
+	}
 }
 
-// Smoke（边界：未配置）：没设 avatar_url 时，主页不出现 hero-avatar 元素。
-func TestHome_Smoke_NoAvatarWhenUnset(t *testing.T) {
+// Smoke（边界：未配置）：没设 avatar_url 时，走原主页布局——
+// 有"你好，"+"我是 Name"的 h1，有独立的 tagline p，没有 hero-avatar 元素。
+func TestHome_Smoke_NoAvatarKeepsOriginalGreeting(t *testing.T) {
 	h := setup(t, nil, nil)
-	// 不 Set avatar_url
+	_ = h.SettingsDB.Set("name", "Penguin")
+	_ = h.SettingsDB.Set("tagline", "一名热衷于开源的开发者")
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	h.Home(rr, req)
-	if strings.Contains(rr.Body.String(), "hero-avatar") {
-		t.Errorf("avatar 未配置时不应输出 <img>；body=%s", rr.Body.String())
+	body := rr.Body.String()
+
+	if strings.Contains(body, "hero-avatar") {
+		t.Errorf("未配置 avatar 时不应输出 <img class=hero-avatar>")
+	}
+	if strings.Contains(body, "hero-greet-with-avatar") {
+		t.Errorf("未配置 avatar 时不应走新布局容器")
+	}
+	if !strings.Contains(body, "你好，") {
+		t.Errorf("未配置 avatar 时应保留 '你好，' 原始问候")
+	}
+	if !strings.Contains(body, "我是 Penguin") {
+		t.Errorf("未配置 avatar 时应保留 '我是 Penguin' 行")
 	}
 }
 

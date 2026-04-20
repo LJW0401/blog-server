@@ -13,12 +13,18 @@
   </div>
   <div class="hero">
     <div class="hero-left">
-      <h1 class="hero-greet">
-        <span class="greet-lead">你好，</span>
-        {{ if .Settings.AvatarURL }}<img class="hero-avatar" src="{{ .Settings.AvatarURL }}" alt="{{ .Settings.Name }} 头像" loading="eager" />{{ end }}
-        <span class="greet-name">我是 {{ .Settings.Name }}</span>
-      </h1>
+      {{ if .Settings.AvatarURL }}
+      <div class="hero-greet-with-avatar">
+        <img class="hero-avatar" src="{{ .Settings.AvatarURL }}" alt="{{ .Settings.Name }} 头像" loading="eager" />
+        <div class="hero-greet-text">
+          <h1>{{ .Settings.Name }}</h1>
+          <p class="tagline">{{ .Settings.Tagline }}</p>
+        </div>
+      </div>
+      {{ else }}
+      <h1>你好，<br/>我是 {{ .Settings.Name }}</h1>
       <p class="tagline">{{ .Settings.Tagline }}</p>
+      {{ end }}
       <ul class="meta-list">
         <li><span>坐标</span><span>{{ .Settings.Location }}</span></li>
         <li><span>方向</span><span>{{ .Settings.Direction }}</span></li>

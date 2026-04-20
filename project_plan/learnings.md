@@ -817,3 +817,5 @@
 - **描述**：avatar.go 里有个"文件已落盘但 settings.Set 失败"的降级路径（不 remove 文件，前端还能拿到 url 手动保存），测试没覆盖 —— 因为要注入会返回 error 的 settings.Store mock，而当前 admin 测试都用真 storage，改动比较大。属于"防御性分支但不敏感"的测试债
 - **建议处理方式**：下次 settings 层若要改接口，顺手加个 `type SettingsWriter interface { Set(k, v string) error }`，让 AvatarHandlers 依赖接口而非具体类型，测试时注 mock
 - **紧急程度**：低
+
+- 2026-04-21 快速功能 hero-avatar-layout-toggle 完成，无 learnings（已执行反思清单）

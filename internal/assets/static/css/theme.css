@@ -91,23 +91,41 @@ body.page-docs .orbs, body.page-doc-detail .orbs { position: fixed; }
 .page-1 { background: linear-gradient(180deg, #fbfbfd 0%, #f5f5f7 100%); }
 .page-2 { background: var(--bg); border-top: 1px solid rgba(0,0,0,0.04); }
 .hero { width: 100%; max-width: 1040px; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; position: relative; z-index: 1; }
-/* hero-greet: h1 用 grid 把"你好，"和"我是 Name"叠成两行，头像贴在这两行
-   的右侧垂直居中。没有头像时第二列自然收缩，两行自然左对齐。 */
-.hero-greet {
-  display: grid;
-  grid-template-columns: auto auto;
-  column-gap: 24px;
+/* hero-greet-with-avatar: 仅在设置了 avatar 时启用的替代布局——左边大头像，
+   右边两行：第一行是名字（h1），第二行是 tagline。没设置头像时模板走另一分
+   支，h1 仍然是"你好，/我是 Name" + 独立 tagline 段（原样）。 */
+.hero-greet-with-avatar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 28px;
 }
-.greet-lead { grid-column: 1; grid-row: 1; }
-.greet-name { grid-column: 1; grid-row: 2; }
-.hero-avatar {
-  grid-column: 2; grid-row: 1 / span 2;
-  align-self: center; justify-self: start;
-  width: 96px; height: 96px;
+.hero-greet-with-avatar .hero-avatar {
+  flex: 0 0 112px;
+  width: 112px; height: 112px;
   border-radius: 50%;
   object-fit: cover;
   box-shadow: 0 8px 24px rgba(0,0,0,0.08);
   background: var(--bg-alt);
+}
+.hero-greet-text { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hero-greet-text h1 {
+  font-size: clamp(36px, 4.8vw, 56px);
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.024em;
+  padding-bottom: 0.1em;
+  margin: 0;
+  background: linear-gradient(180deg, #1d1d1f 0%, #434344 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  overflow: visible;
+}
+.hero-greet-text .tagline {
+  font-size: 18px; line-height: 1.45;
+  color: var(--ink-soft);
+  margin: 0;
+  max-width: 420px;
 }
 .hero-left h1 {
   font-size: clamp(40px, 5.4vw, 72px);
