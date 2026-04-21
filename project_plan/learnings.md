@@ -1,5 +1,17 @@
 # Learnings
 
+## 2026-04-21
+
+### Bug 修复：manage settings 暗色模式输入框聚焦变白
+- **发现于**：用户报告
+- **现象**：在 `/manage/settings` 页面启用系统暗色模式后，点击输入框或文本域，聚焦态背景变成白色，和暗色卡片反差明显。
+- **根因**：亮色基础规则把 `.settings-form input:focus, .settings-form textarea:focus` 的背景硬编码成 `#fff`。第一次暗色补丁把覆盖写成了 `.admin-section .settings-form ...`，但 settings 页的 `<form>` 本身同时带有 `admin-section` 和 `settings-form` 两个类，不是父子关系，导致后代选择器完全没命中；同时后台表单未声明 `color-scheme: dark`，浏览器原生控件仍可能沿用亮色外观。
+- **修复**：把暗色模式覆盖改成直接命中的 `.settings-form input:focus` / `.settings-form textarea:focus`，并为后台表单控件声明 `color-scheme: dark`。另外确认该项目静态资源通过 `go:embed` 打进二进制，样式修改后必须重启或重新编译进程才能生效。
+- **回归测试**：`internal/assets/admin_settings_dark_focus_test.go` / `TestTheme_Regression_AdminSettingsDarkFocusOverride`
+- **为什么原测试没覆盖**：之前的暗色回归测试只检查了后台卡片容器背景，没有继续验证表单控件的聚焦态；第一次补的静态断言又只检查字符串是否出现，没有校验选择器关系是否真的能命中 DOM。
+- **紧急程度**：低
+- **衍生改进建议**（如有，不在本次修复范围内）：后续可补一组针对后台表单控件 hover/focus/disabled 状态的暗色模式回归测试，避免类似 selector 漏写再次出现。
+
 ## 2026-04-18
 
 ### 架构洞察：Go 工具链版本偏差

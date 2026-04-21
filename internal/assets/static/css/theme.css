@@ -955,6 +955,7 @@ body.page-diary { background: var(--bg); }
 /* WI-2.20 暗色模式 — follows system only (per requirement 2.9) */
 @media (prefers-color-scheme: dark) {
   :root {
+    color-scheme: dark;
     --bg: #000;
     --bg-alt: #151518;
     --ink: #f5f5f7;
@@ -965,6 +966,9 @@ body.page-diary { background: var(--bg); }
     --accent-hover: #4aaaff;
   }
   html, body { background: var(--bg); color: var(--ink); }
+  body.page-admin input,
+  body.page-admin textarea,
+  body.page-admin select { color-scheme: dark; }
   .nav { background: rgba(0,0,0,0.72); border-bottom: 1px solid rgba(255,255,255,0.08); }
   .page-1 { background: linear-gradient(180deg, #000 0%, #0a0a0d 100%); }
   .page-2 { background: var(--bg); border-top: 1px solid rgba(255,255,255,0.05); }
@@ -990,7 +994,9 @@ body.page-diary { background: var(--bg); }
   /* Orbs desaturated in dark mode per requirement */
   .orb { mix-blend-mode: screen; filter: blur(80px) saturate(0.55) brightness(0.7); }
   .admin-card, .admin-section { background: #1f1f22; border-color: rgba(255,255,255,0.09); box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset; }
-  .admin-card input:focus { background: #151518; }
+  .admin-card input:focus,
+  .settings-form input:focus,
+  .settings-form textarea:focus { background: #151518; }
   .editor-form textarea { background: #151518; color: var(--ink); border-color: rgba(255,255,255,0.08); }
   .editor-tabs { background: #151518; border-color: rgba(255,255,255,0.08); }
   .editor-tab.is-active { background: #2a2a2d; color: var(--ink); box-shadow: none; }
