@@ -64,10 +64,32 @@
       return;
     }
 
+    // 周视图下再次点已选中的日期 → 退回月视图（与"进入周视图"互为开关）
+    if (shell.classList.contains('diary-week-mode') && date === currentDate) {
+      flushIfDirty();
+      exitWeekMode();
+      return;
+    }
+
     // 本月内切日期：flush → 本地折叠成周视图 → 加载当天
     flushIfDirty();
     enterWeekMode(date);
     loadDay(date);
+  }
+
+  function exitWeekMode() {
+    // 恢复月视图：所有行可见、清除选中、收起编辑器、清空 currentDate
+    const rows = calendar.querySelectorAll('tbody tr');
+    rows.forEach((row) => { row.style.display = ''; });
+    calendar.querySelectorAll('.diary-cell-selected').forEach((c) => {
+      c.classList.remove('diary-cell-selected');
+    });
+    shell.classList.remove('diary-week-mode');
+    editor.hidden = true;
+    editorDate.textContent = '';
+    editorDate.removeAttribute('data-date');
+    currentDate = '';
+    setStatus('idle', '');
   }
 
   function enterWeekMode(date) {

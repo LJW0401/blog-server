@@ -840,3 +840,14 @@
 - **新理解**：以后要加任何"可开关设置"都用这个模式。避免的一种反模式是让后端解析时区分"键不存在"和"键存在且空"——增加了 resolveSettings 的复杂度，也让 `settings.Store.All()` 的消费者被动关心缺失语义
 - **建议处理方式**：需要第二个开关时，复用本次的约定：`name="<key>"` 的 checkbox 紧挨着 `type="hidden" name="<key>" value="false"`，resolveSettings 里 `kv["<key>"] == "false"` 视为关，其它都是开
 - **紧急程度**：低
+
+## 2026-04-22
+
+### 快速功能：diary-exit-week-view
+- 功能为纯前端 UI toggle（周视图下点已选日期 → 回月视图），无外部输入 / 副作用
+- 项目无 JS 测试框架，按豁免规则免异常测试；Go 全量测试通过无回归
+- **类型**：测试缺口
+- **描述**：diary.js 的交互逻辑（enterWeekMode / exitWeekMode / navigateWeek）完全没有单测/集成测试覆盖，每次改动只能靠手测；若未来再动这块，考虑引入 Playwright 或 happy-dom 单测把 DOM 行为锁住
+- **建议处理方式**：积累到 3 条以上 diary.js 改动后再引入 headless 浏览器测试，单次引入成本才划算
+- **紧急程度**：低
+- **遗留**：`internal/admin/avatar_show_submit_test.go` 仍有 gofmt 差异（上次 release 时已知），本次未修（避免越权），下次进 main 的 patch 一起顺手 `gofmt -w`
