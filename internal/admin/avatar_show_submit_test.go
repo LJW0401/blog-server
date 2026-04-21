@@ -57,7 +57,7 @@ func hasCheckedCheckbox(body, name string) bool {
 		return false
 	}
 	// checked 通常紧跟在 value="true" 之后
-	tail := body[idx : min(idx+120, len(body))]
+	tail := body[idx:min(idx+120, len(body))]
 	return indexOf(tail, "checked") >= 0
 }
 
