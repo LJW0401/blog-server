@@ -1280,3 +1280,10 @@ body.page-diary { background: var(--bg); }
   .portfolio-home-card-cover { order: -1; }
   .portfolio-home-card-intro { margin-top: 16px; padding-top: 14px; }
 }
+
+.dashboard-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 20px; }
+.dashboard-card { background: var(--card-bg, #fff); border: 1px solid rgba(0,0,0,0.08); border-radius: var(--radius-md, 12px); padding: 18px; }
+.dashboard-card h3 { margin: 0 0 8px; font-size: 16px; font-weight: 600; }
+.dashboard-card-stats { display: flex; gap: 14px; flex-wrap: wrap; color: var(--ink-soft); font-size: 13px; margin: 0 0 6px; }
+.dashboard-card-stats strong { color: var(--ink); font-size: 16px; margin-left: 4px; }
+.dashboard-card-total { color: var(--ink-faint); font-size: 12px; margin: 0 0 12px; }

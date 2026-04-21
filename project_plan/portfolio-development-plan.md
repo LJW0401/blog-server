@@ -561,7 +561,20 @@
 4. 所有工作项的安全门控通过
 5. 所有集成门控通过
 
-**阶段状态**：未开始
+**阶段状态**：已完成
+
+**完成日期**：2026-04-22
+**验收结果**：通过
+**安全门控**：全部通过（gofmt / go vet / go test ./... / make check 全绿）
+**集成门控**：全部通过（WI-3.7 / 3.10b / 3.13b / 3.16）
+**备注**：
+- 代码改动：`internal/admin/trash.go`（重构为 Kind 子目录 + MigrateFlatTrash）、`internal/admin/docs.go` & `projects.go`（软删除目标改写）、`internal/admin/portfolio.go`（新，CRUD + ToggleFeatured + UpdateOrder + setFrontmatterField 工具）、`internal/admin/portfolio_cover.go`（新，multipart 上传 + MIME 白名单 + 原子写）、`internal/admin/admin.go`（加 Content 字段 + PortfolioStats）
+- 模板新增/改动：`admin_portfolio_list.html`（新）、`admin_doc_edit.html`（加 Kind="portfolio" 分支 + 封面上传按钮）、`admin_dashboard.html`（加入口卡）
+- 前端 JS 新增：`portfolio_order.js`（inline order blur 保存）、`portfolio_cover_upload.js`（封面 fetch + FormData + frontmatter 回填）
+- CSS：主题扩 `.dashboard-card-*`
+- 路由：`cmd/server/routes.go` 加 `/manage/portfolio/**` 分组；`main.go` wire PortfolioHandlers / PortfolioCoverHandlers，启动时调 `admin.MigrateFlatTrash`
+- 测试：新增 `trash_portfolio_test.go` / `portfolio_crud_test.go` / `portfolio_order_test.go` / `portfolio_cover_test.go` / `portfolio_dashboard_test.go`；更新现有 `trash_test.go` 和 `crud_test.go` 适配 Kind 子目录
+- MigrateFlatTrash 覆盖 4 场景：首次迁移、幂等、目录不存在、目标冲突保留源文件
 
 ---
 

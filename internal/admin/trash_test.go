@@ -19,9 +19,26 @@ func setupTrash(t *testing.T) (*admin.TrashHandlers, *crudBundle) {
 	return th, b
 }
 
-// seedTrash writes a fake soft-deleted file into $DataDir/trash/ with the
-// given filename + body, returning the full path.
-func seedTrash(t *testing.T, b *crudBundle, name, body string) string {
+// seedTrash writes a fake soft-deleted file into
+// $DataDir/trash/<kind>/<name>, matching the post-WI-3.1 layout. Returns
+// the full on-disk path. `kind` should be one of admin.TrashKindDoc /
+// TrashKindProject / TrashKindPortfolio.
+func seedTrash(t *testing.T, b *crudBundle, kind, name, body string) string {
+	t.Helper()
+	dir := filepath.Join(b.DataDir, "trash", kind)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	full := filepath.Join(dir, name)
+	if err := os.WriteFile(full, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return full
+}
+
+// seedTrashLegacyFlat writes a file at the legacy $DataDir/trash/<name>
+// location, used only by the migration test.
+func seedTrashLegacyFlat(t *testing.T, b *crudBundle, name, body string) string {
 	t.Helper()
 	trashDir := filepath.Join(b.DataDir, "trash")
 	if err := os.MkdirAll(trashDir, 0o700); err != nil {
@@ -50,16 +67,15 @@ func TestTrash_Smoke_EmptyList(t *testing.T) {
 
 func TestTrash_Smoke_ListShowsDocAndProject(t *testing.T) {
 	th, b := setupTrash(t)
-	seedTrash(t, b, "20260101-120000-alpha.md", docMD("alpha"))
-	seedTrash(t, b, "20260102-120000-proj-gamma.md", projMD("gamma"))
+	seedTrash(t, b, admin.TrashKindDoc, "20260101-120000-alpha.md", docMD("alpha"))
+	seedTrash(t, b, admin.TrashKindProject, "20260102-120000-gamma.md", projMD("gamma"))
 	w := b.authedGet(t, "/manage/trash", th.TrashList)
 	if w.Code != 200 {
 		t.Fatalf("status %d", w.Code)
 	}
 	out := w.Body.String()
 	// doc 显示 "文档"，project 显示 "项目"；两个 slug 都应该在
-	for _, want := range []string{"alpha", "gamma", "文档", "项目",
-		"20260101-120000-alpha.md", "20260102-120000-proj-gamma.md"} {
+	for _, want := range []string{"alpha", "gamma", "文档", "项目"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("list missing %q", want)
 		}
@@ -72,9 +88,9 @@ func TestTrash_Smoke_ListShowsDocAndProject(t *testing.T) {
 
 func TestTrash_Smoke_RestoreDoc(t *testing.T) {
 	th, b := setupTrash(t)
-	src := seedTrash(t, b, "20260101-120000-alpha.md", docMD("alpha"))
+	src := seedTrash(t, b, admin.TrashKindDoc, "20260101-120000-alpha.md", docMD("alpha"))
 	w := b.authedPost(t, "/manage/trash/restore",
-		url.Values{"csrf": {b.CSRF}, "filename": {"20260101-120000-alpha.md"}},
+		url.Values{"csrf": {b.CSRF}, "filename": {"docs/20260101-120000-alpha.md"}},
 		th.Restore)
 	if w.Code != http.StatusSeeOther {
 		t.Fatalf("status %d body=%s", w.Code, w.Body.String())
@@ -92,9 +108,9 @@ func TestTrash_Smoke_RestoreDoc(t *testing.T) {
 
 func TestTrash_Smoke_RestoreProject(t *testing.T) {
 	th, b := setupTrash(t)
-	seedTrash(t, b, "20260102-120000-proj-gamma.md", projMD("gamma"))
+	seedTrash(t, b, admin.TrashKindProject, "20260102-120000-gamma.md", projMD("gamma"))
 	w := b.authedPost(t, "/manage/trash/restore",
-		url.Values{"csrf": {b.CSRF}, "filename": {"20260102-120000-proj-gamma.md"}},
+		url.Values{"csrf": {b.CSRF}, "filename": {"projects/20260102-120000-gamma.md"}},
 		th.Restore)
 	if w.Code != http.StatusSeeOther {
 		t.Fatalf("status %d body=%s", w.Code, w.Body.String())
@@ -107,9 +123,9 @@ func TestTrash_Smoke_RestoreProject(t *testing.T) {
 
 func TestTrash_Smoke_Purge(t *testing.T) {
 	th, b := setupTrash(t)
-	src := seedTrash(t, b, "20260101-120000-alpha.md", docMD("alpha"))
+	src := seedTrash(t, b, admin.TrashKindDoc, "20260101-120000-alpha.md", docMD("alpha"))
 	w := b.authedPost(t, "/manage/trash/purge",
-		url.Values{"csrf": {b.CSRF}, "filename": {"20260101-120000-alpha.md"}},
+		url.Values{"csrf": {b.CSRF}, "filename": {"docs/20260101-120000-alpha.md"}},
 		th.Purge)
 	if w.Code != http.StatusSeeOther {
 		t.Fatalf("status %d", w.Code)
@@ -166,9 +182,9 @@ func TestTrash_Edge_RestoreCollisionRefuses(t *testing.T) {
 	if err := os.WriteFile(existing, []byte("live"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	src := seedTrash(t, b, "20260101-120000-alpha.md", docMD("alpha"))
+	src := seedTrash(t, b, admin.TrashKindDoc, "20260101-120000-alpha.md", docMD("alpha"))
 	w := b.authedPost(t, "/manage/trash/restore",
-		url.Values{"csrf": {b.CSRF}, "filename": {"20260101-120000-alpha.md"}},
+		url.Values{"csrf": {b.CSRF}, "filename": {"docs/20260101-120000-alpha.md"}},
 		th.Restore)
 	// 冲突时走重定向回 list 页 + query 带错误，不覆盖现有
 	if w.Code != http.StatusSeeOther {
@@ -190,7 +206,7 @@ func TestTrash_Edge_RestoreCollisionRefuses(t *testing.T) {
 func TestTrash_Edge_NonexistentFile404(t *testing.T) {
 	th, b := setupTrash(t)
 	w := b.authedPost(t, "/manage/trash/purge",
-		url.Values{"csrf": {b.CSRF}, "filename": {"20260101-120000-ghost.md"}},
+		url.Values{"csrf": {b.CSRF}, "filename": {"docs/20260101-120000-ghost.md"}},
 		th.Purge)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("nonexistent file should 400, got %d", w.Code)
@@ -210,9 +226,9 @@ func TestTrash_Edge_EmptyFilename(t *testing.T) {
 
 func TestTrash_Edge_RestoreCSRFMissing(t *testing.T) {
 	th, b := setupTrash(t)
-	seedTrash(t, b, "20260101-120000-alpha.md", docMD("alpha"))
+	seedTrash(t, b, admin.TrashKindDoc, "20260101-120000-alpha.md", docMD("alpha"))
 	w := b.authedPost(t, "/manage/trash/restore",
-		url.Values{"csrf": {""}, "filename": {"20260101-120000-alpha.md"}},
+		url.Values{"csrf": {""}, "filename": {"docs/20260101-120000-alpha.md"}},
 		th.Restore)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("status %d, want 403", w.Code)
@@ -221,9 +237,9 @@ func TestTrash_Edge_RestoreCSRFMissing(t *testing.T) {
 
 func TestTrash_Edge_PurgeCSRFMissing(t *testing.T) {
 	th, b := setupTrash(t)
-	seedTrash(t, b, "20260101-120000-alpha.md", docMD("alpha"))
+	seedTrash(t, b, admin.TrashKindDoc, "20260101-120000-alpha.md", docMD("alpha"))
 	w := b.authedPost(t, "/manage/trash/purge",
-		url.Values{"csrf": {""}, "filename": {"20260101-120000-alpha.md"}},
+		url.Values{"csrf": {""}, "filename": {"docs/20260101-120000-alpha.md"}},
 		th.Purge)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("status %d, want 403", w.Code)

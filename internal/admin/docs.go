@@ -294,7 +294,7 @@ func (d *DocHandlers) DeleteDoc(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	trashDir := filepath.Join(d.DataDir, "trash")
+	trashDir := filepath.Join(d.DataDir, "trash", TrashKindDoc)
 	if err := os.MkdirAll(trashDir, 0o700); err != nil {
 		d.Parent.Logger.Error("admin.docs.delete.mkdir", slog.String("err", err.Error()))
 		http.Error(w, "trash mkdir failed", http.StatusInternalServerError)

@@ -13,6 +13,7 @@ import (
 
 	"github.com/penguin/blog-server/internal/auth"
 	"github.com/penguin/blog-server/internal/config"
+	"github.com/penguin/blog-server/internal/content"
 	"github.com/penguin/blog-server/internal/render"
 )
 
@@ -24,6 +25,9 @@ type Handlers struct {
 	ConfigPath string
 	Tpl        *render.Templates
 	Logger     *slog.Logger
+	// Content is optional; when set (wired from main.go) the Dashboard
+	// aggregates counts for the entry-card widgets (e.g. PortfolioStats).
+	Content *content.Store
 }
 
 // New returns a Handlers with sensible defaults.
@@ -124,6 +128,36 @@ func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+// PortfolioStats is the small-counter payload the Dashboard's portfolio
+// entry card renders. Fields map 1:1 to portfolio status values.
+type PortfolioStats struct {
+	Published int
+	Draft     int
+	Archived  int
+	Total     int
+}
+
+// portfolioStats aggregates portfolio entries by status. Returns zero counts
+// when the Content store is nil (tests / bootstrap without content wired).
+func portfolioStats(cs *content.Store) PortfolioStats {
+	var out PortfolioStats
+	if cs == nil {
+		return out
+	}
+	for _, e := range cs.Portfolios().List(content.KindPortfolio) {
+		switch e.Status {
+		case content.StatusPublished:
+			out.Published++
+		case content.StatusDraft:
+			out.Draft++
+		case content.StatusArchived:
+			out.Archived++
+		}
+		out.Total++
+	}
+	return out
+}
+
 // --- Dashboard (placeholder for P5) ---------------------------------------
 
 // Dashboard renders a minimal landing page so authenticated users have
@@ -131,10 +165,11 @@ func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 	sess, _ := h.Auth.ParseSession(r)
 	data := map[string]any{
-		"Username": sess.Username,
-		"CSRF":     sess.CSRF,
-		"Banner":   h.Config.DefaultPasswordUnchanged(),
-		"Changed":  h.Config.PasswordChangedAt,
+		"Username":  sess.Username,
+		"CSRF":      sess.CSRF,
+		"Banner":    h.Config.DefaultPasswordUnchanged(),
+		"Changed":   h.Config.PasswordChangedAt,
+		"Portfolio": portfolioStats(h.Content),
 	}
 	if err := h.Tpl.Render(w, r, http.StatusOK, "admin_dashboard.html", data); err != nil {
 		h.Logger.Error("admin.dashboard.render", slog.String("err", err.Error()))

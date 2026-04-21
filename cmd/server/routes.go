@@ -30,6 +30,8 @@ func buildAdminMux(
 	trash *admin.TrashHandlers,
 	about *admin.AboutHandlers,
 	avatar *admin.AvatarHandlers,
+	portfolio *admin.PortfolioHandlers,
+	portfolioCover *admin.PortfolioCoverHandlers,
 ) *http.ServeMux {
 	mux := http.NewServeMux()
 
@@ -79,6 +81,27 @@ func buildAdminMux(
 	mux.HandleFunc("/manage/trash", trash.TrashList)
 	mux.HandleFunc("/manage/trash/restore", trash.Restore)
 	mux.HandleFunc("/manage/trash/purge", trash.Purge)
+
+	// Portfolio
+	mux.HandleFunc("/manage/portfolio", portfolio.List)
+	mux.HandleFunc("/manage/portfolio/new", postOrGet(portfolio.Save, portfolio.New))
+	mux.HandleFunc("/manage/portfolio/cover/upload", portfolioCover.Upload)
+	mux.HandleFunc("/manage/portfolio/", func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/edit") && r.Method == http.MethodGet:
+			portfolio.Edit(w, r)
+		case strings.HasSuffix(r.URL.Path, "/edit") && r.Method == http.MethodPost:
+			portfolio.Save(w, r)
+		case strings.HasSuffix(r.URL.Path, "/delete") && r.Method == http.MethodPost:
+			portfolio.Delete(w, r)
+		case strings.HasSuffix(r.URL.Path, "/featured") && r.Method == http.MethodPost:
+			portfolio.ToggleFeatured(w, r)
+		case strings.HasSuffix(r.URL.Path, "/order") && r.Method == http.MethodPost:
+			portfolio.UpdateOrder(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
 
 	// Projects
 	mux.HandleFunc("/manage/repos", projects.ReposList)

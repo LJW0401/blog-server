@@ -919,3 +919,46 @@
 - **发现于**：WI-2.4 PortfolioList 实现
 - **描述**：我习惯性想调 `strconv.Atoi` + 手动 err 处理；发现 `internal/public/public.go` 有 `atoi(s string, def int) int` 辅助，本处直接用了。需求/架构文档在讨论"分页"时若提一句"复用现有 atoi helper"会少一次次要查 grep。
 - **紧急程度**：低
+
+## 2026-04-22（再续）
+
+### 阶段 3：Portfolio 后台 — 完成反思
+
+| # | 反思问题 | 本阶段 | 记录 |
+|---|---------|--------|------|
+| 1 | 临时方案/妥协 | 有 | NUL 字节事件 |
+| 2 | "能跑但不够好"代码 | 有 | `setFrontmatterField` 手写字符串操作 |
+| 3 | Bug 根因在别处 | 无 | — |
+| 4 | 设计假设不成立 | 有 | admin.Handlers 原本没有 Content 字段 |
+| 5 | 范围外重构机会 | 有 | 旧 trash filename regex 的 `proj-` 编码 |
+| 6 | 对系统的新理解 | 有 | auth session 绑 UA 指纹 |
+
+#### 技术债：setFrontmatterField 手写字符串解析
+- **发现于**：WI-3.4 / WI-3.8 执行过程中
+- **描述**：`UpdateOrder` 和 `ToggleFeatured` 需要就地改写 frontmatter 单个字段，不能整份 unmarshal→marshal（会改 key 顺序、丢注释、改变引号风格）。目前用线性扫描 + 前缀匹配 `^\s*key:` 替换整行。对嵌套 / 列表 / 多行字符串值不健壮（portfolio 当前 key 都是标量值，勉强过得去）。
+- **建议处理方式**：下次新增需要改 frontmatter 的 key（多行字符串、数组）时重构成真正的 YAML parse-preserving patcher（例如 yaml.v3 Node API）。
+- **紧急程度**：低-中
+
+#### 架构洞察：admin.Handlers 之前无 Content 依赖，Dashboard 现在需要
+- **发现于**：WI-3.14 执行过程中
+- **描述**：原本 admin.Handlers 只装 Auth / Config / Tpl / Logger；子 handler 各自持有 content.Store。Dashboard 要做跨类别统计（目前 portfolio，未来可能加 docs/projects 数量卡），发现没地方拿 store。改为 Handlers 加 Content 字段（可选），在 main.go 注入。
+- **新理解**：Dashboard 是"跨 handler 聚合"的天然归属。未来加各类统计卡就是这条路。
+- **紧急程度**：低
+
+#### Bug 差一点：写入代码时混入 NUL 字节
+- **发现于**：WI-3.8 `jsonQuote` 实现
+- **描述**：写 backtick raw string 想表达控制字符替代值时，输出里混入了 0x00 字节，Go 编译器直接报 "invalid NUL character"。花几分钟用 od/python 定位到源码里的 NUL 字节。
+- **新理解**：表达控制字符相关常量优先用 `"..."` 双引号转义而非 backtick raw string。
+- **紧急程度**：低（已修）
+
+#### 架构洞察：auth session 绑 UA 指纹
+- **发现于**：WI-3.12 封面上传测试初次全挂 401
+- **描述**：cover 上传测试只传了 cookie 没传 User-Agent，所有请求 401。追到 `auth.ParseSession` 检查 `UAFP` 指纹。既有 `authedPost` helper 习惯性设 `User-Agent: test/ua`，自写 httptest 请求时容易漏。
+- **新理解**：任何绕过 authedPost helper 自写 httptest 请求，**必须** `req.Header.Set("User-Agent", "test/ua")`；已在 postCover 修复。
+- **紧急程度**：低
+
+#### 重构机会：trash 文件名里的 `proj-` 前缀编码方案淘汰
+- **发现于**：WI-3.1 执行过程中
+- **描述**：原 trash 用 `YYYYMMDD-HHMMSS-proj-<slug>.md` 在单个扁平目录里编码 kind；新版改为 `trash/<kind>/<timestamp>-<slug>.md` 子目录编码。`proj-` 前缀只保留在 `trashLegacyFlatRe` 里给 `MigrateFlatTrash` 识别旧数据。
+- **建议处理方式**：几个发布版本后（确认用户都跑过一次迁移），可以把 `MigrateFlatTrash` 和 `trashLegacyFlatRe` 一起删。现阶段留着当兼容层。
+- **紧急程度**：低

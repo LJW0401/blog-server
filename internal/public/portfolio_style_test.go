@@ -77,9 +77,13 @@ func TestPortfolioA11y_Smoke_BasicStructure(t *testing.T) {
 	})
 
 	pages := map[string]func(rr *httptest.ResponseRecorder){
-		"list":   func(rr *httptest.ResponseRecorder) { h.PortfolioList(rr, httptest.NewRequest("GET", "/portfolio", nil)) },
-		"detail": func(rr *httptest.ResponseRecorder) { h.PortfolioDetail(rr, httptest.NewRequest("GET", "/portfolio/showcase", nil)) },
-		"home":   func(rr *httptest.ResponseRecorder) { h.Home(rr, httptest.NewRequest("GET", "/", nil)) },
+		"list": func(rr *httptest.ResponseRecorder) {
+			h.PortfolioList(rr, httptest.NewRequest("GET", "/portfolio", nil))
+		},
+		"detail": func(rr *httptest.ResponseRecorder) {
+			h.PortfolioDetail(rr, httptest.NewRequest("GET", "/portfolio/showcase", nil))
+		},
+		"home": func(rr *httptest.ResponseRecorder) { h.Home(rr, httptest.NewRequest("GET", "/", nil)) },
 	}
 	for name, call := range pages {
 		rr := httptest.NewRecorder()

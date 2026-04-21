@@ -150,12 +150,12 @@ func (ph *ProjectHandlers) ReposDelete(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	trashDir := filepath.Join(ph.DataDir, "trash")
+	trashDir := filepath.Join(ph.DataDir, "trash", TrashKindProject)
 	if err := os.MkdirAll(trashDir, 0o700); err != nil {
 		http.Error(w, "mkdir", http.StatusInternalServerError)
 		return
 	}
-	target := filepath.Join(trashDir, time.Now().UTC().Format("20060102-150405")+"-proj-"+slug+".md")
+	target := filepath.Join(trashDir, time.Now().UTC().Format("20060102-150405")+"-"+slug+".md")
 	if err := os.Rename(e.Path, target); err != nil {
 		http.Error(w, "rename", http.StatusInternalServerError)
 		return

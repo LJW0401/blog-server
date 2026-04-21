@@ -21,11 +21,24 @@
     <ul class="admin-nav">
       <li><a href="/manage/docs">文档管理</a></li>
       <li><a href="/manage/repos">项目管理</a></li>
+      <li><a href="/manage/portfolio">作品集管理</a></li>
       <li><a href="/manage/about">关于我页面</a></li>
       <li><a href="/manage/images">图片管理</a></li>
       <li><a href="/manage/trash">回收站</a></li>
       <li><a href="/diary">日记</a></li>
     </ul>
+    <div class="dashboard-card-grid">
+      <div class="dashboard-card">
+        <h3>作品集</h3>
+        <p class="dashboard-card-stats">
+          <span>published <strong>{{ .Portfolio.Published }}</strong></span>
+          <span>draft <strong>{{ .Portfolio.Draft }}</strong></span>
+          <span>archived <strong>{{ .Portfolio.Archived }}</strong></span>
+        </p>
+        <p class="dashboard-card-total">共 {{ .Portfolio.Total }} 条</p>
+        <p><a class="btn btn-primary" href="/manage/portfolio/new">新建作品</a></p>
+      </div>
+    </div>
   </section>
 
   <section class="admin-section">

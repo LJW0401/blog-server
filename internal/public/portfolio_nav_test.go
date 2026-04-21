@@ -18,7 +18,9 @@ func TestNav_Smoke_PortfolioLinkPresent(t *testing.T) {
 		{"/", func(rr *httptest.ResponseRecorder) { h.Home(rr, httptest.NewRequest("GET", "/", nil)) }},
 		{"/docs", func(rr *httptest.ResponseRecorder) { h.DocsList(rr, httptest.NewRequest("GET", "/docs", nil)) }},
 		{"/projects", func(rr *httptest.ResponseRecorder) { h.ProjectsList(rr, httptest.NewRequest("GET", "/projects", nil)) }},
-		{"/portfolio", func(rr *httptest.ResponseRecorder) { h.PortfolioList(rr, httptest.NewRequest("GET", "/portfolio", nil)) }},
+		{"/portfolio", func(rr *httptest.ResponseRecorder) {
+			h.PortfolioList(rr, httptest.NewRequest("GET", "/portfolio", nil))
+		}},
 	}
 	for _, r := range routes {
 		rr := httptest.NewRecorder()
