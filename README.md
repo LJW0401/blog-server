@@ -8,7 +8,8 @@
 
 - **内容**：Markdown + YAML frontmatter；`draft / published / archived` 三态；fsnotify 热加载；goldmark + chroma 代码高亮
 - **项目页**：本地 MD 长文 + GitHub API 数据（Star/Fork/语言/push 时间）渲染期合并；ETag 条件请求，每 30 分钟同步，429 退避
-- **管理后台**：`/manage` 服务端鉴权（HMAC 签名 Cookie + 每会话 CSRF + IP 级登录限流）；文档/项目编辑器、图片管理、站点设置、修改密码；password_changed_at banner 机制
+- **作品集**：`/portfolio` 独立展示非代码成品（设计 / 可视化 / 写作合集）；卡片网格 + 详情页 + OG meta；主页 featured 卡片（上半图文 + 下半长简介 Intro）；独立 tag 云，不污染 docs/projects/RSS/sitemap；封面上传走 magic bytes 校验（2MB 上限）
+- **管理后台**：`/manage` 服务端鉴权（HMAC 签名 Cookie + 每会话 CSRF + IP 级登录限流）；文档/项目/作品集编辑器、图片管理、站点设置、修改密码；password_changed_at banner 机制；trash 按 Kind 子目录组织，旧版扁平布局启动自动迁移
 - **私密日记**：`/diary` 复用 /manage 登录态；月历视图 + 点击折叠当周 + textarea 编辑；debounce 自动保存 + Ctrl+S + 显式保存按钮；可"转正"为 docs 草稿做后续发布；`content/diary/` 进 gitignore 不入库，公共路由硬断言保证零泄露
 - **统计**：文档阅读数（IP+UA 指纹 60 分钟去重，爬虫 UA 过滤）
 - **备份**：每日 03:00 tar.gz 冷备份，保留 7 份，WAL checkpoint 保证 SQLite 一致
@@ -52,7 +53,7 @@ blog-server/
 │   ├── backup/                每日冷备份
 │   ├── settings/              site_settings KV 跨包共享
 │   └── assets/                go:embed 模板 + 静态资源
-├── content/                   MD 文件（docs/ + projects/ + diary/<私密，gitignored>）
+├── content/                   MD 文件（docs/ + projects/ + portfolio/ + diary/<私密，gitignored>）
 ├── images/                    上传图片
 ├── backups/                   tar.gz 冷备份
 ├── scripts/                   check-headers.sh / lighthouse.sh / migrate-test.sh
@@ -87,9 +88,13 @@ make smoke URL=http://127.0.0.1:8391   # 运行中才跑：响应头 + lighthous
 
 | 文件 | 用途 |
 |-|-|
-| `project_plan/requirements.md` | 需求文档（v1.1，已审核）|
-| `project_plan/architecture.md` | 架构设计（v1.1，已审核，轻量模式）|
-| `project_plan/development-plan.md` | 分阶段开发方案 + 进度记录 |
+| `project_plan/requirements.md` | 博客主线需求文档（v1.1，已审核）|
+| `project_plan/architecture.md` | 博客主线架构（v1.1，已审核，轻量模式）|
+| `project_plan/development-plan.md` | 博客主线分阶段开发方案 + 进度 |
+| `project_plan/portfolio-requirements.md` | 作品集需求文档（v1.1，已审核）|
+| `project_plan/portfolio-architecture.md` | 作品集架构（v1.1，已审核，轻量模式）|
+| `project_plan/portfolio-development-plan.md` | 作品集分阶段开发方案（3 阶段全部已完成）|
+| `project_plan/diary-requirements.md` | 日记专题需求文档 |
 | `project_plan/learnings.md` | 开发期 learnings（bug/技术债/架构洞察） |
 
 ## 许可
