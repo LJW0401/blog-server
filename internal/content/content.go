@@ -1,7 +1,7 @@
-// Package content scans Markdown files under content/docs and
-// content/projects, parses YAML frontmatter and exposes an in-memory index
-// of published/draft/archived entries. Updates are driven by an fsnotify
-// watcher with debounce.
+// Package content scans Markdown files under content/docs, content/projects
+// and content/portfolio, parses YAML frontmatter and exposes an in-memory
+// index of published/draft/archived entries. Updates are driven by an
+// fsnotify watcher with debounce.
 package content
 
 import (
@@ -39,8 +39,9 @@ const (
 type Kind string
 
 const (
-	KindDoc     Kind = "doc"
-	KindProject Kind = "project"
+	KindDoc       Kind = "doc"
+	KindProject   Kind = "project"
+	KindPortfolio Kind = "portfolio"
 )
 
 // Errors surfaced during loading. Callers use errors.Is for classification.
@@ -71,6 +72,13 @@ type Entry struct {
 	DisplayName string
 	DisplayDesc string
 	Stack       []string
+	// Portfolio-specific
+	Cover       string // URL or /images/... path; "" means use default SVG
+	Description string // short one-liner (≤80 chars); separate from Excerpt
+	Order       int    // manual sort weight; smaller first
+	DemoURL     string
+	SourceURL   string
+	Intro       string // rendered HTML snippet extracted from <!-- portfolio:intro --> block; filled by WI-1.4
 }
 
 // Index is the in-memory collection indexed by kind+slug.
@@ -91,6 +99,14 @@ func (i *Index) Get(kind Kind, slug string) (*Entry, bool) {
 
 // List returns all entries of the given kind sorted by Updated desc.
 // Callers filter on Status themselves.
+//
+// Kind isolation invariant: the public-facing outputs (docs pages, projects
+// pages, RSS, sitemap, tag cloud) MUST obtain their data by calling List with
+// an explicit Kind (or via Store.Docs() / Store.Projects() / Store.Portfolios()
+// which already fix the Kind). There is no "get every entry regardless of
+// kind" API and callers must not invent one — that guarantees new kinds like
+// portfolio cannot accidentally leak into existing surfaces (requirement 2.2.6,
+// architecture risk R4).
 func (i *Index) List(kind Kind) []*Entry {
 	i.mu.RLock()
 	defer i.mu.RUnlock()
@@ -128,10 +144,11 @@ func (i *Index) set(e *Entry) bool {
 
 // Store is the top-level content registry. Use New() to construct.
 type Store struct {
-	root   string // content/
-	logger *slog.Logger
-	docs   *Index
-	projs  *Index
+	root       string // content/
+	logger     *slog.Logger
+	docs       *Index
+	projs      *Index
+	portfolios *Index
 }
 
 // New creates a Store rooted at dataDir/content.
@@ -140,10 +157,11 @@ func New(dataDir string, logger *slog.Logger) *Store {
 		logger = slog.Default()
 	}
 	return &Store{
-		root:   filepath.Join(dataDir, "content"),
-		logger: logger,
-		docs:   newIndex(),
-		projs:  newIndex(),
+		root:       filepath.Join(dataDir, "content"),
+		logger:     logger,
+		docs:       newIndex(),
+		projs:      newIndex(),
+		portfolios: newIndex(),
 	}
 }
 
@@ -152,6 +170,9 @@ func (s *Store) Docs() *Index { return s.docs }
 
 // Projects returns the projects index.
 func (s *Store) Projects() *Index { return s.projs }
+
+// Portfolios returns the portfolio index.
+func (s *Store) Portfolios() *Index { return s.portfolios }
 
 // Repos implements github.ReposSource: returns the set of `owner/name`
 // identifiers declared by currently indexed project entries (including
@@ -174,11 +195,15 @@ func (s *Store) Repos() []string {
 func (s *Store) Reload() error {
 	newDocs := newIndex()
 	newProjs := newIndex()
+	newPort := newIndex()
 
 	if err := s.scanKind(filepath.Join(s.root, "docs"), KindDoc, newDocs); err != nil {
 		return err
 	}
 	if err := s.scanKind(filepath.Join(s.root, "projects"), KindProject, newProjs); err != nil {
+		return err
+	}
+	if err := s.scanKind(filepath.Join(s.root, "portfolio"), KindPortfolio, newPort); err != nil {
 		return err
 	}
 
@@ -189,6 +214,9 @@ func (s *Store) Reload() error {
 	s.projs.mu.Lock()
 	s.projs.items = newProjs.items
 	s.projs.mu.Unlock()
+	s.portfolios.mu.Lock()
+	s.portfolios.items = newPort.items
+	s.portfolios.mu.Unlock()
 	return nil
 }
 
@@ -265,9 +293,21 @@ type rawMeta struct {
 	DisplayName string    `yaml:"display_name"`
 	DisplayDesc string    `yaml:"display_desc"`
 	Stack       []string  `yaml:"stack"`
+	// Portfolio-specific
+	Cover       string `yaml:"cover"`
+	Description string `yaml:"description"`
+	Order       int    `yaml:"order"`
+	DemoURL     string `yaml:"demo_url"`
+	SourceURL   string `yaml:"source_url"`
 }
 
 func (m rawMeta) toEntry(kind Kind, path, body string) (*Entry, error) {
+	status := parseStatus(m.Status)
+	// Portfolio defaults to draft when status is unspecified (docs/projects
+	// keep their historical default of published).
+	if kind == KindPortfolio && strings.TrimSpace(m.Status) == "" {
+		status = StatusDraft
+	}
 	e := &Entry{
 		Kind:        kind,
 		Path:        path,
@@ -277,7 +317,7 @@ func (m rawMeta) toEntry(kind Kind, path, body string) (*Entry, error) {
 		Category:    strings.TrimSpace(m.Category),
 		Created:     m.Created,
 		Updated:     m.Updated,
-		Status:      parseStatus(m.Status),
+		Status:      status,
 		Featured:    m.Featured,
 		Excerpt:     strings.TrimSpace(m.Excerpt),
 		Body:        body,
@@ -285,6 +325,11 @@ func (m rawMeta) toEntry(kind Kind, path, body string) (*Entry, error) {
 		DisplayName: strings.TrimSpace(m.DisplayName),
 		DisplayDesc: strings.TrimSpace(m.DisplayDesc),
 		Stack:       m.Stack,
+		Cover:       strings.TrimSpace(m.Cover),
+		Description: strings.TrimSpace(m.Description),
+		Order:       m.Order,
+		DemoURL:     strings.TrimSpace(m.DemoURL),
+		SourceURL:   strings.TrimSpace(m.SourceURL),
 	}
 	if kind == KindDoc {
 		if e.Title == "" {
@@ -294,6 +339,11 @@ func (m rawMeta) toEntry(kind Kind, path, body string) (*Entry, error) {
 	if kind == KindProject {
 		if e.Repo == "" {
 			return nil, fmt.Errorf("%w: repo (%s)", ErrMissingRequired, path)
+		}
+	}
+	if kind == KindPortfolio {
+		if e.Title == "" {
+			return nil, fmt.Errorf("%w: title (%s)", ErrMissingRequired, path)
 		}
 	}
 	if e.Slug == "" {
@@ -307,6 +357,11 @@ func (m rawMeta) toEntry(kind Kind, path, body string) (*Entry, error) {
 	}
 	if e.Excerpt == "" {
 		e.Excerpt = firstChars(body, 120)
+	}
+	if kind == KindPortfolio {
+		intro, rest := extractIntro(e.Body)
+		e.Intro = intro
+		e.Body = rest
 	}
 	return e, nil
 }

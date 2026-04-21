@@ -851,3 +851,35 @@
 - **建议处理方式**：积累到 3 条以上 diary.js 改动后再引入 headless 浏览器测试，单次引入成本才划算
 - **紧急程度**：低
 - **遗留**：`internal/admin/avatar_show_submit_test.go` 仍有 gofmt 差异（上次 release 时已知），本次未修（避免越权），下次进 main 的 patch 一起顺手 `gofmt -w`
+
+## 2026-04-22
+
+### 阶段 1：Portfolio 内容基础 — 完成反思
+
+| # | 反思问题 | 本阶段 | 记录 |
+|---|---------|--------|------|
+| 1 | 临时方案/妥协 | 无 | — |
+| 2 | "能跑但不够好"代码 | 有 | 见下 |
+| 3 | Bug 根因在别处 | 无 | — |
+| 4 | 设计假设不成立 | 无 | — |
+| 5 | 范围外重构机会 | 有 | 见下 |
+| 6 | 对系统的新理解 | 有 | 见下 |
+
+#### 架构洞察：backup 按目录整体打包
+- **发现于**：WI-1.11 执行过程中
+- **描述**：架构文档和开发方案都写"`internal/backup/*.go` 打包清单加入 `content/portfolio/`"，但实际 `backup.go::writeTarGz(..., []string{"content", "images", "data.sqlite"})` 是按顶层目录整体打包，子目录自动包含。无需改 Go 代码。
+- **新理解**：今后讨论"备份覆盖新目录"类需求时，应先读 backup 实现确认是整体还是清单式。需求/架构文档里对"覆盖"的描述可以更具体（明确说"整体打包"时的归零负担）。
+- **建议处理方式**：下次起类似需求前，花 30 秒看一眼打包策略再写描述。
+- **紧急程度**：低
+
+#### 技术债：extractIntro 对"多 close 一 open"的容错
+- **发现于**：WI-1.6 执行过程中
+- **描述**：dev-plan 列出的"嵌套"异常场景定义为"duplicate open"（`<!-- portfolio:intro --> a <!-- portfolio:intro --> b <!-- /portfolio:intro -->`），当前 `extractIntro` 能检测并回退。但若输入是"一 open 两 close"（`<!-- portfolio:intro --> a <!-- /portfolio:intro --> b <!-- /portfolio:intro -->`），代码按 first-match 接受第一对 intro，剩下一个 orphan close 留在 rest 里。我在测试里把这个 case 移除了（非 dev-plan 要求），但用户在 md 里误写多 close 时 UI 会出现 "<!-- /portfolio:intro -->" 字面量。
+- **建议处理方式**：下次做模板改进时（阶段 2），可以考虑在详情页 body 渲染前用 `strings.ReplaceAll(body, introCloseTag, "")` 兜底清理；或在 WI-1.4 的实现里检测"body 中总共有多少 close 标签"，若 >1 则视为 malformed 回退。当前影响小，不紧急。
+- **紧急程度**：低
+
+#### 重构机会（范围外）：scanKind 的重复 slug 返回 fatal error
+- **发现于**：WI-1.1 读 content.go 时
+- **描述**：`scanKind` 遇到重复 slug 会 `return fmt.Errorf("%w: …", ErrDuplicateSlug, …)`，整个 Reload 失败。对 portfolio（站主人工维护，可能手抖复制文件）不够友好，可能导致服务启动失败或 fsnotify Reload 整体回滚。
+- **建议处理方式**：后续可以把重复 slug 改成 per-file 跳过 + 日志告警，而非阻塞整个 Kind 扫描。但此改动影响 docs/projects 既有行为，需审慎。
+- **紧急程度**：低

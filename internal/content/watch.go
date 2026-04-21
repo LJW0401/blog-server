@@ -32,6 +32,7 @@ func (s *Store) Watch(ctx context.Context, debounce time.Duration) (cancel func(
 	for _, d := range []string{
 		filepath.Join(s.root, "docs"),
 		filepath.Join(s.root, "projects"),
+		filepath.Join(s.root, "portfolio"),
 	} {
 		if err := watcher.Add(d); err != nil {
 			s.logger.Warn("content.watch.add",
