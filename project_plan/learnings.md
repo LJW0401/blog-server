@@ -883,3 +883,39 @@
 - **描述**：`scanKind` 遇到重复 slug 会 `return fmt.Errorf("%w: …", ErrDuplicateSlug, …)`，整个 Reload 失败。对 portfolio（站主人工维护，可能手抖复制文件）不够友好，可能导致服务启动失败或 fsnotify Reload 整体回滚。
 - **建议处理方式**：后续可以把重复 slug 改成 per-file 跳过 + 日志告警，而非阻塞整个 Kind 扫描。但此改动影响 docs/projects 既有行为，需审慎。
 - **紧急程度**：低
+
+## 2026-04-22（续）
+
+### 阶段 2：Portfolio 前台 — 完成反思
+
+| # | 反思问题 | 本阶段 | 记录 |
+|---|---------|--------|------|
+| 1 | 临时方案/妥协 | 有 | WI-2.15 axe-core 扫描改为结构性断言 |
+| 2 | "能跑但不够好"代码 | 有 | isolation test 漏算了 home 会加 featured |
+| 3 | Bug 根因在别处 | 无 | — |
+| 4 | 设计假设不成立 | 有 | 模板函数名写错 `date` vs `formatDate` |
+| 5 | 范围外重构机会 | 无 | — |
+| 6 | 对系统的新理解 | 有 | `atoi` helper 已在 public 包存在 |
+
+#### 技术债：WI-2.15 axe-core 全量扫描留给发布前 UAT
+- **发现于**：WI-2.15 执行过程中
+- **描述**：dev-plan 明确说"本地启动 server, `npx @axe-core/cli <url>` 自动跑"，但在 Go 单测环境里不跑 headless 浏览器。当前用结构断言（每 `<img>` 有 alt、无 inline width、intro 标记不外泄）替代，覆盖面有限。
+- **建议处理方式**：阶段 3 合并主分支前，手动跑一次 `npx @axe-core/cli http://localhost:8090/portfolio`（亮/暗 × 列表/详情/主页），有 critical 则回溯补色或语义。长期看可以把 axe 扫描接入 `make release` 的 e2e 阶段。
+- **紧急程度**：中
+
+#### Bug：isolation test 未随 WI-2.8 同步更新
+- **发现于**：WI-2.8 跑完后 portfolio_isolation_test 挂了
+- **描述**：阶段 1 写的"portfolio 不泄露到任何公共路径"的硬断言列表里包括 home；阶段 2 却让 home 主动展示 featured portfolios。写阶段 1 测试时我对阶段 2 行为估计过度悲观——把 home 放入 deny-list 后，阶段 2 一改 home 就挂。
+- **建议处理方式**：下次写跨阶段的"不应该出现在 X 的地方"测试前，先对照 dev-plan 后续阶段看 X 的身份是否会变。
+- **紧急程度**：低（已修）
+
+#### 架构洞察：template 函数名在仓库的实际签名
+- **发现于**：WI-2.1 运行测试时
+- **描述**：架构/需求文档都写"`date .Entry.Updated "2006-01-02"`"，仓库的 `render/templates.go` 实际注册的是 `formatDate`。造成阶段 2 第一个测试 500。
+- **新理解**：写架构时凭印象写 template 函数名很容易踩坑；下次架构文档给模板片段示例前，应该先 `grep "\"[a-z]\+\": func" internal/render/templates.go` 把真实 FuncMap 列出来再引用。
+- **紧急程度**：低
+
+#### 架构洞察：`atoi(s, default)` helper 已存在
+- **发现于**：WI-2.4 PortfolioList 实现
+- **描述**：我习惯性想调 `strconv.Atoi` + 手动 err 处理；发现 `internal/public/public.go` 有 `atoi(s string, def int) int` 辅助，本处直接用了。需求/架构文档在讨论"分页"时若提一句"复用现有 atoi helper"会少一次次要查 grep。
+- **紧急程度**：低

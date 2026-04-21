@@ -122,16 +122,15 @@ PTFOLIO_BODY_FOR_SHARED_TAG
 	h := public.NewHandlers(cstore, tpl, logger)
 	h.SettingsDB = settings.New(st.DB)
 
+	// NOTE: the home route is intentionally excluded here — as of WI-2.8 the
+	// homepage deliberately shows featured portfolios. The isolation
+	// invariant is narrower than "portfolio never appears anywhere": it is
+	// "portfolio never leaks into the *legacy* surfaces for docs / projects /
+	// feeds / sitemap / docs tag cloud".
 	cases := []struct {
 		name string
 		call func(rr *httptest.ResponseRecorder)
 	}{
-		{
-			name: "home",
-			call: func(rr *httptest.ResponseRecorder) {
-				h.Home(rr, httptest.NewRequest("GET", "/", nil))
-			},
-		},
 		{
 			name: "docs_list",
 			call: func(rr *httptest.ResponseRecorder) {

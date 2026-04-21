@@ -372,7 +372,17 @@
 4. 所有工作项的安全门控通过
 5. 所有集成门控通过
 
-**阶段状态**：未开始
+**阶段状态**：已完成
+
+**完成日期**：2026-04-22
+**验收结果**：通过
+**安全门控**：全部通过（gofmt / go vet / go test ./... 全绿）
+**集成门控**：全部通过（WI-2.7 / 2.7b / 2.10b / 2.16）
+**备注**：
+- 代码改动：`internal/public/portfolio.go`（新，详情 + 列表 + 排序）、`internal/public/public.go::Home`（加 FeaturedPortfolios 装配）、`internal/assets/templates/{portfolio_list,portfolio_detail,home,layout}.html`、`internal/assets/static/css/theme.css`（portfolio 全部样式 + 窄屏）、`internal/assets/static/images/portfolio-default.svg`（新）、`cmd/server/main.go`（路由注册）
+- 测试新增：`portfolio_detail_test.go`、`portfolio_list_test.go`、`home_portfolio_test.go`、`portfolio_nav_test.go`、`portfolio_style_test.go`；更新 `portfolio_isolation_test.go` 显式排除 home（因 WI-2.8 本就让 home 展示 featured）
+- WI-2.15 axe-core 全量扫描为发布前手动 UAT 步骤；本阶段用 Go-level 结构断言（alt 齐全 / 无 inline width / intro 标记不外泄）做最低保护
+- 修正：架构文档给的 `date` template 函数名在仓库实际为 `formatDate`（初稿踩过；learnings 已记）
 
 ---
 

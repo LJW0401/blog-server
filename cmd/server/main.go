@@ -188,6 +188,8 @@ func main() {
 	mux.HandleFunc("/projects", ph.ProjectsList)
 	mux.HandleFunc("/projects/", ph.ProjectDetail)
 	mux.HandleFunc("/about", ph.About)
+	mux.HandleFunc("/portfolio", ph.PortfolioList)
+	mux.HandleFunc("/portfolio/", ph.PortfolioDetail)
 	mux.HandleFunc("/rss.xml", ph.RSS)
 	mux.HandleFunc("/sitemap.xml", ph.Sitemap)
 

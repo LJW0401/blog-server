@@ -1,0 +1,56 @@
+{{ define "title" }}{{ .Data.Entry.Title }} — Penguin{{ end }}
+{{ define "body_class" }}page-portfolio-detail{{ end }}
+{{ define "description" }}{{ if .Data.Entry.Description }}{{ .Data.Entry.Description }}{{ else }}{{ excerpt .Data.Entry.Body 160 }}{{ end }}{{ end }}
+{{ define "og" }}
+<meta property="og:site_name" content="Penguin" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="{{ .Data.Entry.Title }}" />
+<meta property="og:description" content="{{ if .Data.Entry.Description }}{{ .Data.Entry.Description }}{{ else }}{{ excerpt .Data.Entry.Body 160 }}{{ end }}" />
+<meta property="og:image" content="{{ .Data.Cover }}" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{{ .Data.Entry.Title }}" />
+<meta name="twitter:description" content="{{ if .Data.Entry.Description }}{{ .Data.Entry.Description }}{{ else }}{{ excerpt .Data.Entry.Body 160 }}{{ end }}" />
+<meta name="twitter:image" content="{{ .Data.Cover }}" />
+{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<article class="portfolio-detail">
+  {{ if .IsDraft }}
+  <div class="draft-banner">草稿预览 — 尚未公开</div>
+  {{ end }}
+  {{ if .Archived }}
+  <div class="archived-banner">已归档</div>
+  {{ end }}
+
+  <header class="portfolio-header">
+    {{ if .Entry.Category }}<div class="kicker">{{ .Entry.Category }}</div>{{ end }}
+    <h1>{{ .Entry.Title }}</h1>
+    {{ if .Entry.Description }}<p class="portfolio-desc">{{ .Entry.Description }}</p>{{ end }}
+    <div class="portfolio-meta">
+      <time datetime="{{ formatDate .Entry.Updated "2006-01-02" }}">{{ formatDate .Entry.Updated "2006-01-02" }}</time>
+      {{ if .Entry.Tags }}
+      <span class="portfolio-tags">
+        {{ range .Entry.Tags }}<a href="/portfolio?tag={{ . }}">#{{ . }}</a>{{ end }}
+      </span>
+      {{ end }}
+    </div>
+  </header>
+
+  <figure class="portfolio-cover">
+    <img src="{{ .Cover }}" alt="{{ .Entry.Title }} 封面" loading="lazy" />
+  </figure>
+
+  {{ if or .Entry.DemoURL .Entry.SourceURL }}
+  <div class="portfolio-links">
+    {{ if .Entry.DemoURL }}<a class="portfolio-link portfolio-link-demo" href="{{ .Entry.DemoURL }}" target="_blank" rel="noopener noreferrer">在线演示 ↗</a>{{ end }}
+    {{ if .Entry.SourceURL }}<a class="portfolio-link portfolio-link-source" href="{{ .Entry.SourceURL }}" target="_blank" rel="noopener noreferrer">源码 ↗</a>{{ end }}
+  </div>
+  {{ end }}
+
+  <div class="portfolio-body markdown-body">
+    {{ markdown .Entry.Body }}
+  </div>
+</article>
+{{ end }}
+{{ end }}
