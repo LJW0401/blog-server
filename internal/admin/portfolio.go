@@ -270,6 +270,22 @@ func (p *PortfolioHandlers) ToggleFeatured(w http.ResponseWriter, r *http.Reques
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// 从非置顶切到置顶时，把 order 设为"现有置顶 max + 10"，让新上榜的
+	// 作品落在主页末尾，避免沿用原值（常见是默认的 0）导致意外插队。
+	// 转换为非置顶、或原本就已置顶（幂等重放）时不动 order。
+	if wantFeatured && !e.Featured {
+		maxOrd := 0
+		for _, fe := range p.Content.Portfolios().List(content.KindPortfolio) {
+			if fe.Featured && fe.Slug != slug && fe.Order > maxOrd {
+				maxOrd = fe.Order
+			}
+		}
+		updated, err = setFrontmatterField(updated, "order", strconv.Itoa(maxOrd+10))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 	if err := storage.AtomicWrite(e.Path, []byte(updated), 0o644); err != nil {
 		p.Parent.Logger.Error("admin.portfolio.featured.write", slog.String("err", err.Error()))
 		http.Error(w, "write failed", http.StatusInternalServerError)

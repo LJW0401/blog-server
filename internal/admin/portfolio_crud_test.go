@@ -150,6 +150,96 @@ func TestPortfolioCRUD_Smoke_ToggleFeatured(t *testing.T) {
 	}
 }
 
+// Smoke: 非置顶切到置顶时，order 自动变为"现有置顶 max + 10"，
+// 让新加入主页的作品自然落在末尾。
+func TestPortfolioCRUD_Smoke_FeaturedAutoOrderAppendsToEnd(t *testing.T) {
+	b := crudSetup(t)
+	// 三个已置顶：order 10 / 20 / 30
+	seedPortfolioFile(t, b, "f10", portfolioMD("f10", "F10", true, 10))
+	seedPortfolioFile(t, b, "f20", portfolioMD("f20", "F20", true, 20))
+	seedPortfolioFile(t, b, "f30", portfolioMD("f30", "F30", true, 30))
+	// 一个待上榜（默认 order=0）
+	seedPortfolioFile(t, b, "joiner", portfolioMD("joiner", "Joiner", false, 0))
+	if err := b.Content.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	w := b.authedPost(t, "/manage/portfolio/joiner/featured",
+		url.Values{"csrf": {b.CSRF}, "featured": {"true"}},
+		b.Portfolio.ToggleFeatured)
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	e, _ := b.Content.Portfolios().Get(content.KindPortfolio, "joiner")
+	if e == nil || !e.Featured {
+		t.Fatalf("joiner not featured: %+v", e)
+	}
+	if e.Order != 40 {
+		t.Errorf("joiner order=%d, want 40", e.Order)
+	}
+}
+
+// Exception: 场景覆盖
+// - 边界值：无其他置顶时，新上榜 order=10
+// - 幂等：已置顶重放 featured=true 不变 order
+// - 非法状态：切回非置顶不修改 order
+func TestPortfolioCRUD_Exception_FeaturedAutoOrderEdgeCases(t *testing.T) {
+	t.Run("边界值：首个置顶 order=10", func(t *testing.T) {
+		b := crudSetup(t)
+		seedPortfolioFile(t, b, "first", portfolioMD("first", "First", false, 0))
+		if err := b.Content.Reload(); err != nil {
+			t.Fatal(err)
+		}
+		w := b.authedPost(t, "/manage/portfolio/first/featured",
+			url.Values{"csrf": {b.CSRF}, "featured": {"true"}},
+			b.Portfolio.ToggleFeatured)
+		if w.Code != http.StatusSeeOther {
+			t.Fatalf("status=%d", w.Code)
+		}
+		e, _ := b.Content.Portfolios().Get(content.KindPortfolio, "first")
+		if e.Order != 10 {
+			t.Errorf("first order=%d, want 10", e.Order)
+		}
+	})
+	t.Run("幂等：已置顶重放不动 order", func(t *testing.T) {
+		b := crudSetup(t)
+		seedPortfolioFile(t, b, "keep", portfolioMD("keep", "Keep", true, 77))
+		seedPortfolioFile(t, b, "peer", portfolioMD("peer", "Peer", true, 100))
+		if err := b.Content.Reload(); err != nil {
+			t.Fatal(err)
+		}
+		w := b.authedPost(t, "/manage/portfolio/keep/featured",
+			url.Values{"csrf": {b.CSRF}, "featured": {"true"}},
+			b.Portfolio.ToggleFeatured)
+		if w.Code != http.StatusSeeOther {
+			t.Fatalf("status=%d", w.Code)
+		}
+		e, _ := b.Content.Portfolios().Get(content.KindPortfolio, "keep")
+		if e.Order != 77 {
+			t.Errorf("keep order mutated to %d, want 77", e.Order)
+		}
+	})
+	t.Run("切回非置顶：order 保持", func(t *testing.T) {
+		b := crudSetup(t)
+		seedPortfolioFile(t, b, "demote", portfolioMD("demote", "Demote", true, 55))
+		if err := b.Content.Reload(); err != nil {
+			t.Fatal(err)
+		}
+		w := b.authedPost(t, "/manage/portfolio/demote/featured",
+			url.Values{"csrf": {b.CSRF}, "featured": {"false"}},
+			b.Portfolio.ToggleFeatured)
+		if w.Code != http.StatusSeeOther {
+			t.Fatalf("status=%d", w.Code)
+		}
+		e, _ := b.Content.Portfolios().Get(content.KindPortfolio, "demote")
+		if e.Featured {
+			t.Error("not demoted")
+		}
+		if e.Order != 55 {
+			t.Errorf("demote order mutated to %d, want 55", e.Order)
+		}
+	})
+}
+
 // Smoke: list page shows the new "显示到主页 / 从主页移除" wording on the
 // featured toggle buttons (replaces the legacy 置顶/取消置顶 labels).
 // 豁免异常测试：纯模板文案改动，端点和数据流未动。
