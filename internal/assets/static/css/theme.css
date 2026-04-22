@@ -1287,3 +1287,13 @@ body.page-diary { background: var(--bg); }
 .dashboard-card-stats { display: flex; gap: 14px; flex-wrap: wrap; color: var(--ink-soft); font-size: 13px; margin: 0 0 6px; }
 .dashboard-card-stats strong { color: var(--ink); font-size: 16px; margin-left: 4px; }
 .dashboard-card-total { color: var(--ink-faint); font-size: 12px; margin: 0 0 12px; }
+
+/* /manage/portfolio 拖动排序 */
+.admin-section-title { font-size: 18px; font-weight: 600; margin: 24px 0 12px; }
+.admin-section-title .admin-section-sub { font-size: 12px; color: var(--ink-faint); font-weight: 400; margin-left: 10px; }
+.portfolio-featured-table tr[draggable="true"] { cursor: grab; }
+.portfolio-featured-table tr.is-dragging { opacity: 0.4; cursor: grabbing; }
+.portfolio-drag-handle { width: 24px; color: var(--ink-faint); user-select: none; cursor: grab; text-align: center; }
+.portfolio-order-cell { color: var(--ink-soft); font-variant-numeric: tabular-nums; width: 60px; }
+.portfolio-featured-table.is-saving { opacity: 0.7; pointer-events: none; }
+.portfolio-featured-table.is-saved { outline: 2px solid var(--accent); outline-offset: -2px; transition: outline 0.3s ease; }

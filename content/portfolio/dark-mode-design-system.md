@@ -4,7 +4,7 @@ slug: dark-mode-design-system
 description: 从 CSS 变量到 tokens — 一次性整理整个站点的配色
 category: 设计
 tags: [design, css]
-order: 2
+order: 20
 source_url: https://github.com/example/dark-mode
 created: 2026-02-14
 updated: 2026-02-28

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -33,11 +34,33 @@ type PortfolioHandlers struct {
 func (p *PortfolioHandlers) List(w http.ResponseWriter, r *http.Request) {
 	sess, _ := p.Parent.Auth.ParseSession(r)
 	entries := p.Content.Portfolios().List(content.KindPortfolio)
+	featured := make([]*content.Entry, 0, len(entries))
+	others := make([]*content.Entry, 0, len(entries))
+	for _, e := range entries {
+		if e.Featured {
+			featured = append(featured, e)
+		} else {
+			others = append(others, e)
+		}
+	}
+	// featured: Order ASC, Updated DESC — matches homepage display order.
+	sort.SliceStable(featured, func(i, j int) bool {
+		if featured[i].Order != featured[j].Order {
+			return featured[i].Order < featured[j].Order
+		}
+		return featured[i].Updated.After(featured[j].Updated)
+	})
+	// others: Updated DESC — order field isn't user-facing for non-featured.
+	sort.SliceStable(others, func(i, j int) bool {
+		return others[i].Updated.After(others[j].Updated)
+	})
 	data := map[string]any{
-		"Entries": entries,
-		"CSRF":    sess.CSRF,
-		"Info":    r.URL.Query().Get("info"),
-		"Error":   r.URL.Query().Get("e"),
+		"Entries":  entries,
+		"Featured": featured,
+		"Others":   others,
+		"CSRF":     sess.CSRF,
+		"Info":     r.URL.Query().Get("info"),
+		"Error":    r.URL.Query().Get("e"),
 	}
 	if err := p.Parent.Tpl.Render(w, r, http.StatusOK, "admin_portfolio_list.html", data); err != nil {
 		p.Parent.Logger.Error("admin.portfolio.list", slog.String("err", err.Error()))

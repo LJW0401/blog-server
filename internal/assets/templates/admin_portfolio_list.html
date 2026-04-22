@@ -17,41 +17,31 @@
   {{ if .Info }}<div class="form-info">{{ .Info }}</div>{{ end }}
 
   <section class="admin-section">
-    {{ if .Entries }}
-    <table class="admin-table">
+    <h2 class="admin-section-title">主页展示 <span class="admin-section-sub">拖动行调整主页显示顺序</span></h2>
+    {{ if .Featured }}
+    <table class="admin-table portfolio-featured-table" data-csrf="{{ $csrf }}">
       <thead>
         <tr>
-          <th>状态</th><th>标题</th><th>Slug</th><th>Featured</th><th>Order</th><th>更新</th><th>操作</th>
+          <th aria-label="drag handle"></th>
+          <th>状态</th><th>标题</th><th>Slug</th><th>Order</th><th>更新</th><th>操作</th>
         </tr>
       </thead>
-      <tbody>
-        {{ range .Entries }}
-        <tr data-slug="{{ .Slug }}">
+      <tbody class="portfolio-drag-body">
+        {{ range .Featured }}
+        <tr data-slug="{{ .Slug }}" data-order="{{ .Order }}" draggable="true">
+          <td class="portfolio-drag-handle" aria-label="拖动排序">⋮⋮</td>
           <td><span class="status-badge status-{{ .Status }}">{{ .Status }}</span></td>
           <td><a href="/portfolio/{{ .Slug }}">{{ .Title }}</a></td>
           <td><code>{{ .Slug }}</code></td>
-          <td>
-            <form method="POST" action="/manage/portfolio/{{ .Slug }}/featured" style="display:inline;">
-              <input type="hidden" name="csrf" value="{{ $csrf }}" />
-              <input type="hidden" name="featured" value="{{ if .Featured }}false{{ else }}true{{ end }}" />
-              <button class="link-primary" type="submit">{{ if .Featured }}★ 取消置顶{{ else }}☆ 置顶{{ end }}</button>
-            </form>
-          </td>
-          <td>
-            <input
-              class="portfolio-order-input"
-              type="number"
-              min="0"
-              max="9999"
-              step="1"
-              value="{{ .Order }}"
-              data-slug="{{ .Slug }}"
-              data-csrf="{{ $csrf }}"
-              aria-label="order for {{ .Slug }}" />
-          </td>
+          <td class="portfolio-order-cell">{{ .Order }}</td>
           <td>{{ formatDate .Updated "2006-01-02" }}</td>
           <td>
             <a href="/manage/portfolio/{{ .Slug }}/edit">编辑</a>
+            <form method="POST" action="/manage/portfolio/{{ .Slug }}/featured" style="display:inline;">
+              <input type="hidden" name="csrf" value="{{ $csrf }}" />
+              <input type="hidden" name="featured" value="false" />
+              <button class="link-primary" type="submit">★ 取消置顶</button>
+            </form>
             <form method="POST" action="/manage/portfolio/{{ .Slug }}/delete" style="display:inline;" data-confirm="确定删除《{{ .Title }}》？软删到 trash/">
               <input type="hidden" name="csrf" value="{{ $csrf }}" />
               <button class="link-danger" type="submit">删除</button>
@@ -62,11 +52,52 @@
       </tbody>
     </table>
     {{ else }}
+    <p class="note">暂无置顶作品。在下方列表点击「☆ 置顶」以加入主页展示。</p>
+    {{ end }}
+  </section>
+
+  <section class="admin-section">
+    <h2 class="admin-section-title">不在主页展示</h2>
+    {{ if .Others }}
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>状态</th><th>标题</th><th>Slug</th><th>更新</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range .Others }}
+        <tr data-slug="{{ .Slug }}">
+          <td><span class="status-badge status-{{ .Status }}">{{ .Status }}</span></td>
+          <td><a href="/portfolio/{{ .Slug }}">{{ .Title }}</a></td>
+          <td><code>{{ .Slug }}</code></td>
+          <td>{{ formatDate .Updated "2006-01-02" }}</td>
+          <td>
+            <a href="/manage/portfolio/{{ .Slug }}/edit">编辑</a>
+            <form method="POST" action="/manage/portfolio/{{ .Slug }}/featured" style="display:inline;">
+              <input type="hidden" name="csrf" value="{{ $csrf }}" />
+              <input type="hidden" name="featured" value="true" />
+              <button class="link-primary" type="submit">☆ 置顶</button>
+            </form>
+            <form method="POST" action="/manage/portfolio/{{ .Slug }}/delete" style="display:inline;" data-confirm="确定删除《{{ .Title }}》？软删到 trash/">
+              <input type="hidden" name="csrf" value="{{ $csrf }}" />
+              <button class="link-danger" type="submit">删除</button>
+            </form>
+          </td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    {{ else }}
+    <p class="note">全部作品均已置顶。</p>
+    {{ end }}
+
+    {{ if not .Entries }}
     <p class="note">暂无作品，<a href="/manage/portfolio/new">立即新建</a>。</p>
     {{ end }}
   </section>
 </div>
 {{ end }}
 <script defer src="/static/js/confirm_submit.js"></script>
-<script defer src="/static/js/portfolio_order.js"></script>
+<script defer src="/static/js/portfolio_drag_sort.js"></script>
 {{ end }}

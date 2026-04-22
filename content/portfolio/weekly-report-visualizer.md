@@ -4,7 +4,7 @@ slug: weekly-report-visualizer
 description: 把枯燥的周报表格变成可交互的热力图，一眼看出瓶颈
 category: 可视化
 tags: [dataviz, d3]
-order: 1
+order: 10
 demo_url: https://example.com/demo/weekly
 source_url: https://github.com/example/weekly-viz
 created: 2026-03-05
