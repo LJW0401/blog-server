@@ -1,35 +1,78 @@
 package assets_test
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
 
-// Regression: 暗色模式下 .portfolio-card 与 .portfolio-home-card 必须有背景覆盖。
-// 原 bug：这两个类在亮色规则里写 `background: var(--card-bg, #fff)`，但
-// `--card-bg` 变量从未在任何地方定义过（亮色或暗色都没），所以 UA 永远走
-// 回退值 #fff；`.repo-card` / `.about-card` / `.admin-card` 都在 @media
-// (prefers-color-scheme: dark) 里显式覆盖了 background，唯独作品集两个
-// 卡片类漏掉，导致暗色模式下作品集首页区块和列表页仍是白卡。
+// Regression: 暗色模式下 .portfolio-card / .portfolio-home-card 不再回退成白色。
+//
+// 原 bug 两层：
+//  1. --card-bg 变量从未定义，`var(--card-bg, #fff)` 永远走 #fff 回退
+//  2. 试图用 @media 暗色覆盖时放在亮色规则之前，按源码顺序被反向压过
+//
+// 当前方案：把 --card-bg 提升为全局变量 —— :root 定义亮色值、
+// dark @media 覆盖为暗色值。卡片类只需要 `background: var(--card-bg)`。
+// 测试为此方案加锁，任何一环缺失都视为回归：
+//   - :root 必须定义 --card-bg
+//   - 暗色 @media 必须覆盖 --card-bg
+//   - 相关卡片类必须引用 var(--card-bg) 而非硬编码白色
 func TestTheme_Regression_PortfolioCardDarkModeOverride(t *testing.T) {
 	css := readTheme(t)
 
-	// Find ALL dark @media blocks (theme.css has two).
-	var darkBlocks []string
-	searchFrom := 0
-	for {
-		start := strings.Index(css[searchFrom:], "@media (prefers-color-scheme: dark)")
-		if start < 0 {
+	// 1) :root 定义 --card-bg
+	rootBlock := extractBlockAfter(t, css, ":root {")
+	if !regexp.MustCompile(`--card-bg\s*:`).MatchString(rootBlock) {
+		t.Error(":root 缺少 --card-bg 变量定义 —— 暗色模式下卡片会走未定义回退")
+	}
+
+	// 2) 暗色 @media 至少一处覆盖 --card-bg
+	darkBlocks := findDarkMediaBlocks(t, css)
+	if len(darkBlocks) == 0 {
+		t.Fatal("未找到 @media (prefers-color-scheme: dark) 块")
+	}
+	darkHasCardBg := false
+	for _, b := range darkBlocks {
+		if regexp.MustCompile(`--card-bg\s*:`).MatchString(b) {
+			darkHasCardBg = true
 			break
 		}
-		abs := searchFrom + start
-		openIdx := strings.Index(css[abs:], "{")
-		if openIdx < 0 {
-			t.Fatal("dark-mode @media opening brace not found")
+	}
+	if !darkHasCardBg {
+		t.Error("暗色 @media 未覆盖 --card-bg —— 卡片暗色下仍会沿用 :root 的亮色值")
+	}
+
+	// 3) 卡片类引用 var(--card-bg)，不能是硬编码颜色
+	for _, selector := range []string{".portfolio-card", ".portfolio-home-card"} {
+		rule := extractFirstRule(css, selector+" {")
+		if rule == "" {
+			t.Errorf("%s 规则未找到", selector)
+			continue
+		}
+		if !strings.Contains(rule, "var(--card-bg") {
+			t.Errorf("%s 应使用 var(--card-bg) 而非硬编码背景：%q", selector, rule)
+		}
+	}
+}
+
+func findDarkMediaBlocks(t *testing.T, css string) []string {
+	t.Helper()
+	var blocks []string
+	cursor := 0
+	for {
+		at := strings.Index(css[cursor:], "@media (prefers-color-scheme: dark)")
+		if at < 0 {
+			return blocks
+		}
+		abs := cursor + at
+		openRel := strings.Index(css[abs:], "{")
+		if openRel < 0 {
+			return blocks
 		}
 		depth := 0
 		endRel := -1
-		for i := openIdx; i < len(css)-abs; i++ {
+		for i := openRel; i < len(css)-abs; i++ {
 			switch css[abs+i] {
 			case '{':
 				depth++
@@ -44,79 +87,36 @@ func TestTheme_Regression_PortfolioCardDarkModeOverride(t *testing.T) {
 			}
 		}
 		if endRel < 0 {
-			t.Fatal("dark-mode @media block unbalanced")
+			return blocks
 		}
-		darkBlocks = append(darkBlocks, css[abs:abs+endRel+1])
-		searchFrom = abs + endRel + 1
+		blocks = append(blocks, css[abs:abs+endRel+1])
+		cursor = abs + endRel + 1
 	}
-	if len(darkBlocks) == 0 {
-		t.Fatal("no dark-mode @media blocks found")
-	}
-	joined := strings.Join(darkBlocks, "\n")
+}
 
-	for _, selector := range []string{".portfolio-card", ".portfolio-home-card"} {
-		idx := strings.Index(joined, selector)
-		if idx < 0 {
-			t.Errorf("dark-mode block does not override %s — card will render white #fff in dark mode", selector)
-			continue
-		}
-		// Walk the rule body after the selector token and check for background.
-		ruleEnd := strings.Index(joined[idx:], "}")
-		if ruleEnd < 0 {
-			t.Fatalf("%s dark rule not closed", selector)
-		}
-		rule := joined[idx : idx+ruleEnd]
-		if !strings.Contains(rule, "background") {
-			t.Errorf("dark-mode %s override missing background declaration: %q", selector, rule)
-		}
-
-		// 关键：源码顺序。@media 不改变 specificity，所以暗色覆盖必须在
-		// 亮色规则之后出现；否则会被后者反向压过。
-		lightRulePattern := selector + " {"
-		lastLight := strings.LastIndex(css, lightRulePattern)
-		// Find the dark override's absolute position in css (not joined).
-		// Search for selector occurrences inside any dark block.
-		darkPositions := []int{}
-		start := 0
-		for {
-			at := strings.Index(css[start:], "@media (prefers-color-scheme: dark)")
-			if at < 0 {
-				break
-			}
-			abs := start + at
-			blockOpen := strings.Index(css[abs:], "{")
-			depth, endRel := 0, -1
-			for i := blockOpen; i < len(css)-abs; i++ {
-				switch css[abs+i] {
-				case '{':
-					depth++
-				case '}':
-					depth--
-					if depth == 0 {
-						endRel = i
-					}
-				}
-				if endRel >= 0 {
-					break
-				}
-			}
-			if endRel < 0 {
-				break
-			}
-			block := css[abs : abs+endRel+1]
-			if off := strings.Index(block, selector); off >= 0 {
-				darkPositions = append(darkPositions, abs+off)
-			}
-			start = abs + endRel + 1
-		}
-		if len(darkPositions) == 0 {
-			continue // already reported missing above
-		}
-		// 最后一处（同选择器最后出现的）必须在亮色规则之后。
-		lastDark := darkPositions[len(darkPositions)-1]
-		if lastLight >= 0 && lastDark < lastLight {
-			t.Errorf("dark-mode %s override at offset %d appears BEFORE light rule at %d — CSS cascade will pick the later light rule and card stays white; move the dark block to end of file",
-				selector, lastDark, lastLight)
-		}
+func extractBlockAfter(t *testing.T, css, marker string) string {
+	t.Helper()
+	i := strings.Index(css, marker)
+	if i < 0 {
+		t.Fatalf("marker %q not found", marker)
 	}
+	rest := css[i+len(marker):]
+	end := strings.Index(rest, "}")
+	if end < 0 {
+		t.Fatalf("block after %q not closed", marker)
+	}
+	return rest[:end]
+}
+
+func extractFirstRule(css, selectorOpen string) string {
+	i := strings.Index(css, selectorOpen)
+	if i < 0 {
+		return ""
+	}
+	rest := css[i+len(selectorOpen):]
+	end := strings.Index(rest, "}")
+	if end < 0 {
+		return ""
+	}
+	return rest[:end]
 }

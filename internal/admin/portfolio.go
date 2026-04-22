@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
@@ -362,35 +363,8 @@ func (p *PortfolioHandlers) UpdateOrder(w http.ResponseWriter, r *http.Request) 
 
 func writeJSONErr(w http.ResponseWriter, status int, msg string) {
 	w.WriteHeader(status)
-	_, _ = w.Write([]byte(`{"ok":false,"error":` + jsonQuote(msg) + `}`))
-}
-
-// jsonQuote escapes a string for embedding in a JSON string literal.
-// Handles backslash, double-quote, control chars; keeps unicode chars intact.
-func jsonQuote(s string) string {
-	var b strings.Builder
-	b.WriteByte('"')
-	for _, r := range s {
-		switch r {
-		case '\\', '"':
-			b.WriteByte('\\')
-			b.WriteRune(r)
-		case '\n':
-			b.WriteString(`\n`)
-		case '\r':
-			b.WriteString(`\r`)
-		case '\t':
-			b.WriteString(`\t`)
-		default:
-			if r < 0x20 {
-				b.WriteString("?")
-			} else {
-				b.WriteRune(r)
-			}
-		}
-	}
-	b.WriteByte('"')
-	return b.String()
+	b, _ := json.Marshal(map[string]any{"ok": false, "error": msg})
+	_, _ = w.Write(b)
 }
 
 // --- Helpers --------------------------------------------------------------
@@ -430,6 +404,10 @@ func boolYAML(b bool) string {
 // YAML frontmatter block. The key must already exist; if absent returns an
 // error (callers shouldn't be inventing new fields on mutation endpoints).
 // Preserves all other lines, indentation and body bytes exactly.
+//
+// 假设：frontmatter 为扁平结构（无嵌套对象）。匹配首个 `trim(line)` 以
+// `key:` 开头的行，因此如果将来引入嵌套 YAML 且子对象包含同名 key，会
+// 改错位置。当前 portfolio/doc/project schema 均扁平，安全。
 func setFrontmatterField(body, key, value string) (string, error) {
 	s := body
 	if !strings.HasPrefix(strings.TrimLeft(s, " \t\r\n"), "---") {

@@ -1,7 +1,7 @@
 // /manage/portfolio 主页展示表格的拖动排序：
 //   基于 HTML5 Drag and Drop，落位后按行序号重排 order（步长 10），
 //   对每个变化的行顺序 POST 到 /manage/portfolio/<slug>/order；
-//   任何一行失败则整体回滚到拖动前的 DOM 顺序并提示。
+//   任何一行失败则刷新页面以拉取权威顺序（避免 UI 与服务端脱节）。
 (function () {
   'use strict';
 
@@ -12,21 +12,15 @@
   const csrf = table.dataset.csrf || '';
 
   let dragging = null;
-  let originalOrder = null; // snapshot of tr elements before drag
 
   function snapshot() {
     return Array.from(tbody.querySelectorAll('tr'));
-  }
-
-  function restore(rows) {
-    rows.forEach((tr) => tbody.appendChild(tr));
   }
 
   tbody.addEventListener('dragstart', (e) => {
     const tr = e.target.closest('tr');
     if (!tr || !tbody.contains(tr)) return;
     dragging = tr;
-    originalOrder = snapshot();
     tr.classList.add('is-dragging');
     // Firefox needs dataTransfer set to initiate drag.
     try { e.dataTransfer.setData('text/plain', tr.dataset.slug || ''); } catch (_) {}
@@ -97,9 +91,12 @@
       table.classList.add('is-saved');
       setTimeout(() => table.classList.remove('is-saved'), 800);
     } catch (err) {
+      // 顺序 POST 中某一行失败时，前面若干行已在服务端生效，DOM 回滚会
+      // 让 UI 与真实 order 脱节。兜底方案：刷新页面重新拉取权威顺序，
+      // 让用户清楚看到"部分成功"的现场再决定怎么继续。
       table.classList.remove('is-saving');
-      if (originalOrder) restore(originalOrder);
-      alert('保存排序失败：' + err.message);
+      alert('保存排序失败：' + err.message + '\n将刷新页面以同步真实顺序。');
+      window.location.reload();
     }
   }
 })();
