@@ -4,7 +4,7 @@ slug: cli-toolkit-notes
 description: 这几年积累的 shell / Go / Python 小工具合集，每个都解决一个具体的日常痛点
 category: 写作合集
 tags: [cli, shell, tools]
-order: 30
+order: 10
 created: 2026-01-10
 updated: 2026-03-22
 status: published

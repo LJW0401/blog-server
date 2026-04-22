@@ -4,13 +4,13 @@ slug: weekly-report-visualizer
 description: 把枯燥的周报表格变成可交互的热力图，一眼看出瓶颈
 category: 可视化
 tags: [dataviz, d3]
-order: 20
+order: 40
 demo_url: https://example.com/demo/weekly
 source_url: https://github.com/example/weekly-viz
 created: 2026-03-05
 updated: 2026-03-18
 status: published
-featured: true
+featured: false
 ---
 <!-- portfolio:intro -->
 一个**团队周报**的可视化工具。把每周提交的纯文本周报解析成结构化数据，用 D3 画交互式热力图。高亮**连续投入的专题**和**突然掉线的同学**，让 leader 一眼看出团队的注意力分配。
