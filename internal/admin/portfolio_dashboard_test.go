@@ -27,8 +27,8 @@ func TestPortfolioList_Smoke_StatsCardAndCounts(t *testing.T) {
 		t.Fatalf("status=%d", w.Code)
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, `class="portfolio-stats-bar"`) {
-		t.Error("portfolio-stats-bar markup missing")
+	if !strings.Contains(body, `class="admin-stats-bar"`) {
+		t.Error("admin-stats-bar markup missing")
 	}
 	// Header 顶栏仍挂着「新建作品」链接，统计条不再重复
 	if !strings.Contains(body, `href="/manage/portfolio/new"`) {
@@ -54,7 +54,7 @@ func TestPortfolioList_Smoke_StatsCardRendersWithZeroEntries(t *testing.T) {
 		t.Fatalf("status=%d", w.Code)
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, `class="portfolio-stats-bar"`) {
+	if !strings.Contains(body, `class="admin-stats-bar"`) {
 		t.Error("stats bar should render even with 0 entries")
 	}
 	if !strings.Contains(body, "共 0 条") {
@@ -80,7 +80,7 @@ func TestDashboard_Smoke_NoPortfolioCard(t *testing.T) {
 	for _, gone := range []string{
 		"作品集</h3>",
 		"dashboard-card-stats",
-		"portfolio-stats-bar",
+		"admin-stats-bar",
 		"共 1 条",
 	} {
 		if strings.Contains(body, gone) {

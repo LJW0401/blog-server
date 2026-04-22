@@ -16,11 +16,11 @@
   {{ if .Error }}<div class="form-err">{{ .Error }}</div>{{ end }}
   {{ if .Info }}<div class="form-info">{{ .Info }}</div>{{ end }}
 
-  <div class="portfolio-stats-bar">
-    <span class="portfolio-stats-item portfolio-stats-published"><span class="portfolio-stats-dot"></span>published <strong>{{ .Stats.Published }}</strong></span>
-    <span class="portfolio-stats-item portfolio-stats-draft"><span class="portfolio-stats-dot"></span>draft <strong>{{ .Stats.Draft }}</strong></span>
-    <span class="portfolio-stats-item portfolio-stats-archived"><span class="portfolio-stats-dot"></span>archived <strong>{{ .Stats.Archived }}</strong></span>
-    <span class="portfolio-stats-total">共 {{ .Stats.Total }} 条</span>
+  <div class="admin-stats-bar">
+    <span class="admin-stats-item admin-stats-published"><span class="admin-stats-dot"></span>published <strong>{{ .Stats.Published }}</strong></span>
+    <span class="admin-stats-item admin-stats-draft"><span class="admin-stats-dot"></span>draft <strong>{{ .Stats.Draft }}</strong></span>
+    <span class="admin-stats-item admin-stats-archived"><span class="admin-stats-dot"></span>archived <strong>{{ .Stats.Archived }}</strong></span>
+    <span class="admin-stats-total">共 {{ .Stats.Total }} 条</span>
   </div>
 
   <section class="admin-section">

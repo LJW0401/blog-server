@@ -42,6 +42,7 @@ func (d *DocHandlers) DocsList(w http.ResponseWriter, r *http.Request) {
 	entries := d.Content.Docs().List(content.KindDoc)
 	data := map[string]any{
 		"Docs":      entries,
+		"Stats":     docStats(d.Content),
 		"CSRF":      sess.CSRF,
 		"Kind":      "doc",
 		"BasePath":  "/manage/docs",

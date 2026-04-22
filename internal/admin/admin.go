@@ -158,6 +158,61 @@ func portfolioStats(cs *content.Store) PortfolioStats {
 	return out
 }
 
+// DocStats mirrors PortfolioStats for /manage/docs. 文档 / 作品集的状态轴一致
+// (published/draft/archived)，因此字段对齐 —— 只是列表来源换成 Docs()。
+type DocStats struct {
+	Published int
+	Draft     int
+	Archived  int
+	Total     int
+}
+
+func docStats(cs *content.Store) DocStats {
+	var out DocStats
+	if cs == nil {
+		return out
+	}
+	for _, e := range cs.Docs().List(content.KindDoc) {
+		switch e.Status {
+		case content.StatusPublished:
+			out.Published++
+		case content.StatusDraft:
+			out.Draft++
+		case content.StatusArchived:
+			out.Archived++
+		}
+		out.Total++
+	}
+	return out
+}
+
+// ProjectStats 使用项目专属的状态轴 (active/developing/archived)。
+type ProjectStats struct {
+	Active     int
+	Developing int
+	Archived   int
+	Total      int
+}
+
+func projectStats(cs *content.Store) ProjectStats {
+	var out ProjectStats
+	if cs == nil {
+		return out
+	}
+	for _, e := range cs.Projects().List(content.KindProject) {
+		switch e.Status {
+		case content.StatusActive:
+			out.Active++
+		case content.StatusDeveloping:
+			out.Developing++
+		case content.StatusArchived:
+			out.Archived++
+		}
+		out.Total++
+	}
+	return out
+}
+
 // --- Dashboard (placeholder for P5) ---------------------------------------
 
 // Dashboard renders a minimal landing page so authenticated users have

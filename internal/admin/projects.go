@@ -32,6 +32,7 @@ func (ph *ProjectHandlers) ReposList(w http.ResponseWriter, r *http.Request) {
 	entries := ph.Content.Projects().List(content.KindProject)
 	data := map[string]any{
 		"Projects": entries,
+		"Stats":    projectStats(ph.Content),
 		"CSRF":     sess.CSRF,
 		"Error":    r.URL.Query().Get("e"),
 		"Info":     r.URL.Query().Get("m"),
