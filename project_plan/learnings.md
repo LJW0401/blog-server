@@ -2,6 +2,25 @@
 
 ## 2026-04-22
 
+### Bug 修复：暗色模式下作品集卡片为白色
+- **发现于**：用户报告
+- **现象**：系统处于暗色模式时，首页「精选作品集」区的 `.portfolio-home-card` 和 `/portfolio` 列表页的 `.portfolio-card` 仍然是纯白背景，与暗色底色反差刺眼。
+- **根因**：两层叠加：
+  1. 两个卡片类的亮色规则用 `background: var(--card-bg, #fff)`，但整个仓库从未定义 `--card-bg` CSS 变量（亮色 / 暗色都没），UA 永远走回退值 `#fff`。
+  2. 第一次修复把暗色覆盖放进了一个位置**靠前**的 `@media (prefers-color-scheme: dark)` 块（line 1207 附近），而亮色规则在其后（line 1238）。CSS `@media` 不改变 specificity —— 相同权重规则按**源码顺序**决定胜负，所以暗色模式下后出现的亮色规则反向压过了暗色覆盖，卡片仍然是白色。其他卡片类 `.repo-card` / `.about-card` / `.admin-card` 的暗色覆盖都在亮色规则**之后**（第一个 dark 块在 line 958，早期亮色规则在更前面），所以运气好没踩这个坑。
+- **修复**：在 `theme.css` 末尾新增一个专门的 dark `@media` 块作为"后置覆盖层"，保证所有亮色规则先声明、所有 dark 覆盖最后生效；新增卡片类走这里兜底无需再担心位置。未改亮色规则 —— 亮色下 `#fff` 回退是期望行为。
+- **回归测试**：`internal/assets/portfolio_card_dark_mode_test.go` / `TestTheme_Regression_PortfolioCardDarkModeOverride`。第一轮测试只断言"dark 块里出现了选择器"，是能通过但 bug 仍在。第二轮加入**源码顺序断言**：dark 覆盖的绝对偏移必须大于同选择器亮色规则的偏移，真正捕获级联冲突。
+- **为什么原测试没覆盖**：
+  1. 已有 `about_card_dark_mode_test.go` / `admin_card_dark_mode_test.go` 的模板只断言"选择器出现"，没检查源码顺序。这次用户报告 "still white" 才揭露这个盲区 —— 选择器存在不等于生效。以后写 CSS 静态回归，必须把"亮色规则位置 < 暗色覆盖位置"这条也加上。
+  2. 作品集卡片 WI-2.8 / WI-2.5 落地时只做了亮色 UAT，照搬其他卡片时没写暗色断言。更根本上是"CSS 暗色覆盖"没有反向发现机制 —— 如果某选择器亮色里用了未定义 `var()` 或硬编码 `#fff`，应有宏观断言能自动飘红。
+- **紧急程度**：低（视觉问题，不影响功能）
+- **衍生改进建议**（不在本次修复范围）：
+  1. 写一条更宏观的断言：扫描 CSS 中所有使用 `var(--card-bg, …)` 的选择器，要求它们都在暗色块出现过。这样新增卡片类时自动兜底。
+  2. `.portfolio-home-card-intro` 的 `border-top: 1px dashed rgba(0,0,0,0.08)` 在暗色下几乎不可见，也属于此次发现但不在原报告范围内，建议顺手一起补一条暗色边色覆盖。
+  3. `.dashboard-card` 虽已从模板里移除，但 CSS 规则仍留在 theme.css 里，属于死代码，可在下次清理时移除。
+
+
+
 - 2026-04-22 快速功能 作品集操作列换行 + 主页开关改胶囊按钮 完成，无 learnings（已执行反思清单）
 - 2026-04-22 快速功能 上传封面按钮复用 btn-pill 样式 完成，无 learnings（已执行反思清单）
 - 2026-04-22 快速功能 作品集统计卡从 Dashboard 迁到 /manage/portfolio 顶部 完成，无 learnings（已执行反思清单）

@@ -1322,3 +1322,16 @@ body.page-diary { background: var(--bg); }
 .btn-pill-off:hover { background: var(--accent); color: #fff; }
 .btn-pill-on { /* 当前已置顶 → 中性描边 */ color: var(--ink-soft); }
 .btn-pill-on:hover { border-color: #c73737; color: #c73737; }
+
+/* -------------------------------------------------------------------------
+   暗色模式 · 后置覆盖
+   说明：必须放在对应亮色规则之后。CSS 的 @media 不改变 specificity，
+   同权重规则按源码顺序决定胜负。之前把作品集卡片的 dark 覆盖放到
+   portfolio 亮色规则之前的 @media 块里，导致暗色模式下仍被后面的
+   `background: var(--card-bg, #fff)` 压过，表现为白色卡片。
+   新增的"卡片类"走这里兜底即可。
+   ------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  .portfolio-card { background: #151518; border-color: rgba(255,255,255,0.06); }
+  .portfolio-home-card { background: #151518; border-color: rgba(255,255,255,0.06); }
+}
