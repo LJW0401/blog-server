@@ -8,12 +8,12 @@
 
 - **内容**：Markdown + YAML frontmatter；`draft / published / archived` 三态；fsnotify 热加载；goldmark + chroma 代码高亮
 - **项目页**：本地 MD 长文 + GitHub API 数据（Star/Fork/语言/push 时间）渲染期合并；ETag 条件请求，每 30 分钟同步，429 退避
-- **作品集**：`/portfolio` 独立展示非代码成品（设计 / 可视化 / 写作合集）；卡片网格 + 详情页 + OG meta；主页 featured 卡片（上半图文 + 下半长简介 Intro）；独立 tag 云，不污染 docs/projects/RSS/sitemap；封面上传走 magic bytes 校验（2MB 上限）
-- **管理后台**：`/manage` 服务端鉴权（HMAC 签名 Cookie + 每会话 CSRF + IP 级登录限流）；文档/项目/作品集编辑器、图片管理、站点设置、修改密码；password_changed_at banner 机制；trash 按 Kind 子目录组织，旧版扁平布局启动自动迁移
+- **作品集**：`/portfolio` 独立展示非代码成品（设计 / 可视化 / 写作合集）；卡片网格 + 详情页 + OG meta；主页 featured 卡片（上半图文 + 下半长简介 Intro）；独立 tag 云，不污染 docs/projects/RSS/sitemap；封面上传走 magic bytes 校验（2MB 上限）；后台主页/非主页分区展示，主页顺序拖拽即存（步长 10），首次"显示到主页"自动落到末尾
+- **管理后台**：`/manage` 服务端鉴权（HMAC 签名 Cookie + 每会话 CSRF + IP 级登录限流）；文档/项目/作品集编辑器、图片管理、站点设置、修改密码；文档/项目/作品集三端列表顶部扁平统计条（各状态计数 + 总数）；password_changed_at banner 机制；trash 按 Kind 子目录组织，旧版扁平布局启动自动迁移
 - **私密日记**：`/diary` 复用 /manage 登录态；月历视图 + 点击折叠当周 + textarea 编辑；debounce 自动保存 + Ctrl+S + 显式保存按钮；可"转正"为 docs 草稿做后续发布；`content/diary/` 进 gitignore 不入库，公共路由硬断言保证零泄露
 - **统计**：文档阅读数（IP+UA 指纹 60 分钟去重，爬虫 UA 过滤）
 - **备份**：每日 03:00 tar.gz 冷备份，保留 7 份，WAL checkpoint 保证 SQLite 一致
-- **发布周边**：RSS 2.0、Sitemap Protocol、OG/Twitter meta、gzip、静态资源长缓存、暗色模式（跟随系统）
+- **发布周边**：RSS 2.0、Sitemap Protocol、OG/Twitter meta、gzip、静态资源长缓存、暗色模式（跟随系统）；阅读时长 CJK 400 字/分钟 + 非 CJK 250 词/分钟分段估算
 - **安全基线**：CSP / HSTS / XFO / XCTO / Referrer-Policy / HttpOnly+Secure+SameSite=Strict Cookie / bcrypt
 
 ## 快速上手
