@@ -36,16 +36,20 @@
           <td class="portfolio-order-cell">{{ .Order }}</td>
           <td>{{ formatDate .Updated "2006-01-02" }}</td>
           <td>
-            <a href="/manage/portfolio/{{ .Slug }}/edit">编辑</a>
-            <form method="POST" action="/manage/portfolio/{{ .Slug }}/featured" style="display:inline;">
-              <input type="hidden" name="csrf" value="{{ $csrf }}" />
-              <input type="hidden" name="featured" value="false" />
-              <button class="link-primary" type="submit">从主页移除</button>
-            </form>
-            <form method="POST" action="/manage/portfolio/{{ .Slug }}/delete" style="display:inline;" data-confirm="确定删除《{{ .Title }}》？软删到 trash/">
-              <input type="hidden" name="csrf" value="{{ $csrf }}" />
-              <button class="link-danger" type="submit">删除</button>
-            </form>
+            <div class="admin-row-actions">
+              <a href="/manage/portfolio/{{ .Slug }}/edit">编辑</a>
+              <form method="POST" action="/manage/portfolio/{{ .Slug }}/delete" style="display:inline;" data-confirm="确定删除《{{ .Title }}》？软删到 trash/">
+                <input type="hidden" name="csrf" value="{{ $csrf }}" />
+                <button class="link-danger" type="submit">删除</button>
+              </form>
+            </div>
+            <div class="admin-row-homepage">
+              <form method="POST" action="/manage/portfolio/{{ .Slug }}/featured">
+                <input type="hidden" name="csrf" value="{{ $csrf }}" />
+                <input type="hidden" name="featured" value="false" />
+                <button class="btn-pill btn-pill-on" type="submit">从主页移除</button>
+              </form>
+            </div>
           </td>
         </tr>
         {{ end }}
@@ -73,16 +77,20 @@
           <td><code>{{ .Slug }}</code></td>
           <td>{{ formatDate .Updated "2006-01-02" }}</td>
           <td>
-            <a href="/manage/portfolio/{{ .Slug }}/edit">编辑</a>
-            <form method="POST" action="/manage/portfolio/{{ .Slug }}/featured" style="display:inline;">
-              <input type="hidden" name="csrf" value="{{ $csrf }}" />
-              <input type="hidden" name="featured" value="true" />
-              <button class="link-primary" type="submit">显示到主页</button>
-            </form>
-            <form method="POST" action="/manage/portfolio/{{ .Slug }}/delete" style="display:inline;" data-confirm="确定删除《{{ .Title }}》？软删到 trash/">
-              <input type="hidden" name="csrf" value="{{ $csrf }}" />
-              <button class="link-danger" type="submit">删除</button>
-            </form>
+            <div class="admin-row-actions">
+              <a href="/manage/portfolio/{{ .Slug }}/edit">编辑</a>
+              <form method="POST" action="/manage/portfolio/{{ .Slug }}/delete" style="display:inline;" data-confirm="确定删除《{{ .Title }}》？软删到 trash/">
+                <input type="hidden" name="csrf" value="{{ $csrf }}" />
+                <button class="link-danger" type="submit">删除</button>
+              </form>
+            </div>
+            <div class="admin-row-homepage">
+              <form method="POST" action="/manage/portfolio/{{ .Slug }}/featured">
+                <input type="hidden" name="csrf" value="{{ $csrf }}" />
+                <input type="hidden" name="featured" value="true" />
+                <button class="btn-pill btn-pill-off" type="submit">显示到主页</button>
+              </form>
+            </div>
           </td>
         </tr>
         {{ end }}

@@ -1299,3 +1299,13 @@ body.page-diary { background: var(--bg); }
 .portfolio-order-cell { color: var(--ink-soft); font-variant-numeric: tabular-nums; width: 60px; }
 .portfolio-featured-table.is-saving { opacity: 0.7; pointer-events: none; }
 .portfolio-featured-table.is-saved { outline: 2px solid var(--accent); outline-offset: -2px; transition: outline 0.3s ease; }
+/* 操作列：第一行编辑/删除，第二行主页开关（左右半圆胶囊按钮） */
+.admin-row-actions { display: inline-flex; gap: 10px; align-items: center; }
+.admin-row-homepage { margin-top: 6px; }
+.admin-row-homepage form { margin: 0; padding: 0; }
+.btn-pill { display: inline-block; border-radius: 980px; padding: 4px 14px; font-size: 12px; line-height: 1.4; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; font-family: inherit; transition: background 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease); }
+.btn-pill:hover { border-color: var(--accent); color: var(--accent); }
+.btn-pill-off { /* 当前未置顶 → 强调"显示到主页" */ border-color: var(--accent); color: var(--accent); }
+.btn-pill-off:hover { background: var(--accent); color: #fff; }
+.btn-pill-on { /* 当前已置顶 → 中性描边 */ color: var(--ink-soft); }
+.btn-pill-on:hover { border-color: #c73737; color: #c73737; }

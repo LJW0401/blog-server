@@ -265,6 +265,17 @@ func TestPortfolioCRUD_Smoke_ListShowsHomepageToggleWording(t *testing.T) {
 			t.Errorf("legacy wording %q still present", gone)
 		}
 	}
+	// 新布局：编辑/删除与"主页管理"分两行；主页开关采用 btn-pill 胶囊按钮
+	for _, want := range []string{
+		`class="admin-row-actions"`,
+		`class="admin-row-homepage"`,
+		`class="btn-pill btn-pill-on"`,  // 置顶行
+		`class="btn-pill btn-pill-off"`, // 非置顶行
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("list missing markup %q", want)
+		}
+	}
 }
 
 // --- WI-3.6 Exception --------------------------------------------------------

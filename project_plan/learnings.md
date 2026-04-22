@@ -2,6 +2,8 @@
 
 ## 2026-04-22
 
+- 2026-04-22 快速功能 作品集操作列换行 + 主页开关改胶囊按钮 完成，无 learnings（已执行反思清单）
+
 ### 快速功能：作品集主页显示按钮文案 + 样式
 - **类型**：Bug（上游代码）
 - **描述**：`admin_portfolio_list.html` 和 `admin_trash.html` 两个模板都给按钮挂了 `class="link-primary"`，但 `theme.css` 里从未定义过 `.link-primary`——按钮实际沿用浏览器默认灰色样式，与主题不符。定义 `.link-primary` 后两处一同受益。
