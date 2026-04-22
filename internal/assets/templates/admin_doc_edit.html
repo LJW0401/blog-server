@@ -20,7 +20,7 @@
     <input type="hidden" name="csrf" value="{{ .CSRF }}" />
     {{ if eq .Kind "portfolio" }}
     <div class="portfolio-cover-picker" data-csrf="{{ .CSRF }}">
-      <button type="button" class="portfolio-cover-btn">上传封面</button>
+      <button type="button" class="portfolio-cover-btn btn-pill btn-pill-off">上传封面</button>
       <input type="file" class="portfolio-cover-file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
       <span class="portfolio-cover-status note">上传成功后 frontmatter 的 cover: 会自动回填（需要先填 slug）</span>
     </div>

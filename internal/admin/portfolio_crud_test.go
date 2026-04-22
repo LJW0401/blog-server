@@ -150,6 +150,27 @@ func TestPortfolioCRUD_Smoke_ToggleFeatured(t *testing.T) {
 	}
 }
 
+// Smoke: 作品集编辑页的"上传封面"按钮与主页开关使用同一胶囊样式 (btn-pill)。
+// 豁免异常测试：纯模板 class 改动，无外部输入 / 端点逻辑未动。
+func TestPortfolioCRUD_Smoke_CoverUploadButtonUsesPillStyle(t *testing.T) {
+	b := crudSetup(t)
+	w := b.authedGet(t, "/manage/portfolio/new", b.Portfolio.New)
+	if w.Code != 200 {
+		t.Fatalf("status=%d", w.Code)
+	}
+	body := w.Body.String()
+	// JS selector 仍靠 portfolio-cover-btn 命中，所以两个 class 都要在。
+	for _, want := range []string{
+		"portfolio-cover-btn",
+		"btn-pill",
+		"btn-pill-off",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("cover button missing class %q; body snippet = %s", want, body)
+		}
+	}
+}
+
 // Smoke: 非置顶切到置顶时，order 自动变为"现有置顶 max + 10"，
 // 让新加入主页的作品自然落在末尾。
 func TestPortfolioCRUD_Smoke_FeaturedAutoOrderAppendsToEnd(t *testing.T) {
