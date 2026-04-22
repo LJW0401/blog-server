@@ -13,6 +13,7 @@ import (
 
 	"github.com/penguin/blog-server/internal/auth"
 	"github.com/penguin/blog-server/internal/config"
+	"github.com/penguin/blog-server/internal/content"
 	"github.com/penguin/blog-server/internal/render"
 )
 
@@ -24,6 +25,9 @@ type Handlers struct {
 	ConfigPath string
 	Tpl        *render.Templates
 	Logger     *slog.Logger
+	// Content is optional; when set (wired from main.go) the Dashboard
+	// aggregates counts for the entry-card widgets (e.g. PortfolioStats).
+	Content *content.Store
 }
 
 // New returns a Handlers with sensible defaults.
@@ -122,6 +126,91 @@ func (h *Handlers) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, h.Auth.ClearCookie())
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// PortfolioStats is the small-counter payload the Dashboard's portfolio
+// entry card renders. Fields map 1:1 to portfolio status values.
+type PortfolioStats struct {
+	Published int
+	Draft     int
+	Archived  int
+	Total     int
+}
+
+// portfolioStats aggregates portfolio entries by status. Returns zero counts
+// when the Content store is nil (tests / bootstrap without content wired).
+func portfolioStats(cs *content.Store) PortfolioStats {
+	var out PortfolioStats
+	if cs == nil {
+		return out
+	}
+	for _, e := range cs.Portfolios().List(content.KindPortfolio) {
+		switch e.Status {
+		case content.StatusPublished:
+			out.Published++
+		case content.StatusDraft:
+			out.Draft++
+		case content.StatusArchived:
+			out.Archived++
+		}
+		out.Total++
+	}
+	return out
+}
+
+// DocStats mirrors PortfolioStats for /manage/docs. 文档 / 作品集的状态轴一致
+// (published/draft/archived)，因此字段对齐 —— 只是列表来源换成 Docs()。
+type DocStats struct {
+	Published int
+	Draft     int
+	Archived  int
+	Total     int
+}
+
+func docStats(cs *content.Store) DocStats {
+	var out DocStats
+	if cs == nil {
+		return out
+	}
+	for _, e := range cs.Docs().List(content.KindDoc) {
+		switch e.Status {
+		case content.StatusPublished:
+			out.Published++
+		case content.StatusDraft:
+			out.Draft++
+		case content.StatusArchived:
+			out.Archived++
+		}
+		out.Total++
+	}
+	return out
+}
+
+// ProjectStats 使用项目专属的状态轴 (active/developing/archived)。
+type ProjectStats struct {
+	Active     int
+	Developing int
+	Archived   int
+	Total      int
+}
+
+func projectStats(cs *content.Store) ProjectStats {
+	var out ProjectStats
+	if cs == nil {
+		return out
+	}
+	for _, e := range cs.Projects().List(content.KindProject) {
+		switch e.Status {
+		case content.StatusActive:
+			out.Active++
+		case content.StatusDeveloping:
+			out.Developing++
+		case content.StatusArchived:
+			out.Archived++
+		}
+		out.Total++
+	}
+	return out
 }
 
 // --- Dashboard (placeholder for P5) ---------------------------------------

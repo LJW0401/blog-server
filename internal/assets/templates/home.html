@@ -142,6 +142,35 @@
         {{ end }}
       </div>
     </div>
+
+    {{ if .FeaturedPortfolios }}
+    <div id="portfolio">
+      <div class="section-head">
+        <h2>作品集</h2>
+        <a class="see-all" href="/portfolio">查看全部 ›</a>
+      </div>
+      <ul class="portfolio-home-list">
+        {{ range .FeaturedPortfolios }}
+        <li class="portfolio-home-card">
+          <a class="portfolio-home-card-link" href="/portfolio/{{ .Entry.Slug }}">
+            <div class="portfolio-home-card-top">
+              <div class="portfolio-home-card-text">
+                <h3>{{ .Entry.Title }}</h3>
+                {{ if .Entry.Description }}<p class="portfolio-home-card-desc">{{ .Entry.Description }}</p>{{ end }}
+              </div>
+              <figure class="portfolio-home-card-cover">
+                <img src="{{ .Cover }}" alt="{{ .Entry.Title }} 封面" loading="lazy" />
+              </figure>
+            </div>
+            {{ if .Entry.Intro }}
+            <div class="portfolio-home-card-intro markdown-body">{{ markdown .Entry.Intro }}</div>
+            {{ end }}
+          </a>
+        </li>
+        {{ end }}
+      </ul>
+    </div>
+    {{ end }}
   </div>
 </section>
 <div class="page-2-sentinel" aria-hidden="true"></div>

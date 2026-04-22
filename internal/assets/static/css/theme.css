@@ -4,6 +4,7 @@
 :root {
   --bg: #fbfbfd;
   --bg-alt: #f5f5f7;
+  --card-bg: #ffffff;
   --ink: #1d1d1f;
   --ink-soft: #6e6e73;
   --ink-faint: #86868b;
@@ -498,6 +499,8 @@ body.page-admin { background: var(--bg-alt); }
 .admin-table td a + form { margin-left: 10px; }
 .link-danger { background: transparent; border: none; color: #c73737; font-size: 13px; cursor: pointer; padding: 0; font-family: inherit; }
 .link-danger:hover { text-decoration: underline; }
+.link-primary { background: transparent; border: none; color: var(--accent); font-size: 13px; cursor: pointer; padding: 0; font-family: inherit; }
+.link-primary:hover { text-decoration: underline; color: var(--accent-hover); }
 
 .status-badge { display: inline-block; padding: 3px 9px; border-radius: 980px; font-size: 11px; font-weight: 500; background: #f0f0f2; color: var(--ink); letter-spacing: 0.02em; }
 .status-badge.status-draft { background: #fff4cf; color: #7a5a00; }
@@ -964,6 +967,7 @@ body.page-diary { background: var(--bg); }
     --line: #2d2d30;
     --accent: #2997ff;
     --accent-hover: #4aaaff;
+    --card-bg: #151518;
   }
   html, body { background: var(--bg); color: var(--ink); }
   body.page-admin input,
@@ -1211,4 +1215,119 @@ body.page-diary { background: var(--bg); }
   .tag-card { background: #1c1c1e; border-color: rgba(255,255,255,0.08); }
   .tag-card:hover { border-color: rgba(10,132,255,0.45); box-shadow: 0 10px 24px -12px rgba(10,132,255,0.28); }
   .tag-card.active { background: rgba(10,132,255,0.12); }
+}
+
+/* -------------------------------------------------------------------------
+   Portfolio — list gallery, detail, homepage featured cards
+   ------------------------------------------------------------------------- */
+
+.page-portfolio-list main,
+.page-portfolio-detail main { max-width: 1100px; margin: 0 auto; padding: 48px 32px; }
+
+.portfolio-list-shell .portfolio-list-header { margin-bottom: 32px; }
+.portfolio-list-shell .portfolio-list-header h1 { font-size: 40px; font-weight: 700; letter-spacing: -0.01em; }
+.portfolio-list-shell .portfolio-tag-hint { color: var(--ink-soft); margin-top: 8px; }
+.portfolio-tagcloud { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.portfolio-tagcloud a { font-size: 13px; padding: 4px 12px; border-radius: 999px; background: var(--ink-faint-bg, rgba(0,0,0,0.04)); color: var(--ink-soft); text-decoration: none; }
+.portfolio-tagcloud a:hover { background: rgba(10,132,255,0.08); color: var(--accent, #0a84ff); }
+.portfolio-tagcloud .tag-count { color: var(--ink-faint); font-size: 11px; margin-left: 4px; }
+
+.portfolio-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; list-style: none; padding: 0; }
+.portfolio-card { background: var(--card-bg, #fff); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(0,0,0,0.06); transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease); }
+.portfolio-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px -20px rgba(0,0,0,0.15); }
+.portfolio-card-link { display: block; text-decoration: none; color: inherit; }
+.portfolio-card-cover { aspect-ratio: 16 / 10; overflow: hidden; margin: 0; }
+.portfolio-card-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.portfolio-card-body { padding: 16px 20px 20px; }
+.portfolio-card-body .kicker { font-size: 11px; color: var(--ink-faint); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+.portfolio-card-body h2 { font-size: 20px; font-weight: 600; line-height: 1.3; margin: 0 0 8px; }
+.portfolio-card-body p { font-size: 14px; line-height: 1.5; color: var(--ink-soft); margin: 0; }
+
+.portfolio-empty { text-align: center; color: var(--ink-soft); padding: 48px 16px; }
+
+.portfolio-header { margin-bottom: 24px; }
+.portfolio-header .kicker { font-size: 12px; color: var(--ink-faint); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
+.portfolio-header h1 { font-size: 44px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 12px; }
+.portfolio-desc { font-size: 18px; color: var(--ink-soft); margin: 0 0 16px; }
+.portfolio-meta { display: flex; flex-wrap: wrap; gap: 16px; color: var(--ink-faint); font-size: 13px; }
+.portfolio-tags a { color: var(--ink-soft); margin-right: 8px; text-decoration: none; }
+.portfolio-tags a:hover { color: var(--accent, #0a84ff); }
+.portfolio-cover { margin: 24px 0 28px; border-radius: var(--radius-lg); overflow: hidden; }
+.portfolio-cover img { width: 100%; display: block; }
+.portfolio-links { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+.portfolio-link { padding: 10px 18px; border-radius: 999px; background: var(--ink-faint-bg, rgba(0,0,0,0.05)); text-decoration: none; color: inherit; font-size: 14px; transition: background 0.2s; }
+.portfolio-link:hover { background: rgba(10,132,255,0.12); color: var(--accent, #0a84ff); }
+.portfolio-body { line-height: 1.7; font-size: 16px; }
+
+/* Homepage portfolio block */
+#portfolio { margin-top: 48px; }
+.portfolio-home-list { list-style: none; padding: 0; margin: 20px 0 0; display: flex; flex-direction: column; gap: 20px; }
+.portfolio-home-card { background: var(--card-bg, #fff); border-radius: var(--radius-lg); border: 1px solid rgba(0,0,0,0.06); overflow: hidden; transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease); }
+.portfolio-home-card:hover { transform: translateY(-3px); box-shadow: 0 20px 40px -20px rgba(0,0,0,0.15); }
+.portfolio-home-card-link { display: block; text-decoration: none; color: inherit; padding: 24px; }
+.portfolio-home-card-top { display: grid; grid-template-columns: 1fr 240px; gap: 24px; align-items: center; }
+.portfolio-home-card-text h3 { font-size: 24px; font-weight: 600; line-height: 1.25; margin: 0 0 8px; }
+.portfolio-home-card-desc { font-size: 15px; line-height: 1.5; color: var(--ink-soft); margin: 0; }
+.portfolio-home-card-cover { margin: 0; aspect-ratio: 16 / 10; overflow: hidden; border-radius: var(--radius-md, 12px); }
+.portfolio-home-card-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.portfolio-home-card-intro { margin-top: 20px; padding-top: 18px; border-top: 1px dashed rgba(0,0,0,0.08); font-size: 15px; line-height: 1.65; color: var(--ink-soft); }
+
+@media (max-width: 640px) {
+  .page-portfolio-list main,
+  .page-portfolio-detail main { padding: 32px 20px; }
+  .portfolio-list-shell .portfolio-list-header h1 { font-size: 30px; }
+  .portfolio-gallery { grid-template-columns: 1fr; gap: 16px; }
+  .portfolio-header h1 { font-size: 30px; }
+  .portfolio-home-card-link { padding: 18px; }
+  .portfolio-home-card-top { grid-template-columns: 1fr; grid-template-rows: auto auto; }
+  /* Image goes on top on narrow screens */
+  .portfolio-home-card-cover { order: -1; }
+  .portfolio-home-card-intro { margin-top: 16px; padding-top: 14px; }
+}
+
+.dashboard-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 20px; }
+.dashboard-card { background: var(--card-bg, #fff); border: 1px solid rgba(0,0,0,0.08); border-radius: var(--radius-md, 12px); padding: 18px; }
+.dashboard-card h3 { margin: 0 0 8px; font-size: 16px; font-weight: 600; }
+.dashboard-card-stats { display: flex; gap: 14px; flex-wrap: wrap; color: var(--ink-soft); font-size: 13px; margin: 0 0 6px; }
+.dashboard-card-stats strong { color: var(--ink); font-size: 16px; margin-left: 4px; }
+.dashboard-card-total { color: var(--ink-faint); font-size: 12px; margin: 0 0 12px; }
+
+/* /manage/portfolio 拖动排序 */
+.admin-section-title { font-size: 18px; font-weight: 600; margin: 24px 0 12px; }
+.admin-section-title .admin-section-sub { font-size: 12px; color: var(--ink-faint); font-weight: 400; margin-left: 10px; }
+.portfolio-featured-table tr[draggable="true"] { cursor: grab; }
+.portfolio-featured-table tr.is-dragging { opacity: 0.4; cursor: grabbing; }
+.portfolio-drag-handle { width: 24px; color: var(--ink-faint); user-select: none; cursor: grab; text-align: center; }
+.portfolio-order-cell { color: var(--ink-soft); font-variant-numeric: tabular-nums; width: 60px; }
+.portfolio-featured-table.is-saving { opacity: 0.7; pointer-events: none; }
+.portfolio-featured-table.is-saved { outline: 2px solid var(--accent); outline-offset: -2px; transition: outline 0.3s ease; }
+/* 后台列表页统计条：扁平单行，占满容器，「共 N 条」右对齐。
+   每个状态前加一颗与 status-badge 同色的小圆点，呼应主题色系。 */
+.admin-stats-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; width: 100%; padding: 12px 16px; margin: 14px 0 18px; background: var(--bg-alt); border-radius: var(--radius-md); font-size: 13px; color: var(--ink-soft); }
+.admin-stats-item { display: inline-flex; align-items: center; gap: 6px; }
+.admin-stats-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--ink-faint); }
+.admin-stats-published .admin-stats-dot { background: #1a6a2e; }
+.admin-stats-active .admin-stats-dot { background: #1a6a2e; }
+.admin-stats-draft .admin-stats-dot { background: #a37400; }
+.admin-stats-developing .admin-stats-dot { background: #a3560a; }
+.admin-stats-archived .admin-stats-dot { background: #8e8e93; }
+.admin-stats-bar strong { color: var(--ink); font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; margin-left: 2px; }
+.admin-stats-bar .admin-stats-total { margin-left: auto; color: var(--ink-faint); font-size: 12px; letter-spacing: 0.02em; }
+
+/* 操作列：第一行编辑/删除，第二行主页开关（左右半圆胶囊按钮） */
+.admin-row-actions { display: inline-flex; gap: 10px; align-items: center; }
+.admin-row-homepage { margin-top: 6px; }
+.admin-row-homepage form { margin: 0; padding: 0; }
+.btn-pill { display: inline-block; border-radius: 980px; padding: 4px 14px; font-size: 12px; line-height: 1.4; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; font-family: inherit; transition: background 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease); }
+.btn-pill:hover { border-color: var(--accent); color: var(--accent); }
+.btn-pill-off { /* 当前未置顶 → 强调"显示到主页" */ border-color: var(--accent); color: var(--accent); }
+.btn-pill-off:hover { background: var(--accent); color: #fff; }
+.btn-pill-on { /* 当前已置顶 → 中性描边 */ color: var(--ink-soft); }
+.btn-pill-on:hover { border-color: #c73737; color: #c73737; }
+
+/* 暗色模式下卡片边框略微提亮 —— 背景本身走 --card-bg 变量（:root/@media 各定义一次），
+   这里只需补边框颜色，避免每个卡片类重复写 background 覆盖。 */
+@media (prefers-color-scheme: dark) {
+  .portfolio-card,
+  .portfolio-home-card { border-color: rgba(255,255,255,0.06); }
 }

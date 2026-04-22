@@ -154,6 +154,7 @@ func main() {
 	}
 	authStore := auth.NewStore(store.DB, sessionSecret)
 	adminH := admin.New(authStore, cfg, *cfgPath, tpl, logger)
+	adminH.Content = cstore
 	docsAdmin := &admin.DocHandlers{Parent: adminH, Content: cstore, DataDir: cfg.DataDir}
 	imagesAdmin := &admin.ImageHandlers{Parent: adminH, DataDir: cfg.DataDir}
 	settingsAdmin := &admin.SettingsHandlers{Parent: adminH, Settings: settingsStore, Invalidate: ph.InvalidateSettings}
@@ -162,8 +163,15 @@ func main() {
 		GitHubClient: ghClient, GitHubCache: ghCache,
 	}
 	trashAdmin := &admin.TrashHandlers{Parent: adminH, Content: cstore, DataDir: cfg.DataDir}
+	// Migrate legacy flat trash/*.md into per-kind subdirs on startup. Safe
+	// to call unconditionally — idempotent once migrated.
+	if err := admin.MigrateFlatTrash(cfg.DataDir, logger); err != nil {
+		logger.Warn("admin.trash.migrate.err", slog.String("err", err.Error()))
+	}
 	aboutAdmin := &admin.AboutHandlers{Parent: adminH, DataDir: cfg.DataDir}
 	ph.AboutPath = filepath.Join(cfg.DataDir, "content", "about.md")
+	portfolioAdmin := &admin.PortfolioHandlers{Parent: adminH, Content: cstore, DataDir: cfg.DataDir}
+	portfolioCoverAdmin := &admin.PortfolioCoverHandlers{Parent: adminH, DataDir: cfg.DataDir}
 	avatarAdmin := &admin.AvatarHandlers{
 		Parent: adminH, DataDir: cfg.DataDir,
 		Settings: settingsStore, Invalidate: ph.InvalidateSettings,
@@ -188,6 +196,8 @@ func main() {
 	mux.HandleFunc("/projects", ph.ProjectsList)
 	mux.HandleFunc("/projects/", ph.ProjectDetail)
 	mux.HandleFunc("/about", ph.About)
+	mux.HandleFunc("/portfolio", ph.PortfolioList)
+	mux.HandleFunc("/portfolio/", ph.PortfolioDetail)
 	mux.HandleFunc("/rss.xml", ph.RSS)
 	mux.HandleFunc("/sitemap.xml", ph.Sitemap)
 
@@ -215,7 +225,7 @@ func main() {
 	})
 	mux.HandleFunc("/manage/logout", adminH.Logout)
 
-	protected := buildAdminMux(adminH, docsAdmin, imagesAdmin, settingsAdmin, projectsAdmin, trashAdmin, aboutAdmin, avatarAdmin)
+	protected := buildAdminMux(adminH, docsAdmin, imagesAdmin, settingsAdmin, projectsAdmin, trashAdmin, aboutAdmin, avatarAdmin, portfolioAdmin, portfolioCoverAdmin)
 	// /images/* static file serving (uploaded content).
 	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(filepath.Join(cfg.DataDir, "images")))))
 

@@ -1,0 +1,118 @@
+{{ define "title" }}作品集管理 — Penguin{{ end }}
+{{ define "body_class" }}page-admin{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+{{ $csrf := .CSRF }}
+<div class="admin-shell">
+  <header class="admin-header">
+    <h1>作品集管理</h1>
+    <div class="admin-session">
+      <a href="/manage">← 返回面板</a>
+      <a class="btn btn-primary" href="/manage/portfolio/new">新建作品</a>
+    </div>
+  </header>
+
+  {{ if .Error }}<div class="form-err">{{ .Error }}</div>{{ end }}
+  {{ if .Info }}<div class="form-info">{{ .Info }}</div>{{ end }}
+
+  <div class="admin-stats-bar">
+    <span class="admin-stats-item admin-stats-published"><span class="admin-stats-dot"></span>published <strong>{{ .Stats.Published }}</strong></span>
+    <span class="admin-stats-item admin-stats-draft"><span class="admin-stats-dot"></span>draft <strong>{{ .Stats.Draft }}</strong></span>
+    <span class="admin-stats-item admin-stats-archived"><span class="admin-stats-dot"></span>archived <strong>{{ .Stats.Archived }}</strong></span>
+    <span class="admin-stats-total">共 {{ .Stats.Total }} 条</span>
+  </div>
+
+  <section class="admin-section">
+    <h2 class="admin-section-title">主页展示 <span class="admin-section-sub">拖动行调整主页显示顺序</span></h2>
+    {{ if .Featured }}
+    <table class="admin-table portfolio-featured-table" data-csrf="{{ $csrf }}">
+      <thead>
+        <tr>
+          <th aria-label="drag handle"></th>
+          <th>状态</th><th>标题</th><th>Slug</th><th>Order</th><th>更新</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody class="portfolio-drag-body">
+        {{ range .Featured }}
+        <tr data-slug="{{ .Slug }}" data-order="{{ .Order }}" draggable="true">
+          <td class="portfolio-drag-handle" aria-label="拖动排序">⋮⋮</td>
+          <td><span class="status-badge status-{{ .Status }}">{{ .Status }}</span></td>
+          <td><a href="/portfolio/{{ .Slug }}">{{ .Title }}</a></td>
+          <td><code>{{ .Slug }}</code></td>
+          <td class="portfolio-order-cell">{{ .Order }}</td>
+          <td>{{ formatDate .Updated "2006-01-02" }}</td>
+          <td>
+            <div class="admin-row-actions">
+              <a href="/manage/portfolio/{{ .Slug }}/edit">编辑</a>
+              <form method="POST" action="/manage/portfolio/{{ .Slug }}/delete" style="display:inline;" data-confirm="确定删除《{{ .Title }}》？软删到 trash/">
+                <input type="hidden" name="csrf" value="{{ $csrf }}" />
+                <button class="link-danger" type="submit">删除</button>
+              </form>
+            </div>
+            <div class="admin-row-homepage">
+              <form method="POST" action="/manage/portfolio/{{ .Slug }}/featured">
+                <input type="hidden" name="csrf" value="{{ $csrf }}" />
+                <input type="hidden" name="featured" value="false" />
+                <button class="btn-pill btn-pill-on" type="submit">从主页移除</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    {{ else }}
+    <p class="note">暂无主页展示的作品。在下方列表点击「显示到主页」以加入。</p>
+    {{ end }}
+  </section>
+
+  <section class="admin-section">
+    <h2 class="admin-section-title">不在主页展示</h2>
+    {{ if .Others }}
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>状态</th><th>标题</th><th>Slug</th><th>更新</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range .Others }}
+        <tr data-slug="{{ .Slug }}">
+          <td><span class="status-badge status-{{ .Status }}">{{ .Status }}</span></td>
+          <td><a href="/portfolio/{{ .Slug }}">{{ .Title }}</a></td>
+          <td><code>{{ .Slug }}</code></td>
+          <td>{{ formatDate .Updated "2006-01-02" }}</td>
+          <td>
+            <div class="admin-row-actions">
+              <a href="/manage/portfolio/{{ .Slug }}/edit">编辑</a>
+              <form method="POST" action="/manage/portfolio/{{ .Slug }}/delete" style="display:inline;" data-confirm="确定删除《{{ .Title }}》？软删到 trash/">
+                <input type="hidden" name="csrf" value="{{ $csrf }}" />
+                <button class="link-danger" type="submit">删除</button>
+              </form>
+            </div>
+            <div class="admin-row-homepage">
+              <form method="POST" action="/manage/portfolio/{{ .Slug }}/featured">
+                <input type="hidden" name="csrf" value="{{ $csrf }}" />
+                <input type="hidden" name="featured" value="true" />
+                <button class="btn-pill btn-pill-off" type="submit">显示到主页</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    {{ else }}
+    <p class="note">全部作品均在主页展示。</p>
+    {{ end }}
+
+    {{ if not .Entries }}
+    <p class="note">暂无作品，<a href="/manage/portfolio/new">立即新建</a>。</p>
+    {{ end }}
+  </section>
+</div>
+{{ end }}
+<script defer src="/static/js/confirm_submit.js"></script>
+<script defer src="/static/js/portfolio_drag_sort.js"></script>
+{{ end }}

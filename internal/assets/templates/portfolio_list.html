@@ -1,0 +1,53 @@
+{{ define "title" }}作品集 — Penguin{{ end }}
+{{ define "body_class" }}page-portfolio-list{{ end }}
+{{ define "description" }}Penguin 的作品集：设计、可视化、写作合集。{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<section class="portfolio-list-shell">
+  <header class="portfolio-list-header">
+    <h1>作品集</h1>
+    {{ if .Tag }}<p class="portfolio-tag-hint">当前筛选：#{{ .Tag }} <a href="/portfolio">（清除）</a></p>{{ end }}
+    {{ if not .Tag }}{{ if .TagCounts }}
+    <div class="portfolio-tagcloud">
+      {{ range $name, $count := .TagCounts }}
+        <a href="/portfolio?tag={{ $name }}">#{{ $name }} <span class="tag-count">{{ $count }}</span></a>
+      {{ end }}
+    </div>
+    {{ end }}{{ end }}
+  </header>
+
+  {{ if .Items }}
+  <ul class="portfolio-gallery">
+    {{ range .Items }}
+    <li class="portfolio-card">
+      <a href="/portfolio/{{ .Entry.Slug }}" class="portfolio-card-link">
+        <figure class="portfolio-card-cover">
+          <img src="{{ .Cover }}" alt="{{ .Entry.Title }} 封面" loading="lazy" />
+        </figure>
+        <div class="portfolio-card-body">
+          {{ if .Entry.Category }}<div class="kicker">{{ .Entry.Category }}</div>{{ end }}
+          <h2>{{ .Entry.Title }}</h2>
+          {{ if .Entry.Description }}<p>{{ .Entry.Description }}</p>{{ end }}
+        </div>
+      </a>
+    </li>
+    {{ end }}
+  </ul>
+  {{ else }}
+  <p class="portfolio-empty">
+    {{ if .Tag }}没有 #{{ .Tag }} 标签的作品。<a href="/portfolio">看看全部</a>？
+    {{ else }}还没有作品。{{ end }}
+  </p>
+  {{ end }}
+
+  {{ if gt .TotalPages 1 }}
+  <nav class="pager">
+    {{ if .HasPrev }}<a href="?page={{ .PrevPage }}{{ if .Tag }}&tag={{ .Tag }}{{ end }}">« 上一页</a>{{ end }}
+    <span>第 {{ .Page }} / {{ .TotalPages }} 页</span>
+    {{ if .HasNext }}<a href="?page={{ .NextPage }}{{ if .Tag }}&tag={{ .Tag }}{{ end }}">下一页 »</a>{{ end }}
+  </nav>
+  {{ end }}
+</section>
+{{ end }}
+{{ end }}

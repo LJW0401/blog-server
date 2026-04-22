@@ -29,15 +29,16 @@ import (
 // crudSetup builds a fully-wired admin handler graph for end-to-end tests
 // of docs/images/settings/projects CRUD.
 type crudBundle struct {
-	Admin    *admin.Handlers
-	Docs     *admin.DocHandlers
-	Images   *admin.ImageHandlers
-	Settings *admin.SettingsHandlers
-	Projects *admin.ProjectHandlers
-	Content  *content.Store
-	DataDir  string
-	Cookie   *http.Cookie
-	CSRF     string
+	Admin     *admin.Handlers
+	Docs      *admin.DocHandlers
+	Images    *admin.ImageHandlers
+	Settings  *admin.SettingsHandlers
+	Projects  *admin.ProjectHandlers
+	Portfolio *admin.PortfolioHandlers
+	Content   *content.Store
+	DataDir   string
+	Cookie    *http.Cookie
+	CSRF      string
 }
 
 func crudSetup(t *testing.T) *crudBundle {
@@ -45,6 +46,7 @@ func crudSetup(t *testing.T) *crudBundle {
 	dir := t.TempDir()
 	_ = os.MkdirAll(filepath.Join(dir, "content", "docs"), 0o700)
 	_ = os.MkdirAll(filepath.Join(dir, "content", "projects"), 0o700)
+	_ = os.MkdirAll(filepath.Join(dir, "content", "portfolio"), 0o700)
 
 	cfgPath := filepath.Join(dir, "config.yaml")
 	_ = os.WriteFile(cfgPath, []byte("listen_addr: 127.0.0.1:8080\nadmin_username: admin\nadmin_password_bcrypt: \""+defaultPasswordHash+"\"\ndata_dir: \""+dir+"\"\ngithub_sync_interval_min: 30\n"), 0o600)
@@ -84,8 +86,9 @@ func crudSetup(t *testing.T) *crudBundle {
 			GitHubClient: nil, // many tests don't need GitHub; set per case
 			GitHubCache:  ghCache,
 		},
-		Content: cstore,
-		DataDir: dir,
+		Portfolio: &admin.PortfolioHandlers{Parent: adminH, Content: cstore, DataDir: dir},
+		Content:   cstore,
+		DataDir:   dir,
 	}
 
 	// Log in to obtain a cookie + CSRF.
@@ -225,8 +228,8 @@ func TestDocsDelete_Smoke(t *testing.T) {
 	if _, ok := b.Content.Docs().Get(content.KindDoc, "delme"); ok {
 		t.Error("doc should be removed from index")
 	}
-	// trash/ should have a dated file.
-	entries, _ := os.ReadDir(filepath.Join(b.DataDir, "trash"))
+	// trash/docs/ should have a dated file matching the doc slug.
+	entries, _ := os.ReadDir(filepath.Join(b.DataDir, "trash", admin.TrashKindDoc))
 	found := false
 	for _, e := range entries {
 		if strings.Contains(e.Name(), "delme") {
@@ -234,7 +237,7 @@ func TestDocsDelete_Smoke(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("trash file not found")
+		t.Error("trash file not found under trash/docs/")
 	}
 }
 

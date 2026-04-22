@@ -251,7 +251,7 @@ setup_user_and_dirs() {
         chmod 750 "$INSTALL_DIR"
     fi
 
-    local subs=(content/docs content/projects images backups trash)
+    local subs=(content/docs content/projects content/portfolio images backups trash)
     for d in "${subs[@]}"; do
         if [[ ! -d "$INSTALL_DIR/$d" ]]; then
             sudo -u "$SERVICE_USER" mkdir -p "$INSTALL_DIR/$d" 2>/dev/null || mkdir -p "$INSTALL_DIR/$d"
@@ -753,7 +753,7 @@ cmd_logs() {
 #     ├── MANIFEST         固定标识行 + 元信息（版本/时间/打包项）
 #     ├── data.sqlite      主库快照（为保一致性要求 service 已停或使用 --no-stop 风险自负）
 #     ├── config.yaml      管理账号/GitHub token，默认包含；--no-config 可排除
-#     ├── content/         Markdown 源文件（docs + projects）
+#     ├── content/         Markdown 源文件（docs + projects + portfolio）
 #     └── images/          上传的图片
 # 不含：blog-server 二进制（另装）、backups/（冗余）、trash/（软删）
 EXPORT_MAGIC="blog-server-export/v1"

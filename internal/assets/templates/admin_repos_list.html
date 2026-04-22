@@ -15,6 +15,13 @@
   {{ if .Error }}<div class="form-err">{{ .Error }}</div>{{ end }}
   {{ if .Info }}<div class="form-info">{{ .Info }}</div>{{ end }}
 
+  <div class="admin-stats-bar">
+    <span class="admin-stats-item admin-stats-active"><span class="admin-stats-dot"></span>active <strong>{{ .Stats.Active }}</strong></span>
+    <span class="admin-stats-item admin-stats-developing"><span class="admin-stats-dot"></span>developing <strong>{{ .Stats.Developing }}</strong></span>
+    <span class="admin-stats-item admin-stats-archived"><span class="admin-stats-dot"></span>archived <strong>{{ .Stats.Archived }}</strong></span>
+    <span class="admin-stats-total">共 {{ .Stats.Total }} 条</span>
+  </div>
+
   <section class="admin-section">
     <h2>新增项目</h2>
     <form method="POST" action="/manage/repos/new" class="settings-form">

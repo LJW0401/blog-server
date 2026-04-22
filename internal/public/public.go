@@ -237,14 +237,33 @@ func (h *Handlers) NotFound(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 	docs := h.Content.Docs().List(content.KindDoc)
 	projs := h.Content.Projects().List(content.KindProject)
+	portfolios := h.Content.Portfolios().List(content.KindPortfolio)
+
+	// Home cards: only featured + published, fully sorted (Order ASC, Updated DESC).
+	homePortfolios := make([]*content.Entry, 0, len(portfolios))
+	for _, e := range portfolios {
+		if e.Status == content.StatusPublished && e.Featured {
+			homePortfolios = append(homePortfolios, e)
+		}
+	}
+	sortPortfolios(homePortfolios)
+	homeCards := make([]portfolioHomeCard, len(homePortfolios))
+	for i, e := range homePortfolios {
+		cover := e.Cover
+		if strings.TrimSpace(cover) == "" {
+			cover = PortfolioDefaultCover
+		}
+		homeCards[i] = portfolioHomeCard{Entry: e, Cover: cover}
+	}
 
 	data := map[string]any{
 		"Settings":         h.Settings(),
 		"FeaturedDocs":     pickFeatured(docs, 4),
 		"FeaturedProjects": pickFeatured(projs, 3),
 		// Recently Active is a derived view merging content + github cache.
-		"RecentRepos": h.RecentlyActiveProjects(r.Context(), 3),
-		"About":       h.about(),
+		"RecentRepos":        h.RecentlyActiveProjects(r.Context(), 3),
+		"About":              h.about(),
+		"FeaturedPortfolios": homeCards,
 	}
 	if err := h.Tpl.Render(w, r, http.StatusOK, "home.html", data); err != nil {
 		h.Logger.Error("home.render", slog.String("err", err.Error()))

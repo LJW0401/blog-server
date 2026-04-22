@@ -1,22 +1,30 @@
-{{ define "title" }}{{ if .Data.IsNew }}新建{{ else }}编辑{{ end }}{{ if eq .Data.Kind "project" }}项目{{ else }}文档{{ end }} — Penguin{{ end }}
+{{ define "title" }}{{ if .Data.IsNew }}新建{{ else }}编辑{{ end }}{{ if eq .Data.Kind "project" }}项目{{ else if eq .Data.Kind "portfolio" }}作品{{ else }}文档{{ end }} — Penguin{{ end }}
 {{ define "body_class" }}page-admin{{ end }}
 {{ define "head" }}<link rel="stylesheet" href="/static/math/katex.min.css" />{{ end }}
 
 {{ define "content" }}
 {{ with .Data }}
+{{ $base := "/manage/docs" }}{{ if eq .Kind "project" }}{{ $base = "/manage/projects" }}{{ else if eq .Kind "portfolio" }}{{ $base = "/manage/portfolio" }}{{ end }}
 <div class="admin-shell">
   <header class="admin-header">
-    <h1>{{ if .IsNew }}新建{{ else }}编辑{{ end }}{{ if eq .Kind "project" }}项目{{ else }}文档{{ end }}</h1>
+    <h1>{{ if .IsNew }}新建{{ else }}编辑{{ end }}{{ if eq .Kind "project" }}项目{{ else if eq .Kind "portfolio" }}作品{{ else }}文档{{ end }}</h1>
     <div class="admin-session">
-      <a href="{{ if eq .Kind "project" }}/manage/projects{{ else }}/manage/docs{{ end }}">← 返回列表</a>
+      <a href="{{ $base }}">← 返回列表</a>
     </div>
   </header>
 
   {{ if .Error }}<div class="form-err">{{ .Error }}</div>{{ end }}
 
   <form class="admin-section editor-form" method="POST"
-        action="{{ if eq .Kind "project" }}{{ if .IsNew }}/manage/projects/new{{ else }}/manage/projects/{{ .Slug }}/edit{{ end }}{{ else }}{{ if .IsNew }}/manage/docs/new{{ else }}/manage/docs/{{ .Slug }}/edit{{ end }}{{ end }}">
+        action="{{ $base }}/{{ if .IsNew }}new{{ else }}{{ .Slug }}/edit{{ end }}">
     <input type="hidden" name="csrf" value="{{ .CSRF }}" />
+    {{ if eq .Kind "portfolio" }}
+    <div class="portfolio-cover-picker" data-csrf="{{ .CSRF }}">
+      <button type="button" class="portfolio-cover-btn btn-pill btn-pill-off">上传封面</button>
+      <input type="file" class="portfolio-cover-file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
+      <span class="portfolio-cover-status note">上传成功后 frontmatter 的 cover: 会自动回填（需要先填 slug）</span>
+    </div>
+    {{ end }}
     <div class="editor-tabs" role="tablist">
       <button type="button" class="editor-tab is-active" data-mode="edit" role="tab" aria-selected="true">编辑</button>
       <button type="button" class="editor-tab" data-mode="preview" role="tab" aria-selected="false">预览</button>
@@ -25,7 +33,7 @@
     <textarea name="body" spellcheck="false" autofocus>{{ .Body }}</textarea>
     <div class="editor-preview doc-body" hidden aria-live="polite"></div>
     <div class="editor-actions">
-      <a class="btn btn-ghost" href="{{ if eq .Kind "project" }}/manage/projects{{ else }}/manage/docs{{ end }}">取消</a>
+      <a class="btn btn-ghost" href="{{ $base }}">取消</a>
       <button class="btn btn-primary" type="submit">保存</button>
     </div>
     <p class="note">Tip：本编辑器为带等宽字体的纯文本 textarea；更丰富的语法高亮 (CodeMirror 6) 留待 P7。保存时服务端校验 frontmatter 必填字段 + slug 唯一性。</p>
@@ -36,4 +44,5 @@
 <script defer src="/static/math/auto-render.min.js"></script>
 <script defer src="/static/math/math-init.js"></script>
 <script defer src="/static/js/doc_edit.js"></script>
+{{ if eq .Data.Kind "portfolio" }}<script defer src="/static/js/portfolio_cover_upload.js"></script>{{ end }}
 {{ end }}
