@@ -40,7 +40,7 @@
             <form method="POST" action="/manage/portfolio/{{ .Slug }}/featured" style="display:inline;">
               <input type="hidden" name="csrf" value="{{ $csrf }}" />
               <input type="hidden" name="featured" value="false" />
-              <button class="link-primary" type="submit">★ 取消置顶</button>
+              <button class="link-primary" type="submit">从主页移除</button>
             </form>
             <form method="POST" action="/manage/portfolio/{{ .Slug }}/delete" style="display:inline;" data-confirm="确定删除《{{ .Title }}》？软删到 trash/">
               <input type="hidden" name="csrf" value="{{ $csrf }}" />
@@ -52,7 +52,7 @@
       </tbody>
     </table>
     {{ else }}
-    <p class="note">暂无置顶作品。在下方列表点击「☆ 置顶」以加入主页展示。</p>
+    <p class="note">暂无主页展示的作品。在下方列表点击「显示到主页」以加入。</p>
     {{ end }}
   </section>
 
@@ -77,7 +77,7 @@
             <form method="POST" action="/manage/portfolio/{{ .Slug }}/featured" style="display:inline;">
               <input type="hidden" name="csrf" value="{{ $csrf }}" />
               <input type="hidden" name="featured" value="true" />
-              <button class="link-primary" type="submit">☆ 置顶</button>
+              <button class="link-primary" type="submit">显示到主页</button>
             </form>
             <form method="POST" action="/manage/portfolio/{{ .Slug }}/delete" style="display:inline;" data-confirm="确定删除《{{ .Title }}》？软删到 trash/">
               <input type="hidden" name="csrf" value="{{ $csrf }}" />
@@ -89,7 +89,7 @@
       </tbody>
     </table>
     {{ else }}
-    <p class="note">全部作品均已置顶。</p>
+    <p class="note">全部作品均在主页展示。</p>
     {{ end }}
 
     {{ if not .Entries }}

@@ -4,12 +4,12 @@ slug: interactive-geometry-playground
 description: 拖拽点和线，实时看定理怎么运作
 category: 可视化
 tags: [dataviz, math]
-order: 4
+order: 10
 demo_url: https://example.com/demo/geom
 created: 2026-02-01
 updated: 2026-02-10
 status: published
-featured: false
+featured: true
 ---
 <!-- portfolio:intro -->
 一个**几何定理**的交互式演示网页。点击三角形顶点拖动，观察外接圆、重心、欧拉线如何随形状变化。做这个的初衷是教小孩子"定理不是死记硬背的公式，是图形的稳定规律"。

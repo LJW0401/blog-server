@@ -1,4 +1,4 @@
-// /manage/portfolio 置顶表格的拖动排序：
+// /manage/portfolio 主页展示表格的拖动排序：
 //   基于 HTML5 Drag and Drop，落位后按行序号重排 order（步长 10），
 //   对每个变化的行顺序 POST 到 /manage/portfolio/<slug>/order；
 //   任何一行失败则整体回滚到拖动前的 DOM 顺序并提示。

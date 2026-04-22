@@ -1,5 +1,18 @@
 # Learnings
 
+## 2026-04-22
+
+### 快速功能：作品集主页显示按钮文案 + 样式
+- **类型**：Bug（上游代码）
+- **描述**：`admin_portfolio_list.html` 和 `admin_trash.html` 两个模板都给按钮挂了 `class="link-primary"`，但 `theme.css` 里从未定义过 `.link-primary`——按钮实际沿用浏览器默认灰色样式，与主题不符。定义 `.link-primary` 后两处一同受益。
+- **建议处理方式**：后续如再引入 `link-*` 变体，先在 `theme.css` 里确认定义再挂类，或在模板 linter 里加"类必须有 CSS 定义"的断言。
+- **紧急程度**：低
+
+- **类型**：测试缺口
+- **描述**：管理后台按钮视觉样式没有回归测试兜底；这次重命名按钮文案靠新增 smoke 文案断言捕捉，但 `.link-primary` 是否真的被 CSS 定义（而非悬空类名）仍无自动化校验。`internal/assets/admin_settings_dark_focus_test.go` 之前用过"CSS 字符串静态断言"思路，可复用到按钮样式覆盖率上。
+- **建议处理方式**：未来补一组"模板里出现的 class 必须在 theme.css 有对应规则"的静态断言，兜底悬空类。
+- **紧急程度**：低
+
 ## 2026-04-21
 
 ### Bug 修复：manage settings 暗色模式输入框聚焦变白

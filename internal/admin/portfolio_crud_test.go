@@ -150,6 +150,33 @@ func TestPortfolioCRUD_Smoke_ToggleFeatured(t *testing.T) {
 	}
 }
 
+// Smoke: list page shows the new "显示到主页 / 从主页移除" wording on the
+// featured toggle buttons (replaces the legacy 置顶/取消置顶 labels).
+// 豁免异常测试：纯模板文案改动，端点和数据流未动。
+func TestPortfolioCRUD_Smoke_ListShowsHomepageToggleWording(t *testing.T) {
+	b := crudSetup(t)
+	seedPortfolioFile(t, b, "on-home", portfolioMD("on-home", "On Home", true, 10))
+	seedPortfolioFile(t, b, "off-home", portfolioMD("off-home", "Off Home", false, 0))
+	if err := b.Content.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	w := b.authedGet(t, "/manage/portfolio", b.Portfolio.List)
+	if w.Code != 200 {
+		t.Fatalf("status=%d", w.Code)
+	}
+	body := w.Body.String()
+	for _, want := range []string{"显示到主页", "从主页移除"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("list missing wording %q", want)
+		}
+	}
+	for _, gone := range []string{"☆ 置顶", "★ 取消置顶"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("legacy wording %q still present", gone)
+		}
+	}
+}
+
 // --- WI-3.6 Exception --------------------------------------------------------
 
 func TestPortfolioCRUD_Exception_SlugConflict(t *testing.T) {

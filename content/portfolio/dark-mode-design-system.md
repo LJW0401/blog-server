@@ -4,12 +4,12 @@ slug: dark-mode-design-system
 description: 从 CSS 变量到 tokens — 一次性整理整个站点的配色
 category: 设计
 tags: [design, css]
-order: 20
+order: 30
 source_url: https://github.com/example/dark-mode
 created: 2026-02-14
 updated: 2026-02-28
 status: published
-featured: true
+featured: false
 ---
 <!-- portfolio:intro -->
 给本站点整理的**统一暗色主题**。所有颜色走 CSS 变量，跟随 `prefers-color-scheme` 自动切换，同时支持用户手动强制。核心是把硬编码的十六进制值归纳成一套**语义 token**（`--fg-soft` / `--bg-card` / `--accent-hover`），改主题只需改一层。
