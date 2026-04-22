@@ -165,11 +165,10 @@ func portfolioStats(cs *content.Store) PortfolioStats {
 func (h *Handlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 	sess, _ := h.Auth.ParseSession(r)
 	data := map[string]any{
-		"Username":  sess.Username,
-		"CSRF":      sess.CSRF,
-		"Banner":    h.Config.DefaultPasswordUnchanged(),
-		"Changed":   h.Config.PasswordChangedAt,
-		"Portfolio": portfolioStats(h.Content),
+		"Username": sess.Username,
+		"CSRF":     sess.CSRF,
+		"Banner":   h.Config.DefaultPasswordUnchanged(),
+		"Changed":  h.Config.PasswordChangedAt,
 	}
 	if err := h.Tpl.Render(w, r, http.StatusOK, "admin_dashboard.html", data); err != nil {
 		h.Logger.Error("admin.dashboard.render", slog.String("err", err.Error()))

@@ -58,6 +58,7 @@ func (p *PortfolioHandlers) List(w http.ResponseWriter, r *http.Request) {
 		"Entries":  entries,
 		"Featured": featured,
 		"Others":   others,
+		"Stats":    portfolioStats(p.Content),
 		"CSRF":     sess.CSRF,
 		"Info":     r.URL.Query().Get("info"),
 		"Error":    r.URL.Query().Get("e"),

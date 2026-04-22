@@ -1299,6 +1299,17 @@ body.page-diary { background: var(--bg); }
 .portfolio-order-cell { color: var(--ink-soft); font-variant-numeric: tabular-nums; width: 60px; }
 .portfolio-featured-table.is-saving { opacity: 0.7; pointer-events: none; }
 .portfolio-featured-table.is-saved { outline: 2px solid var(--accent); outline-offset: -2px; transition: outline 0.3s ease; }
+/* 作品集统计条：扁平单行，占满容器，「共 N 条」右对齐。
+   每个状态前加一颗与 status-badge 同色的小圆点，呼应主题色系。 */
+.portfolio-stats-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; width: 100%; padding: 12px 16px; margin: 14px 0 18px; background: var(--bg-alt); border-radius: var(--radius-md); font-size: 13px; color: var(--ink-soft); }
+.portfolio-stats-item { display: inline-flex; align-items: center; gap: 6px; }
+.portfolio-stats-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--ink-faint); }
+.portfolio-stats-published .portfolio-stats-dot { background: #1a6a2e; }
+.portfolio-stats-draft .portfolio-stats-dot { background: #a37400; }
+.portfolio-stats-archived .portfolio-stats-dot { background: #8e8e93; }
+.portfolio-stats-bar strong { color: var(--ink); font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; margin-left: 2px; }
+.portfolio-stats-bar .portfolio-stats-total { margin-left: auto; color: var(--ink-faint); font-size: 12px; letter-spacing: 0.02em; }
+
 /* 操作列：第一行编辑/删除，第二行主页开关（左右半圆胶囊按钮） */
 .admin-row-actions { display: inline-flex; gap: 10px; align-items: center; }
 .admin-row-homepage { margin-top: 6px; }
