@@ -1021,3 +1021,19 @@
 - **紧急程度**：低
 
 - 2026-04-23 快速功能 narrow-project-card-match-doc 的反思其余项：无 learnings（#1 临时方案：无；#2 能跑但不够好：当前横向化方案在极小屏下 arrow 可能与标题拥挤，但 640px 下内容长度 OK，记为已知小型妥协；#3 上游问题：无；#4 新理解：已归到架构洞察；#6 测试缺口：CSS 窄屏布局没有端到端视觉回归，目前只能靠"规则是否存在"断言兜底，但属于已知性质）
+
+## 2026-04-24
+
+### Bug 修复：markdown 表格无分隔线
+- **发现于**：用户手动测试，写了含表格的 md 后发现渲染出来只是一坨对齐的纯文字
+- **现象**：任何 markdown 容器 (`/docs/<slug>`、`/portfolio/<slug>`、管理后台预览) 里的表格都没有边框
+- **根因**：goldmark 启用了 `extension.GFM`（包含 Tables），HTML 端产出完整的 `<table><thead><th>...<tbody><td>...`，但 theme.css 从来没给 `.doc-body table` / `.portfolio-body table` / 相关 th/td 写过任何规则，浏览器默认样式不画边框
+- **修复**：在 `.doc-body` / `.portfolio-body` 的 markdown 排版块中补齐 table / th / td 规则（含 border-collapse、thead 背景）和暗色 @media 下的 border-color / thead 背景覆盖
+- **回归测试**：`internal/assets/markdown_table_borders_test.go::TestTheme_Regression_MarkdownTableBorders` —— 断言 `.doc-body` / `.portfolio-body` 都有 table 与 th/td 规则，且至少一条规则声明了 border
+- **为什么原测试没覆盖**：作品集/文档的端到端测试都集中在 CRUD、路由、metadata、列表拖拽，从来没造过含 table 的 markdown 走渲染流水线一次。GFM 扩展被打开时有一批"白名单"标签（table/checkbox/strikethrough 等）需要对应 CSS，项目开了扩展但从没全量断言过样式覆盖
+- **紧急程度**：中（不影响数据，但凡是用表格的文档都失去可读性）
+- **衍生改进建议**（下次处理）：
+  - GFM 还开了 Task list（复选框），同样需要确认 `<input type="checkbox">` 在 `.doc-body` 里的样式；项目未定义则走浏览器默认，Safari/Chrome 暗色下观感不同
+  - 脚注 (`extension.Footnote`) 同理——`<sup class="footnote-ref">` / `<div class="footnotes">` 需要对应样式
+  - DefinitionList (`extension.DefinitionList`) 同理——`<dl><dt><dd>` 很可能也裸奔
+  - 建议补一个 snapshot 式的 markdown-renderer fixture：把一段包含所有开启扩展特性的 md 渲染出 HTML，断言每种标签都有 CSS 规则命中（反射式测试）

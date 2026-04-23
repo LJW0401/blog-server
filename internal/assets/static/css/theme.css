@@ -284,6 +284,10 @@ body.page-doc-detail, body.page-about { background: var(--bg); }
 .doc-body pre code, .portfolio-body pre code { background: transparent; padding: 0; }
 .doc-body a, .portfolio-body a { color: var(--accent); text-decoration: underline; text-decoration-color: rgba(0,113,227,0.3); }
 .doc-body blockquote, .portfolio-body blockquote { border-left: 3px solid var(--line); padding-left: 18px; color: var(--ink-soft); margin-bottom: 20px; }
+.doc-body table, .portfolio-body table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.95em; }
+.doc-body th, .doc-body td,
+.portfolio-body th, .portfolio-body td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; vertical-align: top; }
+.doc-body thead th, .portfolio-body thead th { background: var(--bg-alt); font-weight: 600; }
 .doc-nav { margin-top: 64px; display: flex; justify-content: space-between; gap: 24px; }
 .doc-nav a { font-size: 14px; color: var(--accent); text-decoration: none; max-width: 45%; }
 .doc-nav .next { margin-left: auto; text-align: right; }
@@ -1012,6 +1016,9 @@ body.page-diary { background: var(--bg); }
   .doc-body code, .doc-body pre,
   .portfolio-body code, .portfolio-body pre { background: #151518; }
   .doc-body pre, .portfolio-body pre { border: 1px solid rgba(255,255,255,0.04); }
+  .doc-body th, .doc-body td,
+  .portfolio-body th, .portfolio-body td { border-color: rgba(255,255,255,0.1); }
+  .doc-body thead th, .portfolio-body thead th { background: #1c1c1e; }
   .proj { background: #151518; border-color: rgba(255,255,255,0.06); }
   .proj:hover { box-shadow: 0 14px 36px rgba(0,0,0,0.4); }
   .proj .pills .pill { background: #26262a; color: var(--ink); }
