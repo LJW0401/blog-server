@@ -999,3 +999,17 @@
 - **描述**：原 trash 用 `YYYYMMDD-HHMMSS-proj-<slug>.md` 在单个扁平目录里编码 kind；新版改为 `trash/<kind>/<timestamp>-<slug>.md` 子目录编码。`proj-` 前缀只保留在 `trashLegacyFlatRe` 里给 `MigrateFlatTrash` 识别旧数据。
 - **建议处理方式**：几个发布版本后（确认用户都跑过一次迁移），可以把 `MigrateFlatTrash` 和 `trashLegacyFlatRe` 一起删。现阶段留着当兼容层。
 - **紧急程度**：低
+
+## 2026-04-23
+
+### Bug 修复：作品集编辑预览与公开详情页渲染不一致
+- **发现于**：手动测试，对比 `/manage/portfolio/<slug>/edit` 预览标签页与 `/portfolio/<slug>` 的渲染效果
+- **现象**：同一份 markdown，后台预览里嵌套列表有缩进、段落有间距、标题与正文拉开空白；到了公开详情页变成无缩进的一坨，标题紧贴段落
+- **根因**：两端用的是同一套服务端 goldmark 渲染，HTML 完全一致，差别全在 CSS——后台预览用 `.doc-body`（有完整的 h1/h2/h3、p、ul/ol padding、pre、blockquote 规则），公开页用 `.portfolio-body .markdown-body`，其中 `.portfolio-body` 只声明了 line-height/font-size，`.markdown-body` 根本没有任何规则
+- **修复**：把 `.doc-body` 的排版规则分组选择器扩展到 `.portfolio-body`（包括暗色 @media 下 code/pre 的覆盖），保留 `.portfolio-body` 自有的 line-height/font-size 以维持字号差异
+- **回归测试**：`internal/assets/portfolio_body_typography_test.go::TestTheme_Regression_PortfolioBodyTypography`——断言 `.portfolio-body` 对 h1/h2/h3/p/ul/ol/pre/blockquote 都有排版规则
+- **为什么原测试没覆盖**：作品集模块上线时测试聚焦在 CRUD、拖拽排序、封面上传、卡片暗色回退等行为层，从没断言过公开详情页的 markdown 排版是否与 `.doc-body` 对齐。`.markdown-body` 类名看起来像在复用 github-markdown-css 之类的风格，但 theme.css 里根本没定义——视觉回归在纯服务端渲染项目里没人兜底
+- **紧急程度**：中（不影响数据，但读者观感差）
+- **衍生改进建议**（下次处理）：
+  - `.markdown-body` 类名在模板里挂着但零规则，建议要么删掉要么给它真正的基础样式（可作为通用 markdown 容器）
+  - 文档详情页 (`/docs/<slug>`) 用的哪个类？如果也是 `.doc-body` 就一致；如果不是，可能藏着同类 bug，值得对照一次

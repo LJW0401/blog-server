@@ -271,16 +271,19 @@ body.page-doc-detail, body.page-about { background: var(--bg); }
 .doc-header .meta { display: flex; gap: 12px; align-items: center; font-size: 13px; color: var(--ink-faint); flex-wrap: wrap; }
 .doc-header .tag-mini { padding: 3px 8px; background: #f0f0f2; border-radius: 980px; color: var(--ink); font-size: 11px; }
 .doc-body { font-size: 17px; line-height: 1.75; color: var(--ink); }
-.doc-body h1, .doc-body h2, .doc-body h3 { margin-top: 40px; margin-bottom: 16px; font-weight: 600; letter-spacing: -0.018em; }
-.doc-body h2 { font-size: 28px; }
-.doc-body h3 { font-size: 22px; }
-.doc-body p { margin-bottom: 20px; }
-.doc-body ul, .doc-body ol { margin-bottom: 20px; padding-left: 24px; }
-.doc-body code { background: #f0f0f2; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
-.doc-body pre { background: #f5f5f7; padding: 16px 18px; border-radius: var(--radius-md); overflow-x: auto; margin-bottom: 20px; }
-.doc-body pre code { background: transparent; padding: 0; }
-.doc-body a { color: var(--accent); text-decoration: underline; text-decoration-color: rgba(0,113,227,0.3); }
-.doc-body blockquote { border-left: 3px solid var(--line); padding-left: 18px; color: var(--ink-soft); margin-bottom: 20px; }
+.doc-body h1, .doc-body h2, .doc-body h3,
+.portfolio-body h1, .portfolio-body h2, .portfolio-body h3 { margin-top: 40px; margin-bottom: 16px; font-weight: 600; letter-spacing: -0.018em; }
+.doc-body h1, .portfolio-body h1 { font-size: 32px; }
+.doc-body h2, .portfolio-body h2 { font-size: 28px; }
+.doc-body h3, .portfolio-body h3 { font-size: 22px; }
+.doc-body p, .portfolio-body p { margin-bottom: 20px; }
+.doc-body ul, .doc-body ol,
+.portfolio-body ul, .portfolio-body ol { margin-bottom: 20px; padding-left: 24px; }
+.doc-body code, .portfolio-body code { background: #f0f0f2; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+.doc-body pre, .portfolio-body pre { background: #f5f5f7; padding: 16px 18px; border-radius: var(--radius-md); overflow-x: auto; margin-bottom: 20px; }
+.doc-body pre code, .portfolio-body pre code { background: transparent; padding: 0; }
+.doc-body a, .portfolio-body a { color: var(--accent); text-decoration: underline; text-decoration-color: rgba(0,113,227,0.3); }
+.doc-body blockquote, .portfolio-body blockquote { border-left: 3px solid var(--line); padding-left: 18px; color: var(--ink-soft); margin-bottom: 20px; }
 .doc-nav { margin-top: 64px; display: flex; justify-content: space-between; gap: 24px; }
 .doc-nav a { font-size: 14px; color: var(--accent); text-decoration: none; max-width: 45%; }
 .doc-nav .next { margin-left: auto; text-align: right; }
@@ -988,8 +991,9 @@ body.page-diary { background: var(--bg); }
   .contact-table { background: #151518; }
   .contact-table th { background: #0a0a0d; color: var(--ink-faint); }
   .contact-table th, .contact-table td { border-bottom-color: rgba(255,255,255,0.05); }
-  .doc-body code, .doc-body pre { background: #151518; }
-  .doc-body pre { border: 1px solid rgba(255,255,255,0.04); }
+  .doc-body code, .doc-body pre,
+  .portfolio-body code, .portfolio-body pre { background: #151518; }
+  .doc-body pre, .portfolio-body pre { border: 1px solid rgba(255,255,255,0.04); }
   .proj { background: #151518; border-color: rgba(255,255,255,0.06); }
   .proj:hover { box-shadow: 0 14px 36px rgba(0,0,0,0.4); }
   .proj .pills .pill { background: #26262a; color: var(--ink); }
