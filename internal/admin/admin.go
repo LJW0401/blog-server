@@ -107,7 +107,7 @@ func (h *Handlers) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Success — issue session, clear failures.
-	_, cookie, err := h.Auth.IssueSession(username, r.UserAgent())
+	_, cookie, err := h.Auth.IssueSession(username, r.UserAgent(), ip)
 	if err != nil {
 		h.Logger.Error("admin.login.issue", slog.String("err", err.Error()))
 		http.Error(w, "internal", http.StatusInternalServerError)
@@ -122,8 +122,14 @@ func (h *Handlers) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, target, http.StatusSeeOther)
 }
 
-// Logout clears the session cookie.
+// Logout clears the session cookie and marks the server-side row revoked —
+// 防止 cookie 被窃后仍能继续访问。
 func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) {
+	if sess, ok := h.Auth.ParseSession(r); ok {
+		if _, err := h.Auth.RevokeSession(sess.SID, sess.Username); err != nil {
+			h.Logger.Warn("admin.logout.revoke", slog.String("err", err.Error()))
+		}
+	}
 	http.SetCookie(w, h.Auth.ClearCookie())
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

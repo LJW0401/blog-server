@@ -36,6 +36,16 @@ var migrations = []string{
 		count INTEGER NOT NULL DEFAULT 0,
 		window_end_at INTEGER NOT NULL
 	)`,
+	// v1.6.2: 会话服务端记录，支持"登陆设备管理 + 撤销"。
+	// 老的纯 HMAC cookie 迁移后会因 sid 校验失败被拒绝，管理员需要重新登陆一次。
+	`CREATE TABLE IF NOT EXISTS sessions (
+		sid TEXT PRIMARY KEY,
+		username TEXT NOT NULL,
+		user_agent TEXT NOT NULL,
+		ip TEXT NOT NULL,
+		issued_at INTEGER NOT NULL,
+		revoked_at INTEGER
+	)`,
 }
 
 func migrate(ctx context.Context, db *sql.DB) error {

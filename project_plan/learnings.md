@@ -1037,3 +1037,15 @@
   - 脚注 (`extension.Footnote`) 同理——`<sup class="footnote-ref">` / `<div class="footnotes">` 需要对应样式
   - DefinitionList (`extension.DefinitionList`) 同理——`<dl><dt><dd>` 很可能也裸奔
   - 建议补一个 snapshot 式的 markdown-renderer fixture：把一段包含所有开启扩展特性的 md 渲染出 HTML，断言每种标签都有 CSS 规则命中（反射式测试）
+
+### 快速功能：登陆设备管理（session-device-management）
+- **类型**：架构洞察 + 重构机会
+- **描述**：本次把 session 从"纯 HMAC 无状态 cookie"改成"cookie 带 sid + 服务端 sessions 表锁死"，是 auth 核心契约的扩展。新增：`sessions` 表、`IssueSession` 插入行、`ParseSession` 查表校验、`ListSessions` / `RevokeSession`、`/manage/sessions` 列表页 + `/manage/sessions/revoke` POST、dashboard 入口。老的无 sid cookie 升级后全部失效，管理员需重新登陆一次。实现过程中发现若干架构裂缝：
+  1. `IssueSession` 签名改了 `(username, userAgent)` → `(username, userAgent, ip)`，全仓库 6 处（auth/admin/diary 的 test helper）被迫同步。说明"IP 相关信息从入口调用链下沉到 auth 层"这条信息通道之前没有被统一建模。未来增加一个设备/地理字段又会再改一轮签名。长期可考虑 `IssueSession(ctx, username, *http.Request)` 或者 `IssueSessionOpts{...}`，保留扩展余量
+  2. `ParseSession` 现在每次受保护请求会多一次 `SELECT revoked_at FROM sessions` —— 个人博客后台流量低，暂不足为虑；但这是 authgate 关键路径的 IO 成本，未来如果加 `last_seen_at` 的写入则更严重。监控 / 基准测试建议在这条路径上盯一眼
+  3. 老 cookie 的处理策略选了"一次性强制重登"，对管理员的体验是小成本换来清晰的兼容语义。不过没有写"升级提示"（比如登录页上显眼横幅说明"sessions 表上线，之前的 cookie 失效属预期"）。现在只能靠 release notes 或 README 告知
+- **建议处理方式**：v1.7 收作品集之外的 UX 梳理时一起处理 (1) IssueSession 参数结构化、(2) 过期 sessions 行的定时清理（避免表无限增长）、(3) 升级提示 UX。当前没有实现 "删除失效/过期会话" 的 GC —— 靠 `issued_at >= now - TTL` 兜底，但数据库依旧会累积历史行
+- **紧急程度**：低
+
+- 2026-04-24 快速功能 session-device-management 的反思其余项：#1 临时方案：无；#2 能跑但不够好：`shortUA` 是基于关键词切分的粗糙实现，遇到非主流 UA（小程序 / 自定义 agent）会退化成原串前 40 字符截断；暂可接受。#4 新理解：已归到架构洞察。#6 测试缺口：没有加"当 `ParseSession` DB 查询报错时 authgate 的 fallback" E2E 测试；依赖 DB 可用性，与其它 DB-dependent 路径一致，暂不补
+

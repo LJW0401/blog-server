@@ -53,7 +53,7 @@ func setupHandlersWithCSRF(t *testing.T) (*diary.Handlers, string, *http.Cookie,
 	// 固定 "今天" 为 2026-04-19，便于断言
 	h.Now = func() time.Time { return time.Date(2026, time.April, 19, 12, 0, 0, 0, time.UTC) }
 
-	sess, cookie, err := authStore.IssueSession("admin", "test/ua")
+	sess, cookie, err := authStore.IssueSession("admin", "test/ua", "127.0.0.1")
 	if err != nil {
 		t.Fatal(err)
 	}

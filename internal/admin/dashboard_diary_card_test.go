@@ -14,7 +14,7 @@ func TestDashboard_Smoke_IncludesDiaryLink(t *testing.T) {
 	req := httptest.NewRequest("GET", "/manage", nil)
 	req.Header.Set("User-Agent", "test/ua")
 	// IssueSession 并附 cookie
-	sess, cookie, err := h.Auth.IssueSession("admin", "test/ua")
+	sess, cookie, err := h.Auth.IssueSession("admin", "test/ua", "127.0.0.1")
 	if err != nil {
 		t.Fatal(err)
 	}

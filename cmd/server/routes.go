@@ -47,6 +47,8 @@ func buildAdminMux(
 		http.NotFound(w, r)
 	})
 	mux.HandleFunc("/manage/password", postOrGet(adm.PasswordSubmit, adm.PasswordPage))
+	mux.HandleFunc("/manage/sessions", adm.SessionsPage)
+	mux.HandleFunc("/manage/sessions/revoke", adm.SessionsRevoke)
 
 	// Docs
 	mux.HandleFunc("/manage/docs", docs.DocsList)

@@ -35,7 +35,7 @@ func newAuth(t *testing.T) *auth.Store {
 
 func TestSession_Smoke_Roundtrip(t *testing.T) {
 	a := newAuth(t)
-	_, cookie, err := a.IssueSession("admin", "chrome/ua")
+	_, cookie, err := a.IssueSession("admin", "chrome/ua", "1.2.3.4")
 	if err != nil {
 		t.Fatalf("issue: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestSession_Smoke_Roundtrip(t *testing.T) {
 
 func TestSession_Edge_TamperedCookieRejected(t *testing.T) {
 	a := newAuth(t)
-	_, cookie, _ := a.IssueSession("admin", "chrome/ua")
+	_, cookie, _ := a.IssueSession("admin", "chrome/ua", "1.2.3.4")
 	cookie.Value = cookie.Value[:len(cookie.Value)-4] + "ZZZZ" // mangle signature
 	req := httptest.NewRequest("GET", "/", nil)
 	req.AddCookie(cookie)
@@ -68,7 +68,7 @@ func TestSession_Edge_TamperedCookieRejected(t *testing.T) {
 
 func TestSession_Edge_ExpiredCookieRejected(t *testing.T) {
 	a := newAuth(t)
-	_, cookie, _ := a.IssueSession("admin", "chrome/ua")
+	_, cookie, _ := a.IssueSession("admin", "chrome/ua", "1.2.3.4")
 	// Decode value, tamper with exp via manual construction isn't trivial;
 	// instead rely on short-lived cookie: issue a cookie with past expiry by
 	// constructing it manually using the public constants? We expose no such
@@ -84,7 +84,7 @@ func TestSession_Edge_ExpiredCookieRejected(t *testing.T) {
 
 func TestSession_Edge_UABindingRejectsMismatch(t *testing.T) {
 	a := newAuth(t)
-	_, cookie, _ := a.IssueSession("admin", "original/ua")
+	_, cookie, _ := a.IssueSession("admin", "original/ua", "1.2.3.4")
 	req := httptest.NewRequest("GET", "/", nil)
 	req.AddCookie(cookie)
 	req.Header.Set("User-Agent", "a-completely-different-user-agent-string-that-will-not-hash-the-same")
@@ -97,7 +97,7 @@ func TestSession_Edge_UABindingRejectsMismatch(t *testing.T) {
 
 func TestCSRF_Smoke_ValidAndInvalid(t *testing.T) {
 	a := newAuth(t)
-	sess, _, _ := a.IssueSession("admin", "ua")
+	sess, _, _ := a.IssueSession("admin", "ua", "1.2.3.4")
 	if !auth.CSRFValid(sess, sess.CSRF) {
 		t.Error("valid token rejected")
 	}

@@ -1,0 +1,58 @@
+{{ define "title" }}登陆设备 — Penguin{{ end }}
+{{ define "body_class" }}page-admin{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+{{ $csrf := .CSRF }}
+<div class="admin-shell">
+  <header class="admin-header">
+    <h1>登陆设备</h1>
+    <div class="admin-session">
+      <a class="btn btn-ghost" href="/manage">返回后台</a>
+    </div>
+  </header>
+
+  {{ if .Info }}<div class="form-info">{{ .Info }}</div>{{ end }}
+  {{ if .Error }}<div class="form-err">{{ .Error }}</div>{{ end }}
+
+  <section class="admin-section">
+    <p class="note">以下是账号 <strong>{{ .Username }}</strong> 当前活跃的会话。撤销后该设备需要重新登陆才能访问 <code>/manage</code> 与其它私密页面。</p>
+
+    {{ if .Sessions }}
+    <table class="admin-table sessions-table">
+      <thead>
+        <tr>
+          <th>设备</th>
+          <th>IP</th>
+          <th>登陆时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range .Sessions }}
+        <tr>
+          <td>
+            {{ .UserAgent }}
+            {{ if .IsCurrent }}<span class="tag-mini">当前会话</span>{{ end }}
+          </td>
+          <td><code>{{ .IP }}</code></td>
+          <td>{{ .IssuedAt }}</td>
+          <td>
+            <form method="POST" action="/manage/sessions/revoke" style="display:inline;"
+                  {{ if .IsCurrent }}onsubmit="return confirm('撤销当前会话会立即把你自己踢下线，确定吗？');"{{ end }}>
+              <input type="hidden" name="csrf" value="{{ $csrf }}" />
+              <input type="hidden" name="sid" value="{{ .SID }}" />
+              <button class="btn btn-ghost" type="submit">撤销</button>
+            </form>
+          </td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    {{ else }}
+    <p class="note">暂无活跃会话（即将奇迹 —— 你现在不是登着的吗？）。</p>
+    {{ end }}
+  </section>
+</div>
+{{ end }}
+{{ end }}

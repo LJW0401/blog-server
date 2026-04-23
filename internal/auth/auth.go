@@ -37,6 +37,7 @@ const (
 
 // Session represents a verified user session. Zero value means anonymous.
 type Session struct {
+	SID       string
 	Username  string
 	IssuedAt  time.Time
 	ExpiresAt time.Time
@@ -45,11 +46,23 @@ type Session struct {
 }
 
 type sessionPayload struct {
+	SID  string `json:"s"`
 	U    string `json:"u"`
 	Iat  int64  `json:"iat"`
 	Exp  int64  `json:"exp"`
 	CSRF string `json:"c"`
 	UA   string `json:"ua"`
+}
+
+// SessionRecord is the server-side row for a session. Exposed to handlers that
+// render the "已登陆设备" list; the raw cookie is never shown.
+type SessionRecord struct {
+	SID       string
+	Username  string
+	UserAgent string
+	IP        string
+	IssuedAt  time.Time
+	RevokedAt *time.Time // nil 表示活跃
 }
 
 // Store bundles the dependencies needed by the admin login / password change
@@ -117,18 +130,33 @@ func HashPassword(raw string) (string, error) {
 
 // IssueSession creates a new session cookie for the given username & request.
 // Returns the session plus the *http.Cookie to Set.
-func (s *Store) IssueSession(username, userAgent string) (Session, *http.Cookie, error) {
+//
+// 同步在 sessions 表里插入一条记录 —— 用于后台"已登陆设备"列表与撤销。
+// cookie payload 里带 sid，ParseSession 时会查表比对；表里缺这行或被
+// 撤销，session 视为无效，用户重新走登陆流程。
+func (s *Store) IssueSession(username, userAgent, ip string) (Session, *http.Cookie, error) {
 	now := time.Now().UTC()
 	var csrfBytes [24]byte
 	if _, err := rand.Read(csrfBytes[:]); err != nil {
 		return Session{}, nil, err
 	}
+	var sidBytes [16]byte
+	if _, err := rand.Read(sidBytes[:]); err != nil {
+		return Session{}, nil, err
+	}
 	sess := Session{
+		SID:       hex.EncodeToString(sidBytes[:]),
 		Username:  username,
 		IssuedAt:  now,
 		ExpiresAt: now.Add(sessionTTL),
 		CSRF:      hex.EncodeToString(csrfBytes[:]),
 		UAFP:      uaFingerprint(userAgent),
+	}
+	if _, err := s.db.Exec(
+		`INSERT INTO sessions (sid, username, user_agent, ip, issued_at) VALUES (?, ?, ?, ?, ?)`,
+		sess.SID, username, userAgent, ip, now.Unix(),
+	); err != nil {
+		return Session{}, nil, err
 	}
 	cookie, err := s.encode(sess)
 	if err != nil {
@@ -139,6 +167,9 @@ func (s *Store) IssueSession(username, userAgent string) (Session, *http.Cookie,
 
 // ParseSession extracts and verifies a session from the request. Returns the
 // zero Session (valid=false) when no or invalid cookie is present.
+//
+// 额外校验：cookie 里的 sid 必须命中 sessions 表且未被撤销。没有 sid 的老
+// cookie（v1.6.2 以前签发）一律视为无效。
 func (s *Store) ParseSession(r *http.Request) (Session, bool) {
 	c, err := r.Cookie(sessionCookieName)
 	if err != nil {
@@ -155,7 +186,68 @@ func (s *Store) ParseSession(r *http.Request) (Session, bool) {
 	if sess.UAFP != uaFingerprint(r.UserAgent()) {
 		return Session{}, false
 	}
+	if sess.SID == "" {
+		return Session{}, false
+	}
+	var revokedAt sql.NullInt64
+	row := s.db.QueryRow(`SELECT revoked_at FROM sessions WHERE sid = ?`, sess.SID)
+	if err := row.Scan(&revokedAt); err != nil {
+		return Session{}, false // 记录不存在 / 查询失败 —— 视为无效
+	}
+	if revokedAt.Valid {
+		return Session{}, false
+	}
 	return sess, true
+}
+
+// ListSessions 返回 username 名下所有活跃会话（未撤销且未过期）。
+// 按签发时间倒序，最新的在上面。
+func (s *Store) ListSessions(username string) ([]SessionRecord, error) {
+	cutoff := time.Now().UTC().Add(-sessionTTL).Unix()
+	rows, err := s.db.Query(
+		`SELECT sid, username, user_agent, ip, issued_at, revoked_at
+		 FROM sessions
+		 WHERE username = ? AND revoked_at IS NULL AND issued_at >= ?
+		 ORDER BY issued_at DESC`,
+		username, cutoff,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []SessionRecord
+	for rows.Next() {
+		var r SessionRecord
+		var issued int64
+		var revoked sql.NullInt64
+		if err := rows.Scan(&r.SID, &r.Username, &r.UserAgent, &r.IP, &issued, &revoked); err != nil {
+			return nil, err
+		}
+		r.IssuedAt = time.Unix(issued, 0).UTC()
+		if revoked.Valid {
+			t := time.Unix(revoked.Int64, 0).UTC()
+			r.RevokedAt = &t
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// RevokeSession 把指定 sid 标记为已撤销；该 sid 下次 ParseSession 会被拒。
+// 仅允许撤销 username 名下的 sid，防止越权。
+// 返回影响行数：0 表示 sid 不存在或不属于该 user（此时静默无操作）。
+func (s *Store) RevokeSession(sid, username string) (int64, error) {
+	if sid == "" {
+		return 0, nil
+	}
+	res, err := s.db.Exec(
+		`UPDATE sessions SET revoked_at = ? WHERE sid = ? AND username = ? AND revoked_at IS NULL`,
+		time.Now().UTC().Unix(), sid, username,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }
 
 // ClearCookie returns a cookie that deletes the session on the client.
@@ -173,7 +265,8 @@ func (s *Store) ClearCookie() *http.Cookie {
 
 func (s *Store) encode(sess Session) (*http.Cookie, error) {
 	p := sessionPayload{
-		U: sess.Username, Iat: sess.IssuedAt.Unix(), Exp: sess.ExpiresAt.Unix(),
+		SID: sess.SID,
+		U:   sess.Username, Iat: sess.IssuedAt.Unix(), Exp: sess.ExpiresAt.Unix(),
 		CSRF: sess.CSRF, UA: sess.UAFP,
 	}
 	body, err := json.Marshal(p)
@@ -213,6 +306,7 @@ func (s *Store) decode(raw string) (Session, error) {
 		return Session{}, ErrInvalidSession
 	}
 	return Session{
+		SID:       p.SID,
 		Username:  p.U,
 		IssuedAt:  time.Unix(p.Iat, 0),
 		ExpiresAt: time.Unix(p.Exp, 0),
