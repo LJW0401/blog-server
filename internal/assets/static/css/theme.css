@@ -623,6 +623,24 @@ label.avatar-show-toggle { display: inline-flex; align-items: center; gap: 8px; 
   .hero { grid-template-columns: 1fr; gap: 48px; }
   .project-grid { grid-template-columns: 1fr; }
   .docs-list { grid-template-columns: 1fr; }
+  /* 单列塌缩后，让 .project-card 改成和 .doc-item 同款横向紧凑布局，
+     高度随内容自适应，避免桌面态 aspect-ratio: 1/1.1 在全宽下变成巨型方块。 */
+  .project-card {
+    aspect-ratio: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+    padding: 22px 26px;
+  }
+  .project-card > div:first-child { flex: 1; min-width: 0; }
+  .project-card .kicker { margin-bottom: 4px; }
+  .project-card h3 { font-size: 19px; margin-bottom: 6px; }
+  .project-card p { font-size: 13px; }
+  .project-card .arrow {
+    width: auto; height: auto; background: transparent;
+    color: var(--ink-faint); font-size: 18px;
+    margin-top: 0; align-self: center;
+  }
   .about-grid { grid-template-columns: 1fr; }
   .nav-links { gap: 16px; flex-wrap: wrap; justify-content: flex-end; }
   .nav-links a { font-size: 11.5px; }
