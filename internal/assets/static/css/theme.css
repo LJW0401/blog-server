@@ -117,7 +117,7 @@ body.page-docs .orbs, body.page-doc-detail .orbs { position: fixed; }
   letter-spacing: -0.024em;
   padding-bottom: 0.1em;
   margin: 0;
-  background: linear-gradient(180deg, #1d1d1f 0%, #434344 100%);
+  background: linear-gradient(180deg, #1d1d1f 0%, #86868b 100%);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent;
   overflow: visible;
@@ -137,7 +137,7 @@ body.page-docs .orbs, body.page-doc-detail .orbs { position: fixed; }
   font-weight: 600;
   padding-bottom: 0.25em;
   margin-bottom: calc(20px - 0.25em);
-  background: linear-gradient(180deg, #1d1d1f 0%, #434344 100%);
+  background: linear-gradient(180deg, #1d1d1f 0%, #86868b 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
