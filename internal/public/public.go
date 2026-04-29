@@ -339,13 +339,14 @@ func linkURL(links []MediaLink, platform string) string {
 // 内容已是 JS 安全字面量，直接原样输出。
 func buildGalaxyConfig(s SiteSettings, a AboutData, openProjects, featuredDocs, featuredPortfolios []*content.Entry) template.JS {
 	contactItems := []galaxySectionItem{
-		{Label: "GitHub", URL: fallback(linkURL(s.OSSLinks, "GitHub"), "#")},
-		{Label: "Gitee", URL: fallback(linkURL(s.OSSLinks, "Gitee"), "#")},
-		{Label: "B站", URL: fallback(linkURL(s.MediaLinks, "B站"), "#")},
-		{Label: "小红书", URL: fallback(linkURL(s.MediaLinks, "小红书"), "#")},
+		contactItem("GitHub", linkURL(s.OSSLinks, "GitHub")),
+		contactItem("Gitee", linkURL(s.OSSLinks, "Gitee")),
+		contactItem("B站", linkURL(s.MediaLinks, "B站")),
+		contactItem("小红书", linkURL(s.MediaLinks, "小红书")),
 	}
 	if s.ContactQQ != "" {
-		contactItems = append(contactItems, galaxySectionItem{Label: "QQ:" + s.ContactQQ, URL: "#"})
+		// QQ 也只展示平台名，号码不外露；保留为 # 不可点击。
+		contactItems = append(contactItems, galaxySectionItem{Label: "QQ", URL: "#"})
 	}
 	cfg := galaxyConfig{Sections: []galaxySection{
 		{CN: "简介", EN: "Intro", Hue: 0.62, URL: "/about", Items: []galaxySectionItem{
@@ -391,6 +392,17 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// contactItem 把"平台 + 链接"组装成一颗联系板块的行星。
+// 不暴露 URL（避免长链接撑爆药丸），只展示平台名；URL 仅作为点击跳转目标。
+// URL 为空时退化成 "#"，行星不可点击。
+func contactItem(platform, url string) galaxySectionItem {
+	url = strings.TrimSpace(url)
+	if url == "" {
+		return galaxySectionItem{Label: platform, URL: "#"}
+	}
+	return galaxySectionItem{Label: platform, URL: url}
 }
 
 // portfolioSectionItems 把作品集首页卡片用的同一批 featured portfolios
