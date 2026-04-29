@@ -353,6 +353,7 @@ function buildRing() {
     uniforms: {
       uTime: { value: 0 },
       uSize: { value: 0.022 * renderer.getPixelRatio() * 800 },
+      uOpacity: { value: 1 },
     },
     vertexShader: `
       uniform float uTime; uniform float uSize;
@@ -367,12 +368,13 @@ function buildRing() {
       }`,
     fragmentShader: `
       varying vec3 vColor; varying float vTwinkle;
+      uniform float uOpacity;
       void main() {
         vec2 uv = gl_PointCoord - 0.5;
         float d = length(uv);
         float core = exp(-d * 14.0);
         float halo = exp(-d * 4.0) * 0.35;
-        float alpha = (core + halo) * vTwinkle;
+        float alpha = (core + halo) * vTwinkle * uOpacity;
         if (alpha < 0.01) discard;
         gl_FragColor = vec4(vColor * (1.2 + core * 0.8), alpha);
       }`,
@@ -388,12 +390,14 @@ galaxyGroup.add(ring);
 // 中心暖色光晕
 const glowMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  uniforms: { uOpacity: { value: 1 } },
   vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
   fragmentShader: `
     varying vec2 vUv;
+    uniform float uOpacity;
     void main(){
       vec2 p=vUv-0.5; float d=length(p);
-      float a = smoothstep(0.5, 0.0, d) * 0.55;
+      float a = smoothstep(0.5, 0.0, d) * 0.55 * uOpacity;
       vec3 col = mix(vec3(0.55,0.45,0.95), vec3(1.0,0.7,0.55), 1.0 - smoothstep(0.0,0.4,d));
       gl_FragColor = vec4(col*a, a);
     }`,
@@ -404,11 +408,11 @@ galaxyGroup.add(centerGlow);
 
 // 圆环薄盘辉光
 const discMat = new THREE.ShaderMaterial({
-  uniforms: { uTime: { value: 0 } },
+  uniforms: { uTime: { value: 0 }, uOpacity: { value: 1 } },
   transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
   vertexShader: `varying vec3 vPos; void main(){ vPos=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
   fragmentShader: `
-    varying vec3 vPos; uniform float uTime;
+    varying vec3 vPos; uniform float uTime; uniform float uOpacity;
     void main(){
       float r = length(vPos.xz);
       float ang = atan(vPos.z, vPos.x);
@@ -416,7 +420,7 @@ const discMat = new THREE.ShaderMaterial({
       float swirl = 0.5 + 0.5 * sin(ang * 6.0 + uTime * 0.3);
       vec3 col = mix(vec3(1.0,0.6,0.4), vec3(0.55,0.6,1.0),
         smoothstep(${(RING.radius-RING.thickness).toFixed(2)}, ${(RING.radius+RING.thickness).toFixed(2)}, r));
-      float a = band * (0.18 + swirl * 0.08);
+      float a = band * (0.18 + swirl * 0.08) * uOpacity;
       gl_FragColor = vec4(col * a * 1.4, a);
     }`,
 });
@@ -440,6 +444,7 @@ const SECTIONS = [
 ];
 
 const sectionLabels = [];
+const anchorMats = [];
 SECTIONS.forEach((s, i) => {
   const angle = (i / SECTIONS.length) * Math.PI * 2 - Math.PI / 2;
   const r = RING.radius + 0.4;
@@ -459,12 +464,11 @@ SECTIONS.forEach((s, i) => {
   galaxyGroup.add(obj);
   sectionLabels.push({ obj, el });
 
-  const anchor = new THREE.Mesh(
-    new THREE.SphereGeometry(0.12, 12, 12),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(s.hue, 0.7, 0.7), transparent: true, opacity: 0.9 })
-  );
+  const anchorMat = new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(s.hue, 0.7, 0.7), transparent: true, opacity: 0.9 });
+  const anchor = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), anchorMat);
   anchor.position.set(x, 0, z);
   galaxyGroup.add(anchor);
+  anchorMats.push(anchorMat);
 });
 
 // =========================================================================
@@ -551,9 +555,10 @@ function buildSystem(section) {
     const colB = new THREE.Color().setHSL((baseHue + 0.08) % 1, 0.7, 0.78);
     const pMat = new THREE.ShaderMaterial({
       uniforms: {
-        uColorA: { value: colA },
-        uColorB: { value: colB },
-        uSeed:   { value: i * 13.37 + 0.7 },
+        uColorA:  { value: colA },
+        uColorB:  { value: colB },
+        uSeed:    { value: i * 13.37 + 0.7 },
+        uStarPos: { value: new THREE.Vector3() },
       },
       vertexShader: `
         varying vec3 vNormalW;
@@ -567,7 +572,7 @@ function buildSystem(section) {
           gl_Position = projectionMatrix * viewMatrix * wp;
         }`,
       fragmentShader: `
-        uniform vec3 uColorA; uniform vec3 uColorB; uniform float uSeed;
+        uniform vec3 uColorA; uniform vec3 uColorB; uniform float uSeed; uniform vec3 uStarPos;
         varying vec3 vNormalW; varying vec3 vWorldPos; varying vec3 vLocalPos;
         float hash(vec3 p){ return fract(sin(dot(p, vec3(17.1,113.5,71.7))) * 43758.5453); }
         float vnoise(vec3 p){
@@ -581,7 +586,7 @@ function buildSystem(section) {
         float fbm(vec3 p){ float v=0.0,a=0.5; for(int k=0;k<4;k++){ v+=a*vnoise(p); p*=2.03; a*=0.5; } return v; }
         void main(){
           vec3 N = normalize(vNormalW);
-          vec3 L = normalize(-vWorldPos);                 // 中心恒星在系统原点
+          vec3 L = normalize(uStarPos - vWorldPos);       // 朝向中心恒星
           vec3 V = normalize(cameraPosition - vWorldPos);
           float n = fbm(vLocalPos * 4.0 + uSeed);
           float band = 0.5 + 0.5 * sin(vLocalPos.y * 9.0 + n * 3.0 + uSeed);
@@ -650,7 +655,7 @@ function buildSystem(section) {
     planet.add(pLabel);
 
     const spin = 0.25 + (i % 5) * 0.08;
-    planets.push({ mesh: planet, angle: baseAngle, speed, radius: orbitR, spin });
+    planets.push({ mesh: planet, material: pMat, angle: baseAngle, speed, radius: orbitR, spin });
   });
 
   activeSystem = { star, halo, nameObj, planets, materials: [starMat, haloMat] };
@@ -677,6 +682,13 @@ function disposeSystem() {
 // =========================================================================
 // 3) 进入 / 退出动画
 // =========================================================================
+function setGalaxyOpacity(o) {
+  ring.material.uniforms.uOpacity.value = o;
+  disc.material.uniforms.uOpacity.value = o;
+  glowMat.uniforms.uOpacity.value = o;
+  for (const m of anchorMats) m.opacity = 0.9 * o;
+}
+
 let mode = 'galaxy'; // 'galaxy' | 'system'
 let transitioning = false;
 let currentIdx = -1;
@@ -695,58 +707,54 @@ function enterSystem(idx) {
   controls.enabled = false;
 
   const section = SECTIONS[idx];
-  const targetWorld = sectionLabels[idx].obj.position.clone(); // 标签位置
-  const camStart = camera.position.clone();
-  const targetStart = controls.target.clone();
-  // 摄像机往标签位置冲刺并放大
-  const camMid = camStart.clone().lerp(targetWorld, 0.85);
+  const anchor = sectionLabels[idx].obj.position.clone();
+  // 子星系在锚点处就地生成，避免黑屏切换
+  buildSystem(section);
+  systemGroup.position.copy(anchor);
+  systemGroup.scale.setScalar(0.001);
+  systemGroup.visible = true;
 
-  // 同时淡黑
-  faderEl.classList.add('on');
   centerEl.classList.add('hidden');
   hudEl.classList.add('hidden');
+  // 板块标签平滑淡出，完成后再被 galaxyGroup 隐藏
+  sectionLabels.forEach(({ el }) => {
+    el.style.transition = 'opacity 0.6s ease';
+    el.style.opacity = '0';
+    el.style.pointerEvents = 'none';
+  });
+
+  controls.minDistance = 1.5;
+  controls.maxDistance = 18;
+
+  const camFrom = camera.position.clone();
+  const camTo = systemCamPosFor(anchor);
+  const tFrom = controls.target.clone();
+  const tTo = anchor.clone();
 
   tween({
-    dur: 0.55,
-    onUpdate: (t) => {
-      camera.position.lerpVectors(camStart, camMid, t);
-      controls.target.lerpVectors(targetStart, targetWorld, t);
+    dur: 1.1,
+    onUpdate: (e) => {
+      camera.position.lerpVectors(camFrom, camTo, e);
+      controls.target.lerpVectors(tFrom, tTo, e);
+      // 在飞行后半段把子星系从极小缩放到 1，配合摄像机抵达
+      const s = e < 0.35 ? 0 : (e - 0.35) / 0.65;
+      const scale = THREE.MathUtils.lerp(0.001, 1, Math.min(1, s));
+      systemGroup.scale.setScalar(scale);
+      // 星系背景同步渐隐
+      setGalaxyOpacity(1 - Math.min(1, e / 0.85));
     },
     onDone: () => {
-      // 切换场景
+      // 飞行结束后再隐藏星系总览，避免突兀闪现
+      setGalaxyOpacity(0);
       galaxyGroup.visible = false;
-      systemGroup.visible = true;
-      buildSystem(section);
-      mode = 'system';
-
-      // 摄像机重置到子星系视角
-      camera.position.copy(SYSTEM_CAM);
-      controls.target.set(0, 0, 0);
-
-      // 重置 controls 限制（子星系下允许更近 / 更远视角）
-      controls.minDistance = 3;
-      controls.maxDistance = 18;
-
       currentIdx = idx;
+      mode = 'system';
       updateNavLabels();
-      // 板块按钮在子星系内彻底从场景图移除，并把 DOM 也藏掉
-      sectionLabels.forEach(({ obj, el }) => {
-        if (obj.parent) obj.parent.remove(obj);
-        el.style.display = 'none';
-        if (el.parentNode) el.parentNode.removeChild(el);
-      });
-
-      // 揭幕
-      requestAnimationFrame(() => {
-        faderEl.classList.remove('on');
-        backEl.classList.add('show');
-        navPrevEl.classList.add('show');
-        navNextEl.classList.add('show');
-      });
-      setTimeout(() => {
-        controls.enabled = true;
-        transitioning = false;
-      }, 380);
+      backEl.classList.add('show');
+      navPrevEl.classList.add('show');
+      navNextEl.classList.add('show');
+      controls.enabled = true;
+      transitioning = false;
     },
   });
 }
@@ -757,22 +765,55 @@ function switchSystem(delta) {
   const next = (currentIdx + delta + N) % N;
   transitioning = true;
   controls.enabled = false;
-  faderEl.classList.add('on');
 
-  setTimeout(() => {
-    disposeSystem();
-    buildSystem(SECTIONS[next]);
-    currentIdx = next;
-    updateNavLabels();
-    // 重置摄像机回到子星系基准
-    camera.position.copy(SYSTEM_CAM);
-    controls.target.set(0, 0, 0);
-    requestAnimationFrame(() => faderEl.classList.remove('on'));
-    setTimeout(() => {
-      controls.enabled = true;
-      transitioning = false;
-    }, 380);
-  }, 320);
+  const startScale = systemGroup.scale.x;
+  const camFromShrink = camera.position.clone();
+  const tFromShrink = controls.target.clone();
+  const oldAnchor = systemGroup.position.clone();
+
+  // 第一段：当前子星系收缩、镜头略微拉远
+  const camPullback = camFromShrink.clone().add(
+    camFromShrink.clone().sub(oldAnchor).normalize().multiplyScalar(1.2)
+  );
+  tween({
+    dur: 0.5,
+    onUpdate: (e) => {
+      systemGroup.scale.setScalar(THREE.MathUtils.lerp(startScale, 0.001, e));
+      camera.position.lerpVectors(camFromShrink, camPullback, e);
+      controls.target.lerpVectors(tFromShrink, oldAnchor, e);
+    },
+    onDone: () => {
+      disposeSystem();
+      const newAnchor = sectionLabels[next].obj.position.clone();
+      buildSystem(SECTIONS[next]);
+      systemGroup.position.copy(newAnchor);
+      systemGroup.scale.setScalar(0.001);
+      systemGroup.visible = true;
+
+      currentIdx = next;
+      updateNavLabels();
+
+      const camFrom2 = camera.position.clone();
+      const tFrom2 = controls.target.clone();
+      const camTo2 = systemCamPosFor(newAnchor);
+      const tTo2 = newAnchor.clone();
+
+      // 第二段：横向飞向新锚点并展开新星系
+      tween({
+        dur: 1.0,
+        onUpdate: (e) => {
+          camera.position.lerpVectors(camFrom2, camTo2, e);
+          controls.target.lerpVectors(tFrom2, tTo2, e);
+          const s = e < 0.3 ? 0 : (e - 0.3) / 0.7;
+          systemGroup.scale.setScalar(THREE.MathUtils.lerp(0.001, 1, Math.min(1, s)));
+        },
+        onDone: () => {
+          controls.enabled = true;
+          transitioning = false;
+        },
+      });
+    },
+  });
 }
 
 function exitSystem() {
@@ -782,34 +823,57 @@ function exitSystem() {
   backEl.classList.remove('show');
   navPrevEl.classList.remove('show');
   navNextEl.classList.remove('show');
-  faderEl.classList.add('on');
 
-  setTimeout(() => {
-    disposeSystem();
-    systemGroup.visible = false;
-    galaxyGroup.visible = true;
-    sectionLabels.forEach(({ obj, el }) => {
-      el.style.display = '';
-      if (!obj.parent) galaxyGroup.add(obj);
-    });
-    currentIdx = -1;
-    mode = 'galaxy';
+  // 重新显示星系总览，让镜头一边后撤一边淡入
+  galaxyGroup.visible = true;
+  setGalaxyOpacity(0);
+  sectionLabels.forEach(({ el }) => {
+    el.style.opacity = '1';
+    el.style.pointerEvents = '';
+  });
 
-    camera.position.copy(GALAXY_CAM);
-    controls.target.set(0, 0, 0);
-    controls.minDistance = 4;
-    controls.maxDistance = 16;
+  const startScale = systemGroup.scale.x;
+  const camFrom = camera.position.clone();
+  const camTo = GALAXY_CAM.clone();
+  const tFrom = controls.target.clone();
+  const tTo = new THREE.Vector3(0, 0, 0);
 
-    requestAnimationFrame(() => {
-      faderEl.classList.remove('on');
+  tween({
+    dur: 1.1,
+    onUpdate: (e) => {
+      camera.position.lerpVectors(camFrom, camTo, e);
+      controls.target.lerpVectors(tFrom, tTo, e);
+      const s = Math.min(1, e / 0.55);
+      systemGroup.scale.setScalar(THREE.MathUtils.lerp(startScale, 0.001, s));
+      // 星系背景从透明渐入
+      setGalaxyOpacity(Math.min(1, Math.max(0, (e - 0.2) / 0.8)));
+    },
+    onDone: () => {
+      setGalaxyOpacity(1);
+      disposeSystem();
+      systemGroup.visible = false;
+      systemGroup.position.set(0, 0, 0);
+      systemGroup.scale.setScalar(1);
+      currentIdx = -1;
+      mode = 'galaxy';
+      controls.minDistance = 4;
+      controls.maxDistance = 16;
       centerEl.classList.remove('hidden');
       hudEl.classList.remove('hidden');
-    });
-    setTimeout(() => {
       controls.enabled = true;
       transitioning = false;
-    }, 380);
-  }, 360);
+    },
+  });
+}
+
+// 给定子星系所在锚点，计算相机抵达后的位置：从原点向锚点的径向方向再外推一段
+function systemCamPosFor(anchor) {
+  const radial = new THREE.Vector3(anchor.x, 0, anchor.z);
+  if (radial.lengthSq() < 1e-6) radial.set(0, 0, 1);
+  radial.normalize();
+  return anchor.clone()
+    .add(radial.multiplyScalar(4.2))
+    .add(new THREE.Vector3(0, 1.5, 0));
 }
 
 backEl.addEventListener('click', exitSystem);
@@ -853,6 +917,7 @@ function tick() {
       p.angle += dt * p.speed;
       p.mesh.position.set(Math.cos(p.angle) * p.radius, Math.sin(p.angle) * p.radius, 0);
       p.mesh.rotation.y += dt * p.spin;
+      p.material.uniforms.uStarPos.value.copy(systemGroup.position);
     }
     // halo 始终面向相机
     activeSystem.halo.lookAt(camera.position);
