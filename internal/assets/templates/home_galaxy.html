@@ -1,10 +1,31 @@
 {{ define "title" }}{{ with .Data.Settings }}{{ .Name }} — Galaxy{{ else }}Penguin — Galaxy{{ end }}{{ end }}
 {{ define "body_class" }}page-home-galaxy{{ end }}
+{{ define "html_class" }}page-home-galaxy-html{{ end }}
 
 {{ define "head" }}
 <style>
-  /* page-home-galaxy 专用样式：覆盖默认 layout，隐藏头/尾导航并锁滚动 */
-  html.page-home-galaxy-html, body.page-home-galaxy { margin: 0; height: 100%; background: #05060d; overflow: hidden; color: #cfd3e2; }
+  /* page-home-galaxy 专用样式：覆盖默认 layout，隐藏头/尾导航并锁滚动。
+     永远走深空主题，靠 !important 压住 theme.css 的 prefers-color-scheme:light
+     基础规则——否则系统在亮色时 html/body 还会拿到 var(--bg) = #fbfbfd 的浅底，
+     而 .name 的渐变顶部又是纯白，两边一起白就看不见 hero 文案了。 */
+  html.page-home-galaxy-html { color-scheme: dark; background: #05060d !important; }
+  html.page-home-galaxy-html, body.page-home-galaxy {
+    margin: 0; height: 100%;
+    background: #05060d !important; color: #cfd3e2 !important;
+    overflow: hidden;
+  }
+  /* 把主题里的 CSS 变量在本页面强行钉成深空配色，无视亮/暗色系统切换 */
+  body.page-home-galaxy {
+    --bg: #05060d;
+    --bg-alt: #0a0c1a;
+    --card-bg: #0a0c1a;
+    --ink: #e8ecff;
+    --ink-soft: rgba(207, 211, 226, 0.72);
+    --ink-faint: rgba(207, 211, 226, 0.45);
+    --line: rgba(255, 255, 255, 0.1);
+    --accent: #8a7bff;
+    --accent-hover: #a195ff;
+  }
   body.page-home-galaxy .nav,
   body.page-home-galaxy .footer,
   body.page-home-galaxy .default-password-banner { display: none; }
@@ -26,10 +47,17 @@
     text-shadow: 0 0 60px rgba(138, 123, 255, 0.35);
     line-height: 1;
   }
-  body.page-home-galaxy .galaxy-center .tag {
+  body.page-home-galaxy .galaxy-center .galaxy-tagline {
+    display: inline-block;
     margin: 18px auto 0; max-width: min(560px, 80vw);
     font-size: 13px; line-height: 1.6; letter-spacing: 0.04em;
-    color: rgba(207, 211, 226, 0.65);
+    color: rgba(232, 236, 255, 0.85);
+    padding: 8px 18px; border-radius: 999px;
+    background: rgba(12, 14, 26, 0.55);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 14px 40px -22px rgba(0, 0, 0, 0.9);
   }
 
   body.page-home-galaxy .galaxy-label { pointer-events: auto; cursor: pointer; text-decoration: none; display: inline-block; }
@@ -201,7 +229,7 @@
 
 <div class="galaxy-center" id="galaxy-center">
   <div class="name">{{ if .Settings.Name }}{{ .Settings.Name }}{{ else }}Penguin{{ end }}</div>
-  <div class="tag">{{ if .Settings.Tagline }}{{ .Settings.Tagline }}{{ else }}A Galaxy of Ideas{{ end }}</div>
+  <div class="galaxy-tagline">{{ if .Settings.Tagline }}{{ .Settings.Tagline }}{{ else }}A Galaxy of Ideas{{ end }}</div>
 </div>
 
 <button class="galaxy-back" id="galaxy-back" type="button">
