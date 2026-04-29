@@ -1,0 +1,851 @@
+{{ define "title" }}{{ with .Data.Settings }}{{ .Name }} — Galaxy{{ else }}Penguin — Galaxy{{ end }}{{ end }}
+{{ define "body_class" }}page-home-galaxy{{ end }}
+
+{{ define "head" }}
+<style>
+  /* page-home-galaxy 专用样式：覆盖默认 layout，隐藏头/尾导航并锁滚动 */
+  html.page-home-galaxy-html, body.page-home-galaxy { margin: 0; height: 100%; background: #05060d; overflow: hidden; color: #cfd3e2; }
+  body.page-home-galaxy .nav,
+  body.page-home-galaxy .footer,
+  body.page-home-galaxy .default-password-banner { display: none; }
+  body.page-home-galaxy main { margin: 0; padding: 0; }
+
+  body.page-home-galaxy #galaxy-app { position: fixed; inset: 0; }
+
+  body.page-home-galaxy .galaxy-center {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    z-index: 3; pointer-events: none; text-align: center;
+    transition: opacity 0.5s ease;
+  }
+  body.page-home-galaxy .galaxy-center.hidden { opacity: 0; }
+  body.page-home-galaxy .galaxy-center .name {
+    font-size: clamp(56px, 9vw, 132px);
+    font-weight: 200; letter-spacing: 0.04em;
+    background: linear-gradient(180deg, #ffffff 0%, #c8cfff 55%, #6a78c8 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 0 60px rgba(138, 123, 255, 0.35);
+    line-height: 1;
+  }
+  body.page-home-galaxy .galaxy-center .tag {
+    margin-top: 14px;
+    font-size: 11px; letter-spacing: 0.45em; text-transform: uppercase;
+    color: rgba(207, 211, 226, 0.55);
+  }
+
+  body.page-home-galaxy .galaxy-label { pointer-events: auto; cursor: pointer; text-decoration: none; display: inline-block; }
+  body.page-home-galaxy .galaxy-label-inner {
+    display: inline-block; user-select: none;
+    color: #e8ecff;
+    font-size: 13px; letter-spacing: 0.32em; text-transform: uppercase;
+    padding: 8px 14px;
+    background: rgba(12, 14, 26, 0.45);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px; white-space: nowrap;
+    transform-origin: center center;
+    transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    box-shadow: 0 14px 40px -22px rgba(0, 0, 0, 0.9);
+  }
+  body.page-home-galaxy .galaxy-label .cn { font-weight: 500; }
+  body.page-home-galaxy .galaxy-label .en { margin-left: 8px; font-size: 10px; opacity: 0.55; letter-spacing: 0.28em; }
+  body.page-home-galaxy .galaxy-label:hover .galaxy-label-inner {
+    transform: scale(1.08);
+    background: linear-gradient(135deg, rgba(138,123,255,0.35), rgba(255,123,184,0.22));
+    border-color: rgba(255,255,255,0.25);
+    box-shadow: 0 18px 50px -18px rgba(138,123,255,0.55);
+  }
+
+  body.page-home-galaxy .galaxy-star-name { pointer-events: none; user-select: none; text-align: center; white-space: nowrap; transform: translateY(-2px); }
+  body.page-home-galaxy .galaxy-star-name .cn {
+    display: block;
+    font-size: clamp(36px, 5.6vw, 76px);
+    font-weight: 200; letter-spacing: 0.06em;
+    background: linear-gradient(180deg, #ffffff 0%, #ffd9b0 55%, #ff8a4a 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 0 50px rgba(255, 160, 90, 0.55);
+    line-height: 1;
+  }
+  body.page-home-galaxy .galaxy-star-name .en {
+    margin-top: 8px; font-size: 11px; letter-spacing: 0.4em; text-transform: uppercase;
+    color: rgba(255, 220, 200, 0.6);
+  }
+
+  body.page-home-galaxy .galaxy-planet {
+    pointer-events: auto; cursor: pointer; user-select: none; text-decoration: none;
+    color: #e8ecff;
+    font-size: 12px; letter-spacing: 0.18em;
+    padding: 5px 11px;
+    background: rgba(12, 14, 26, 0.55);
+    backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px; white-space: nowrap;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    box-shadow: 0 10px 28px -16px rgba(0,0,0,0.9);
+  }
+  body.page-home-galaxy .galaxy-planet:hover {
+    color: #fff;
+    background: linear-gradient(135deg, rgba(255,180,120,0.35), rgba(255,123,184,0.2));
+    border-color: rgba(255,200,160,0.4);
+  }
+
+  body.page-home-galaxy .galaxy-back {
+    position: fixed; left: 22px; top: 22px; z-index: 4;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 14px 9px 12px;
+    background: rgba(12, 14, 26, 0.55);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    color: #e8ecff; font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase;
+    cursor: pointer; opacity: 0; pointer-events: none;
+    transition: opacity 0.4s ease, background 0.2s ease, transform 0.2s ease;
+  }
+  body.page-home-galaxy .galaxy-back.show { opacity: 1; pointer-events: auto; }
+  body.page-home-galaxy .galaxy-back:hover { background: rgba(30, 34, 56, 0.7); transform: translateY(-1px); }
+  body.page-home-galaxy .galaxy-back svg { width: 14px; height: 14px; }
+
+  body.page-home-galaxy .galaxy-nav {
+    position: fixed; top: 50%; transform: translateY(-50%);
+    z-index: 4; width: 46px; height: 46px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(12, 14, 26, 0.55);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e8ecff; cursor: pointer;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.4s ease, background 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 14px 36px -22px rgba(0,0,0,0.9);
+  }
+  body.page-home-galaxy .galaxy-nav.show { opacity: 1; pointer-events: auto; }
+  body.page-home-galaxy .galaxy-nav:hover { background: rgba(30, 34, 56, 0.75); }
+  body.page-home-galaxy .galaxy-nav.prev { left: 22px; }
+  body.page-home-galaxy .galaxy-nav.next { right: 22px; }
+  body.page-home-galaxy .galaxy-nav.prev:hover { transform: translateY(-50%) translateX(-2px); }
+  body.page-home-galaxy .galaxy-nav.next:hover { transform: translateY(-50%) translateX(2px); }
+  body.page-home-galaxy .galaxy-nav svg { width: 18px; height: 18px; }
+  body.page-home-galaxy .galaxy-nav-label {
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    margin-top: 8px; font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase;
+    color: rgba(207,211,226,0.55); white-space: nowrap; pointer-events: none;
+  }
+
+  body.page-home-galaxy .galaxy-hud {
+    position: fixed; left: 22px; bottom: 20px; z-index: 2;
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: rgba(207, 211, 226, 0.45); pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  body.page-home-galaxy .galaxy-hud.hidden { opacity: 0; }
+  body.page-home-galaxy .galaxy-hud b { color: #e8ecff; font-weight: 600; letter-spacing: 0.28em; }
+
+  body.page-home-galaxy .galaxy-admin-tip {
+    position: fixed; right: 22px; bottom: 20px; z-index: 2;
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: rgba(207, 211, 226, 0.4); pointer-events: auto; text-decoration: none;
+  }
+  body.page-home-galaxy .galaxy-admin-tip:hover { color: rgba(207, 211, 226, 0.85); }
+</style>
+{{ end }}
+
+{{ define "content" }}
+{{ with .Data }}
+<div id="galaxy-app"></div>
+
+<div class="galaxy-center" id="galaxy-center">
+  <div class="name">{{ if .Settings.Name }}{{ .Settings.Name }}{{ else }}Penguin{{ end }}</div>
+  <div class="tag">A Galaxy of Ideas</div>
+</div>
+
+<button class="galaxy-back" id="galaxy-back" type="button">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  Back
+</button>
+
+<button class="galaxy-nav prev" id="galaxy-nav-prev" type="button" aria-label="上一个板块">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  <span class="galaxy-nav-label" id="galaxy-prev-label"></span>
+</button>
+<button class="galaxy-nav next" id="galaxy-nav-next" type="button" aria-label="下一个板块">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  <span class="galaxy-nav-label" id="galaxy-next-label"></span>
+</button>
+
+<div class="galaxy-hud" id="galaxy-hud"><b>GALAXY</b> · drag to orbit · scroll to zoom · click a section to enter</div>
+<a class="galaxy-admin-tip" href="/manage/settings">/manage/settings</a>
+
+<script id="galaxy-config" type="application/json">{{ .GalaxyConfigJSON }}</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const cfg = JSON.parse(document.getElementById('galaxy-config').textContent);
+const SECTIONS = cfg.sections;
+
+const app = document.getElementById('galaxy-app');
+const centerEl = document.getElementById('galaxy-center');
+const hudEl = document.getElementById('galaxy-hud');
+const backEl = document.getElementById('galaxy-back');
+const navPrevEl = document.getElementById('galaxy-nav-prev');
+const navNextEl = document.getElementById('galaxy-nav-next');
+const prevLabelEl = document.getElementById('galaxy-prev-label');
+const nextLabelEl = document.getElementById('galaxy-next-label');
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x05060d, 0.018);
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 200);
+const GALAXY_CAM = new THREE.Vector3(0, 3.5, 7.5);
+camera.position.copy(GALAXY_CAM);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+app.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(innerWidth, innerHeight);
+labelRenderer.domElement.style.position = 'fixed';
+labelRenderer.domElement.style.inset = '0';
+labelRenderer.domElement.style.pointerEvents = 'none';
+labelRenderer.domElement.style.zIndex = '2';
+document.body.appendChild(labelRenderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.06;
+controls.minDistance = 4; controls.maxDistance = 16;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function tween({ dur = 0.6, ease = (t)=> t<.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2, onUpdate, onDone }) {
+  const t0 = performance.now();
+  (function loop(){
+    const t = Math.min(1, (performance.now() - t0) / (dur * 1000));
+    onUpdate(ease(t), t);
+    if (t < 1) requestAnimationFrame(loop); else onDone && onDone();
+  })();
+}
+
+function makeStarfield(n = 6500, r = 80) {
+  const g = new THREE.BufferGeometry();
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), sz = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const u = Math.random(), v = Math.random();
+    const theta = 2*Math.PI*u, phi = Math.acos(2*v-1);
+    const rr = r * (0.55 + Math.random()*0.45);
+    pos[i*3] = rr*Math.sin(phi)*Math.cos(theta);
+    pos[i*3+1] = rr*Math.sin(phi)*Math.sin(theta);
+    pos[i*3+2] = rr*Math.cos(phi);
+    const tint = Math.random();
+    let cr, cg, cb;
+    if (tint < 0.7)      { cr = 0.85+Math.random()*0.15; cg = 0.88+Math.random()*0.12; cb = 1.0; }
+    else if (tint < 0.9) { cr = 1.0; cg = 0.82+Math.random()*0.1; cb = 0.6+Math.random()*0.15; }
+    else                 { cr = 1.0; cg = 0.5+Math.random()*0.2; cb = 0.4+Math.random()*0.15; }
+    col[i*3]=cr; col[i*3+1]=cg; col[i*3+2]=cb;
+    sz[i] = (Math.random() < 0.05) ? 1.6 + Math.random()*1.6 : 0.5 + Math.random()*0.9;
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color',    new THREE.BufferAttribute(col, 3));
+  g.setAttribute('aSize',    new THREE.BufferAttribute(sz, 1));
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uPx: { value: renderer.getPixelRatio() * 90 } },
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
+    vertexShader: `attribute float aSize; uniform float uPx; varying vec3 vC;
+      void main(){ vec4 mv = modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
+        gl_PointSize=uPx*aSize/-mv.z; vC=color; }`,
+    fragmentShader: `varying vec3 vC; void main(){ vec2 p=gl_PointCoord-0.5; float d=length(p);
+      float core=exp(-d*12.0); float halo=exp(-d*3.0)*0.25; float a=core+halo;
+      if(a<0.01) discard; gl_FragColor=vec4(vC*(1.4+core*0.8), a); }`,
+  });
+  return new THREE.Points(g, m);
+}
+scene.add(makeStarfield());
+
+function makeMilkyWayBand(n = 26000, r = 92) {
+  const g = new THREE.BufferGeometry();
+  const pos = new Float32Array(n*3), col = new Float32Array(n*3), sz = new Float32Array(n);
+  const tilt = 0.55;
+  const eAlong = new THREE.Vector3(1,0,0);
+  const eInPlane = new THREE.Vector3(0, Math.cos(tilt), -Math.sin(tilt));
+  const ePerp = new THREE.Vector3(0, Math.sin(tilt), Math.cos(tilt));
+  const warm = new THREE.Color(0xffc89c), accent = new THREE.Color(0xc77bff), cool = new THREE.Color(0x4a6cd0);
+  for (let i = 0; i < n; i++) {
+    const theta = Math.random()*Math.PI*2;
+    const u1 = Math.max(1e-6, Math.random()), u2 = Math.random();
+    const gauss = Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2);
+    const bandWidth = 0.13;
+    const off = gauss * bandWidth;
+    const rr = r * (0.92 + Math.random()*0.16);
+    const cosT = Math.cos(theta), sinT = Math.sin(theta);
+    pos[i*3] = rr*(cosT*eAlong.x + sinT*eInPlane.x) + rr*off*ePerp.x;
+    pos[i*3+1] = rr*(cosT*eAlong.y + sinT*eInPlane.y) + rr*off*ePerp.y;
+    pos[i*3+2] = rr*(cosT*eAlong.z + sinT*eInPlane.z) + rr*off*ePerp.z;
+    const t = Math.min(1, Math.abs(off)/(bandWidth*1.4));
+    const c = (t<0.5) ? warm.clone().lerp(accent, t*2) : accent.clone().lerp(cool, (t-0.5)*2);
+    const lump = 0.5 + 0.5*Math.sin(theta*5+0.7)*Math.sin(theta*2+1.3);
+    const bright = (1-t) * (0.7 + 0.6*lump);
+    c.multiplyScalar(1.05 + bright*0.7);
+    col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
+    sz[i] = 1.1 + Math.random()*3.4;
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color',    new THREE.BufferAttribute(col, 3));
+  g.setAttribute('aSize',    new THREE.BufferAttribute(sz, 1));
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uPx: { value: renderer.getPixelRatio() * 160 } },
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
+    vertexShader: `attribute float aSize; uniform float uPx; varying vec3 vC;
+      void main(){ vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
+        gl_PointSize=uPx*aSize/-mv.z; vC=color; }`,
+    fragmentShader: `varying vec3 vC; void main(){ vec2 p=gl_PointCoord-0.5; float d=length(p);
+      float a=exp(-d*3.2)*0.7; if(a<0.01) discard; gl_FragColor=vec4(vC*a*2.1, a); }`,
+  });
+  return new THREE.Points(g, m);
+}
+scene.add(makeMilkyWayBand());
+
+const galaxyGroup = new THREE.Group();
+scene.add(galaxyGroup);
+
+const RING = { count: 90000, radius: 3.8, thickness: 1.2, height: 0.22, waveCount: 3, waveAmp: 0.22,
+  insideColor: '#ffb37a', outsideColor: '#7a8cff' };
+
+function buildRing() {
+  const { count, radius, thickness, height } = RING;
+  const positions = new Float32Array(count*3), colors = new Float32Array(count*3),
+        scales = new Float32Array(count), seeds = new Float32Array(count);
+  const cIn = new THREE.Color(RING.insideColor), cOut = new THREE.Color(RING.outsideColor),
+        cMid = new THREE.Color('#c89bff');
+  for (let i = 0; i < count; i++) {
+    const i3 = i*3;
+    const u1 = Math.max(1e-6, Math.random()), u2 = Math.random();
+    const gauss = Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2);
+    const r = radius + gauss*thickness*0.5;
+    const angle = Math.random()*Math.PI*2;
+    const u3 = Math.max(1e-6, Math.random()), u4 = Math.random();
+    const gh = Math.sqrt(-2*Math.log(u3))*Math.cos(2*Math.PI*u4);
+    const radialFalloff = 1 - Math.min(1, Math.abs(r-radius)/thickness);
+    const yNoise = gh*height*0.5*radialFalloff;
+    const yWave = Math.sin(angle*RING.waveCount)*RING.waveAmp*(0.4 + 0.6*radialFalloff);
+    const y = yNoise + yWave;
+    positions[i3] = Math.cos(angle)*r;
+    positions[i3+1] = y;
+    positions[i3+2] = Math.sin(angle)*r;
+    const d = (r-(radius-thickness))/(thickness*2);
+    const t = Math.min(1, Math.max(0, d));
+    const col = t<0.5 ? cIn.clone().lerp(cMid, t*2) : cMid.clone().lerp(cOut, (t-0.5)*2);
+    colors[i3]=col.r; colors[i3+1]=col.g; colors[i3+2]=col.b;
+    scales[i] = 0.3 + Math.random()*1.5;
+    seeds[i] = Math.random()*1000;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
+  geo.setAttribute('aScale',   new THREE.BufferAttribute(scales, 1));
+  geo.setAttribute('aSeed',    new THREE.BufferAttribute(seeds, 1));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uSize: { value: 0.022*renderer.getPixelRatio()*800 },
+      uOpacity: { value: 1 }, uHoverSection: { value: -1 }, uHoverStrength: { value: 0 },
+      uSectionCount: { value: SECTIONS.length } },
+    vertexShader: `uniform float uTime; uniform float uSize;
+      uniform float uHoverSection; uniform float uHoverStrength; uniform float uSectionCount;
+      attribute float aScale; attribute float aSeed;
+      varying vec3 vColor; varying float vTwinkle; varying float vHilite;
+      void main(){
+        vec4 mv = modelViewMatrix*vec4(position, 1.0);
+        gl_Position = projectionMatrix*mv;
+        gl_PointSize = uSize*aScale/-mv.z;
+        vColor = color;
+        vTwinkle = 0.6 + 0.4*sin(uTime*1.4 + aSeed);
+        float vh = 1.0;
+        if (uHoverSection >= 0.0 && uHoverStrength > 0.001) {
+          float ang = atan(position.z, position.x);
+          float hoverAng = (uHoverSection/uSectionCount)*6.2831853 - 1.5707963;
+          float dd = mod(ang - hoverAng + 3.1415927, 6.2831853) - 3.1415927;
+          float halfSector = 3.1415927/uSectionCount;
+          float norm = abs(dd)/halfSector;
+          float k = 1.0 - smoothstep(0.0, 3.0, norm);
+          float lo = mix(1.0, 0.32, uHoverStrength);
+          float hi = mix(1.0, 1.55, uHoverStrength);
+          vh = mix(lo, hi, k);
+        }
+        vHilite = vh;
+      }`,
+    fragmentShader: `varying vec3 vColor; varying float vTwinkle; varying float vHilite;
+      uniform float uOpacity;
+      void main(){
+        vec2 uv = gl_PointCoord - 0.5;
+        float d = length(uv);
+        float core = exp(-d*14.0);
+        float halo = exp(-d*4.0)*0.35;
+        float alpha = (core+halo)*vTwinkle*uOpacity*vHilite;
+        if (alpha < 0.01) discard;
+        gl_FragColor = vec4(vColor*(1.2+core*0.8)*vHilite, alpha);
+      }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
+  });
+  return new THREE.Points(geo, mat);
+}
+const ring = buildRing();
+galaxyGroup.add(ring);
+
+const discMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 }, uOpacity: { value: 1 } },
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  vertexShader: `varying vec3 vPos; void main(){ vPos=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: `varying vec3 vPos; uniform float uTime; uniform float uOpacity;
+    void main(){
+      float r = length(vPos.xz);
+      float ang = atan(vPos.z, vPos.x);
+      float band = exp(-pow((r - ${RING.radius.toFixed(2)})/0.9, 2.0));
+      float swirl = 0.5 + 0.5*sin(ang*6.0 + uTime*0.3);
+      vec3 col = mix(vec3(1.0,0.6,0.4), vec3(0.55,0.6,1.0),
+        smoothstep(${(RING.radius-RING.thickness).toFixed(2)}, ${(RING.radius+RING.thickness).toFixed(2)}, r));
+      float a = band*(0.18 + swirl*0.08)*uOpacity;
+      gl_FragColor = vec4(col*a*1.4, a);
+    }`,
+});
+const discGeo = new THREE.RingGeometry(RING.radius - RING.thickness, RING.radius + RING.thickness, 256, 6);
+{
+  const dpos = discGeo.attributes.position;
+  for (let i = 0; i < dpos.count; i++) {
+    const x = dpos.getX(i), y = dpos.getY(i);
+    const ang = Math.atan2(y, x);
+    const r = Math.sqrt(x*x + y*y);
+    const radialFalloff = 1 - Math.min(1, Math.abs(r - RING.radius)/RING.thickness);
+    const w = Math.sin(ang*RING.waveCount)*RING.waveAmp*(0.4 + 0.6*radialFalloff);
+    dpos.setZ(i, -w);
+  }
+  dpos.needsUpdate = true;
+  discGeo.computeVertexNormals();
+}
+const disc = new THREE.Mesh(discGeo, discMat);
+disc.rotation.x = -Math.PI/2;
+galaxyGroup.add(disc);
+
+const sectionLabels = [];
+const anchorMats = [];
+SECTIONS.forEach((s, i) => {
+  const angle = (i/SECTIONS.length)*Math.PI*2 - Math.PI/2;
+  const r = RING.radius + 0.4;
+  const x = Math.cos(angle)*r, z = Math.sin(angle)*r;
+  const radialFalloff = 1 - Math.min(1, Math.abs(r - RING.radius)/RING.thickness);
+  const yWave = Math.sin(angle*RING.waveCount)*RING.waveAmp*(0.4 + 0.6*radialFalloff);
+  const el = document.createElement('a');
+  el.className = 'galaxy-label';
+  el.href = s.url || 'javascript:void(0)';
+  el.dataset.idx = i;
+  el.innerHTML = `<span class="galaxy-label-inner"><span class="cn">${s.cn}</span><span class="en">${s.en}</span></span>`;
+  el.addEventListener('click', (e) => { e.preventDefault(); enterSystem(i); });
+  const obj = new CSS2DObject(el);
+  obj.position.set(x, yWave + 0.05, z);
+  obj.center.set(0.5, 0.5);
+  galaxyGroup.add(obj);
+  sectionLabels.push({ obj, el });
+  const anchorMat = new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(s.hue, 0.7, 0.7), transparent: true, opacity: 0.9 });
+  const anchor = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), anchorMat);
+  anchor.position.set(x, yWave, z);
+  galaxyGroup.add(anchor);
+  anchorMats.push(anchorMat);
+});
+
+const systemGroup = new THREE.Group();
+systemGroup.visible = false;
+scene.add(systemGroup);
+let activeSystem = null;
+
+function buildSystem(section) {
+  const starGeo = new THREE.SphereGeometry(0.4, 48, 48);
+  const starMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color().setHSL(section.hue, 0.85, 0.62) } },
+    vertexShader: `varying vec3 vN; void main(){ vN=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);} `,
+    fragmentShader: `varying vec3 vN; uniform vec3 uColor; uniform float uTime;
+      void main(){
+        float fres = pow(1.0 - max(0.0, vN.z), 2.0);
+        float pulse = 0.85 + 0.15*sin(uTime*1.4);
+        vec3 hot = mix(uColor, vec3(1.0), 0.6);
+        gl_FragColor = vec4(mix(uColor, hot, fres)*(1.2+fres)*pulse, 1.0);
+      }`,
+  });
+  const star = new THREE.Mesh(starGeo, starMat);
+  systemGroup.add(star);
+  const haloMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    uniforms: { uColor: { value: new THREE.Color().setHSL(section.hue, 0.85, 0.55) } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);} `,
+    fragmentShader: `varying vec2 vUv; uniform vec3 uColor;
+      void main(){ vec2 p=vUv-0.5; float d=length(p); float a=smoothstep(0.5,0.0,d);
+        gl_FragColor = vec4(uColor*a*1.6, a*0.7); }`,
+  });
+  const halo = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2), haloMat);
+  systemGroup.add(halo);
+  const nameEl = document.createElement('div');
+  nameEl.className = 'galaxy-star-name';
+  nameEl.innerHTML = `<span class="cn">${section.cn}</span><span class="en">${section.en}</span>`;
+  const nameObj = new CSS2DObject(nameEl);
+  systemGroup.add(nameObj);
+
+  const planets = [];
+  const N = section.items.length;
+  section.items.forEach((item, i) => {
+    const orbitR = 1.6 + i*0.55;
+    const baseAngle = (i/N)*Math.PI*2;
+    const speed = 0.18 - i*0.018;
+    const signX = (i%2===0?1:-1), signZ = ((i+1)%2===0?1:-1);
+    const tiltX = signX*(0.12 + (i%3)*0.06);
+    const tiltZ = signZ*(0.08 + ((i*47)%5)*0.025);
+    const yaw = (i/N)*Math.PI*2*0.2;
+    const orbitGroup = new THREE.Group();
+    orbitGroup.rotation.set(-Math.PI/2 + tiltX, yaw, tiltZ);
+    systemGroup.add(orbitGroup);
+    const ringG = new THREE.RingGeometry(orbitR-0.005, orbitR+0.005, 96);
+    const ringM = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false });
+    orbitGroup.add(new THREE.Mesh(ringG, ringM));
+    const baseHue = (section.hue + i*0.07)%1;
+    const colA = new THREE.Color().setHSL(baseHue, 0.55, 0.55);
+    const colB = new THREE.Color().setHSL((baseHue+0.08)%1, 0.7, 0.78);
+    const pMat = new THREE.ShaderMaterial({
+      uniforms: { uColorA: { value: colA }, uColorB: { value: colB },
+        uSeed: { value: i*13.37 + 0.7 }, uStarPos: { value: new THREE.Vector3() } },
+      vertexShader: `varying vec3 vNormalW; varying vec3 vWorldPos; varying vec3 vLocalPos;
+        void main(){ vec4 wp = modelMatrix*vec4(position,1.0); vWorldPos=wp.xyz;
+          vNormalW=normalize(mat3(modelMatrix)*normal); vLocalPos=position;
+          gl_Position = projectionMatrix*viewMatrix*wp; }`,
+      fragmentShader: `uniform vec3 uColorA; uniform vec3 uColorB; uniform float uSeed; uniform vec3 uStarPos;
+        varying vec3 vNormalW; varying vec3 vWorldPos; varying vec3 vLocalPos;
+        float hash(vec3 p){ return fract(sin(dot(p, vec3(17.1,113.5,71.7)))*43758.5453); }
+        float vnoise(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+          return mix(mix(mix(hash(i+vec3(0,0,0)),hash(i+vec3(1,0,0)),f.x),
+                         mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
+                     mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),
+                         mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y), f.z); }
+        float fbm(vec3 p){ float v=0.0,a=0.5; for(int k=0;k<4;k++){ v+=a*vnoise(p); p*=2.03; a*=0.5; } return v; }
+        void main(){
+          vec3 N = normalize(vNormalW);
+          vec3 L = normalize(uStarPos - vWorldPos);
+          vec3 V = normalize(cameraPosition - vWorldPos);
+          float n = fbm(vLocalPos*4.0 + uSeed);
+          float band = 0.5 + 0.5*sin(vLocalPos.y*9.0 + n*3.0 + uSeed);
+          vec3 surf = mix(uColorA, uColorB, smoothstep(0.32, 0.72, mix(n, band, 0.35)));
+          float diff = max(dot(N,L), 0.0);
+          float ambient = 0.22;
+          float spec = pow(max(dot(reflect(-L,N), V), 0.0), 28.0)*0.35;
+          float fres = pow(1.0 - max(dot(N,V), 0.0), 3.0);
+          vec3 atmo = mix(uColorB, vec3(1.0), 0.35)*fres*0.7;
+          vec3 color = surf*(ambient + diff*1.05) + spec + atmo;
+          gl_FragColor = vec4(color, 1.0);
+        }`,
+    });
+    const pSize = 0.09 + (i%4)*0.022;
+    const planet = new THREE.Mesh(new THREE.SphereGeometry(pSize, 36, 36), pMat);
+    planet.rotation.order = 'ZYX';
+    planet.rotation.z = ((i*0.37)%1.0)*0.6 - 0.3;
+    orbitGroup.add(planet);
+    if (i%3 === 1) {
+      const rInner = pSize*1.6, rOuter = pSize*2.6;
+      const ringGeo = new THREE.RingGeometry(rInner, rOuter, 80);
+      const uv = ringGeo.attributes.uv, pos = ringGeo.attributes.position;
+      for (let k = 0; k < pos.count; k++) {
+        const x = pos.getX(k), y = pos.getY(k);
+        const rr = Math.sqrt(x*x + y*y);
+        const t = (rr - rInner)/(rOuter - rInner);
+        uv.setXY(k, t, 0.5);
+      }
+      uv.needsUpdate = true;
+      const ringMat = new THREE.ShaderMaterial({
+        transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        uniforms: { uColor: { value: colB.clone() } },
+        vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);} `,
+        fragmentShader: `varying vec2 vUv; uniform vec3 uColor;
+          void main(){ float t=vUv.x;
+            float bands = 0.6 + 0.4*sin(t*38.0)*sin(t*11.0+1.3);
+            float gap = smoothstep(0.0,0.04,t)*smoothstep(1.0,0.96,t);
+            float alpha = bands*gap*0.55;
+            gl_FragColor = vec4(uColor*(0.8 + bands*0.4), alpha); }`,
+      });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.rotation.x = Math.PI/2 + (i*0.21);
+      ringMesh.rotation.y = (i*0.13);
+      planet.add(ringMesh);
+    }
+    const pEl = document.createElement('a');
+    pEl.className = 'galaxy-planet';
+    const itemUrl = (typeof item === 'object' && item.url) ? item.url : (section.url || '#');
+    const itemLabel = (typeof item === 'object') ? item.label : item;
+    pEl.href = itemUrl;
+    pEl.textContent = itemLabel;
+    if (itemUrl.startsWith('http')) { pEl.target = '_blank'; pEl.rel = 'noopener noreferrer'; }
+    const pLabel = new CSS2DObject(pEl);
+    pLabel.position.set(0, 0.18, 0);
+    pLabel.center.set(0.5, 0.5);
+    planet.add(pLabel);
+    const spin = 0.25 + (i%5)*0.08;
+    planets.push({ mesh: planet, material: pMat, angle: baseAngle, speed, radius: orbitR, spin });
+  });
+  activeSystem = { star, halo, nameObj, planets, materials: [starMat, haloMat] };
+}
+
+function disposeSystem() {
+  if (!activeSystem) return;
+  while (systemGroup.children.length) {
+    const c = systemGroup.children[0];
+    systemGroup.remove(c);
+    c.traverse?.((o) => {
+      o.geometry?.dispose?.();
+      if (o.material) Array.isArray(o.material) ? o.material.forEach(m => m.dispose()) : o.material.dispose();
+      if (o instanceof CSS2DObject && o.element?.parentNode) o.element.parentNode.removeChild(o.element);
+    });
+    if (c instanceof CSS2DObject && c.element?.parentNode) c.element.parentNode.removeChild(c.element);
+  }
+  activeSystem = null;
+}
+
+let targetHoverSection = -1, targetHoverStrength = 0;
+const _hoverRay = new THREE.Raycaster();
+const _hoverNDC = new THREE.Vector2();
+const _galacticPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+const _hoverHit = new THREE.Vector3();
+const RING_INNER = (RING.radius - RING.thickness)*0.5;
+addEventListener('mousemove', (e) => {
+  if (mode !== 'galaxy') { targetHoverStrength = 0; return; }
+  _hoverNDC.set((e.clientX/innerWidth)*2 - 1, -(e.clientY/innerHeight)*2 + 1);
+  _hoverRay.setFromCamera(_hoverNDC, camera);
+  if (_hoverRay.ray.intersectPlane(_galacticPlane, _hoverHit)) {
+    const worldR = Math.hypot(_hoverHit.x, _hoverHit.z);
+    if (worldR < RING_INNER) { targetHoverStrength = 0; return; }
+  }
+  let nearest = -1, nearestD = Infinity;
+  sectionLabels.forEach(({ el }, i) => {
+    const r = el.getBoundingClientRect();
+    if (!r.width) return;
+    const cx = r.left + r.width/2, cy = r.top + r.height/2;
+    const d = Math.hypot(e.clientX - cx, e.clientY - cy);
+    if (d < nearestD) { nearestD = d; nearest = i; }
+  });
+  targetHoverSection = nearest;
+  targetHoverStrength = Math.max(0, Math.min(1, 1 - (nearestD - 60)/360));
+});
+document.addEventListener('mouseleave', () => { targetHoverStrength = 0; });
+
+function setGalaxyOpacity(o) {
+  ring.material.uniforms.uOpacity.value = o;
+  disc.material.uniforms.uOpacity.value = o;
+  for (const m of anchorMats) m.opacity = 0.9*o;
+}
+
+let mode = 'galaxy', transitioning = false, currentIdx = -1;
+
+function updateNavLabels() {
+  const N = SECTIONS.length;
+  prevLabelEl.textContent = SECTIONS[(currentIdx-1+N)%N].cn;
+  nextLabelEl.textContent = SECTIONS[(currentIdx+1)%N].cn;
+}
+
+function systemCamPosFor(anchor) {
+  const radial = new THREE.Vector3(anchor.x, 0, anchor.z);
+  if (radial.lengthSq() < 1e-6) radial.set(0, 0, 1);
+  radial.normalize();
+  return anchor.clone().add(radial.multiplyScalar(4.2)).add(new THREE.Vector3(0, 1.5, 0));
+}
+
+function enterSystem(idx) {
+  if (transitioning || mode !== 'galaxy') return;
+  transitioning = true; controls.enabled = false;
+  const section = SECTIONS[idx];
+  const anchor = sectionLabels[idx].obj.position.clone();
+  buildSystem(section);
+  systemGroup.position.copy(anchor);
+  systemGroup.scale.setScalar(0.001);
+  systemGroup.visible = true;
+  ring.material.uniforms.uHoverSection.value = -1;
+  ring.material.uniforms.uHoverStrength.value = 0;
+  targetHoverSection = -1; targetHoverStrength = 0;
+  centerEl.classList.add('hidden');
+  hudEl.classList.add('hidden');
+  sectionLabels.forEach(({ el }) => {
+    el.style.transition = 'opacity 0.6s ease';
+    el.style.opacity = '0';
+    el.style.pointerEvents = 'none';
+  });
+  controls.minDistance = 1.5; controls.maxDistance = 18;
+  const camFrom = camera.position.clone();
+  const camTo = systemCamPosFor(anchor);
+  const tFrom = controls.target.clone();
+  const tTo = anchor.clone();
+  tween({
+    dur: 1.1,
+    onUpdate: (e) => {
+      camera.position.lerpVectors(camFrom, camTo, e);
+      controls.target.lerpVectors(tFrom, tTo, e);
+      const s = e < 0.35 ? 0 : (e - 0.35)/0.65;
+      systemGroup.scale.setScalar(THREE.MathUtils.lerp(0.001, 1, Math.min(1, s)));
+      setGalaxyOpacity(1 - Math.min(1, e/0.85));
+    },
+    onDone: () => {
+      setGalaxyOpacity(0);
+      galaxyGroup.visible = false;
+      currentIdx = idx; mode = 'system';
+      updateNavLabels();
+      backEl.classList.add('show');
+      navPrevEl.classList.add('show');
+      navNextEl.classList.add('show');
+      controls.enabled = true; transitioning = false;
+    },
+  });
+}
+
+function switchSystem(delta) {
+  if (transitioning || mode !== 'system') return;
+  const N = SECTIONS.length;
+  const next = (currentIdx + delta + N)%N;
+  transitioning = true; controls.enabled = false;
+  const startScale = systemGroup.scale.x;
+  const camFromShrink = camera.position.clone();
+  const tFromShrink = controls.target.clone();
+  const oldAnchor = systemGroup.position.clone();
+  const camPullback = camFromShrink.clone().add(camFromShrink.clone().sub(oldAnchor).normalize().multiplyScalar(1.2));
+  tween({
+    dur: 0.5,
+    onUpdate: (e) => {
+      systemGroup.scale.setScalar(THREE.MathUtils.lerp(startScale, 0.001, e));
+      camera.position.lerpVectors(camFromShrink, camPullback, e);
+      controls.target.lerpVectors(tFromShrink, oldAnchor, e);
+    },
+    onDone: () => {
+      disposeSystem();
+      const newAnchor = sectionLabels[next].obj.position.clone();
+      buildSystem(SECTIONS[next]);
+      systemGroup.position.copy(newAnchor);
+      systemGroup.scale.setScalar(0.001);
+      systemGroup.visible = true;
+      currentIdx = next;
+      updateNavLabels();
+      const camFrom2 = camera.position.clone();
+      const tFrom2 = controls.target.clone();
+      const camTo2 = systemCamPosFor(newAnchor);
+      const tTo2 = newAnchor.clone();
+      tween({
+        dur: 1.0,
+        onUpdate: (e) => {
+          camera.position.lerpVectors(camFrom2, camTo2, e);
+          controls.target.lerpVectors(tFrom2, tTo2, e);
+          const s = e < 0.3 ? 0 : (e - 0.3)/0.7;
+          systemGroup.scale.setScalar(THREE.MathUtils.lerp(0.001, 1, Math.min(1, s)));
+        },
+        onDone: () => { controls.enabled = true; transitioning = false; },
+      });
+    },
+  });
+}
+
+function exitSystem() {
+  if (transitioning || mode !== 'system') return;
+  transitioning = true; controls.enabled = false;
+  backEl.classList.remove('show');
+  navPrevEl.classList.remove('show');
+  navNextEl.classList.remove('show');
+  galaxyGroup.visible = true;
+  setGalaxyOpacity(0);
+  sectionLabels.forEach(({ el }) => { el.style.opacity = '1'; el.style.pointerEvents = ''; });
+  const startScale = systemGroup.scale.x;
+  const camFrom = camera.position.clone();
+  const camTo = GALAXY_CAM.clone();
+  const tFrom = controls.target.clone();
+  const tTo = new THREE.Vector3(0, 0, 0);
+  tween({
+    dur: 1.1,
+    onUpdate: (e) => {
+      camera.position.lerpVectors(camFrom, camTo, e);
+      controls.target.lerpVectors(tFrom, tTo, e);
+      const s = Math.min(1, e/0.55);
+      systemGroup.scale.setScalar(THREE.MathUtils.lerp(startScale, 0.001, s));
+      setGalaxyOpacity(Math.min(1, Math.max(0, (e - 0.2)/0.8)));
+    },
+    onDone: () => {
+      setGalaxyOpacity(1);
+      disposeSystem();
+      systemGroup.visible = false;
+      systemGroup.position.set(0, 0, 0);
+      systemGroup.scale.setScalar(1);
+      currentIdx = -1; mode = 'galaxy';
+      controls.minDistance = 4; controls.maxDistance = 16;
+      centerEl.classList.remove('hidden');
+      hudEl.classList.remove('hidden');
+      controls.enabled = true; transitioning = false;
+    },
+  });
+}
+
+backEl.addEventListener('click', exitSystem);
+navPrevEl.addEventListener('click', () => switchSystem(-1));
+navNextEl.addEventListener('click', () => switchSystem(1));
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') exitSystem();
+  else if (e.key === 'ArrowLeft') switchSystem(-1);
+  else if (e.key === 'ArrowRight') switchSystem(1);
+});
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.7, 0.05));
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+  labelRenderer.setSize(innerWidth, innerHeight);
+});
+
+const clock = new THREE.Clock();
+let last = 0;
+function tick() {
+  const t = clock.getElapsedTime();
+  const dt = t - last; last = t;
+  ring.material.uniforms.uTime.value = t;
+  disc.material.uniforms.uTime.value = t;
+  {
+    const u = ring.material.uniforms;
+    const k = 1 - Math.exp(-dt*7);
+    u.uHoverStrength.value += (targetHoverStrength - u.uHoverStrength.value)*k;
+    if (targetHoverStrength > 0.01) u.uHoverSection.value = targetHoverSection;
+    else if (u.uHoverStrength.value < 0.01) u.uHoverSection.value = -1;
+  }
+  if (activeSystem) {
+    activeSystem.materials[0].uniforms.uTime.value = t;
+    for (const p of activeSystem.planets) {
+      p.angle += dt*p.speed;
+      p.mesh.position.set(Math.cos(p.angle)*p.radius, Math.sin(p.angle)*p.radius, 0);
+      p.mesh.rotation.y += dt*p.spin;
+      p.material.uniforms.uStarPos.value.copy(systemGroup.position);
+    }
+    activeSystem.halo.lookAt(camera.position);
+  }
+  controls.update();
+  composer.render();
+  labelRenderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
+</script>
+{{ end }}
+{{ end }}

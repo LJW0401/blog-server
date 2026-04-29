@@ -36,6 +36,15 @@ var SettingsKeys = []string{
 	"about_stack",      // comma/newline-separated list
 	"about_experience", // lines of "标题 | 年份"
 	"about_interests",  // comma/newline-separated list
+	// 主页风格："" / "minimal" → 当前简约风；"galaxy" → 三维星系导航。
+	"home_style",
+}
+
+// validHomeStyles 是允许保存的 home_style 值集合；空字符串表示默认（minimal）。
+var validHomeStyles = map[string]struct{}{
+	"":        {},
+	"minimal": {},
+	"galaxy":  {},
 }
 
 var urlRe = regexp.MustCompile(`^https?://[^\s]+$`)
@@ -115,6 +124,9 @@ func validateSettings(v map[string]string) error {
 		if !(urlRe.MatchString(av) || strings.HasPrefix(av, "/")) {
 			return errMsg("头像 URL 必须以 http://、https:// 或 / 开头")
 		}
+	}
+	if _, ok := validHomeStyles[v["home_style"]]; !ok {
+		return errMsg("主页风格仅支持 minimal / galaxy")
 	}
 	return nil
 }

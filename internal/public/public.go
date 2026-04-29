@@ -4,6 +4,8 @@ package public
 
 import (
 	"context"
+	"encoding/json"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -30,6 +32,9 @@ type SiteSettings struct {
 	ContactQQ  string
 	OSSLinks   []MediaLink // 开源项目列：GitHub, Gitee
 	MediaLinks []MediaLink // 媒体列：B站, 抖音, 小红书
+	// HomeStyle 取值："minimal"（默认简约风）或 "galaxy"（三维星系导航）。
+	// 任何非 "galaxy" 的值都按 minimal 处理。
+	HomeStyle string
 }
 
 // MediaLink points at one of Penguin's social profiles.
@@ -47,6 +52,7 @@ func DefaultSettings() SiteSettings {
 		Direction:  "后端 / 工程化 / 开发者工具",
 		Status:     "活跃维护若干个人项目",
 		AvatarShow: true,
+		HomeStyle:  "minimal",
 		ContactQQ:  "772436864",
 		OSSLinks: []MediaLink{
 			{Platform: "GitHub"},
@@ -165,6 +171,10 @@ func (h *Handlers) resolveSettings() SiteSettings {
 			filled = append(filled, MediaLink{Platform: m.Platform, URL: kv[m.Key]})
 		}
 		s.MediaLinks = filled
+		// home_style 仅接受 "galaxy"；其余值（含空、未知）一律按 minimal 处理。
+		if kv["home_style"] == "galaxy" {
+			s.HomeStyle = "galaxy"
+		}
 	}
 	h.cached = s
 	h.cachedAt = time.Now()
@@ -256,8 +266,9 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 		homeCards[i] = portfolioHomeCard{Entry: e, Cover: cover}
 	}
 
+	settings := h.Settings()
 	data := map[string]any{
-		"Settings":         h.Settings(),
+		"Settings":         settings,
 		"FeaturedDocs":     pickFeatured(docs, 4),
 		"FeaturedProjects": pickFeatured(projs, 3),
 		// Recently Active is a derived view merging content + github cache.
@@ -265,11 +276,116 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 		"About":              h.about(),
 		"FeaturedPortfolios": homeCards,
 	}
-	if err := h.Tpl.Render(w, r, http.StatusOK, "home.html", data); err != nil {
+	tpl := "home.html"
+	if settings.HomeStyle == "galaxy" {
+		tpl = "home_galaxy.html"
+		// Galaxy 模板内嵌 importmap + module script + 从 unpkg 加载 three.js。
+		// 默认 CSP `script-src 'self'` 会拦掉这些；这里只针对此路由放宽，
+		// 管理员关掉 galaxy 模式后下一次访问立即恢复严格 CSP。
+		w.Header().Set("Content-Security-Policy", galaxyCSP)
+		data["GalaxyConfigJSON"] = buildGalaxyConfig(settings)
+	}
+	if err := h.Tpl.Render(w, r, http.StatusOK, tpl, data); err != nil {
 		h.Logger.Error("home.render", slog.String("err", err.Error()))
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
 }
+
+// galaxySectionItem 是一个行星标签：可点击，附带跳转 URL（外链或站内）。
+type galaxySectionItem struct {
+	Label string `json:"label"`
+	URL   string `json:"url,omitempty"`
+}
+
+// galaxySection 描述星系上的一个板块（中心恒星 + 行星）。
+type galaxySection struct {
+	CN    string              `json:"cn"`
+	EN    string              `json:"en"`
+	Hue   float64             `json:"hue"`
+	URL   string              `json:"url,omitempty"` // 板块整体回退 URL（行星无 URL 时使用）
+	Items []galaxySectionItem `json:"items"`
+}
+
+type galaxyConfig struct {
+	Sections []galaxySection `json:"sections"`
+}
+
+// linkURL 在一组 MediaLink 里查 platform 名匹配的 URL；找不到返回空串。
+func linkURL(links []MediaLink, platform string) string {
+	for _, l := range links {
+		if l.Platform == platform {
+			return l.URL
+		}
+	}
+	return ""
+}
+
+// buildGalaxyConfig 把站点设置编织成 galaxy 模板需要的 JSON 配置。
+// 每个板块的多个行星暂时都指向板块对应的内容主路由（用户后续可以替换为
+// 真实的 featured 项目/文档/作品列表）。"联系" 板块从 settings 里取
+// GitHub/Gitee/B站/小红书 链接；空 URL 用 "#" 占位，点击不跳。
+//
+// 返回 template.JS：模板里这段 JSON 写在 <script type="application/json">
+// 内部，html/template 默认会把 .HTML 值按 JS 字符串字面量再包一层引号 +
+// 反斜杠转义，导致 JSON.parse 拿到的是字符串而不是对象。template.JS 表示
+// 内容已是 JS 安全字面量，直接原样输出。
+func buildGalaxyConfig(s SiteSettings) template.JS {
+	contactItems := []galaxySectionItem{
+		{Label: "GitHub", URL: fallback(linkURL(s.OSSLinks, "GitHub"), "#")},
+		{Label: "Gitee", URL: fallback(linkURL(s.OSSLinks, "Gitee"), "#")},
+		{Label: "B站", URL: fallback(linkURL(s.MediaLinks, "B站"), "#")},
+		{Label: "小红书", URL: fallback(linkURL(s.MediaLinks, "小红书"), "#")},
+	}
+	if s.ContactQQ != "" {
+		contactItems = append(contactItems, galaxySectionItem{Label: "QQ:" + s.ContactQQ, URL: "#"})
+	}
+	cfg := galaxyConfig{Sections: []galaxySection{
+		{CN: "简介", EN: "Intro", Hue: 0.62, URL: "/about", Items: []galaxySectionItem{
+			{Label: "坐标"}, {Label: "现状"}, {Label: "方向"},
+		}},
+		{CN: "关于我", EN: "About", Hue: 0.72, URL: "/about", Items: []galaxySectionItem{
+			{Label: "技能栈"}, {Label: "经历"}, {Label: "兴趣"},
+		}},
+		{CN: "开源", EN: "Open", Hue: 0.13, URL: "/projects", Items: []galaxySectionItem{
+			{Label: "项目列表"}, {Label: "近期活跃"}, {Label: "归档"},
+		}},
+		{CN: "文档", EN: "Docs", Hue: 0.55, URL: "/docs", Items: []galaxySectionItem{
+			{Label: "全部文档"}, {Label: "最近更新"}, {Label: "标签"},
+		}},
+		{CN: "作品集", EN: "Portfolio", Hue: 0.05, URL: "/portfolio", Items: []galaxySectionItem{
+			{Label: "全部作品"}, {Label: "精选"},
+		}},
+		{CN: "联系", EN: "Contact", Hue: 0.95, URL: "#", Items: contactItems},
+	}}
+	b, err := json.Marshal(cfg)
+	if err != nil {
+		// 配置都是固定结构，几乎不会失败。回退一个最小 JSON 让前台不至于崩溃。
+		return template.JS(`{"sections":[]}`)
+	}
+	return template.JS(b)
+}
+
+func fallback(s, def string) string {
+	if s == "" {
+		return def
+	}
+	return s
+}
+
+// galaxyCSP 是首页 galaxy 风格专用的放宽 CSP：
+//   - script-src 加入 `'unsafe-inline'`（importmap + 内联 module 脚本）和
+//     `https://unpkg.com`（three.js 模块来源）。
+//   - 其他指令与 middleware.defaultCSP 保持一致。
+//
+// 仅在 home_style = "galaxy" 时被首页 handler 主动覆盖响应头；其他路由仍走默认 CSP。
+const galaxyCSP = "default-src 'self'; " +
+	"img-src 'self' data:; " +
+	"script-src 'self' 'unsafe-inline' https://unpkg.com; " +
+	"style-src 'self' 'unsafe-inline'; " +
+	"font-src 'self'; " +
+	"object-src 'none'; " +
+	"frame-ancestors 'none'; " +
+	"base-uri 'self'"
 
 // AboutData drives the "关于我" block on the homepage. Values are filled from
 // site_settings where present, otherwise fall back to sensible defaults so a

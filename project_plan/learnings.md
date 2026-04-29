@@ -1049,3 +1049,25 @@
 
 - 2026-04-24 快速功能 session-device-management 的反思其余项：#1 临时方案：无；#2 能跑但不够好：`shortUA` 是基于关键词切分的粗糙实现，遇到非主流 UA（小程序 / 自定义 agent）会退化成原串前 40 字符截断；暂可接受。#4 新理解：已归到架构洞察。#6 测试缺口：没有加"当 `ParseSession` DB 查询报错时 authgate 的 fallback" E2E 测试；依赖 DB 可用性，与其它 DB-dependent 路径一致，暂不补
 
+
+## 2026-04-29
+
+### 快速功能：manage 切换主页风格（home_style: minimal/galaxy）
+- **类型**：技术债 + 架构洞察
+- **描述**：在 site_settings 加 `home_style` KV，前台 home handler 按值切换 `home.html` ⇄ `home_galaxy.html`，galaxy 路径同时把响应 CSP 放宽到 `script-src 'self' 'unsafe-inline' https://unpkg.com`。落地过程中累积了几条值得记录的事项：
+  1. 模板里搬入了一份完整的 Three.js 启动脚本（~600 行），与 `基础构想/galaxy.html` 的预览源文件几乎一致——两份代码并行维护，未来改一边忘另一边的概率高
+  2. CSP 放宽虽限定在首页路由，但 `'unsafe-inline'` 让任何注入到首页的脚本都能跑；hash-based CSP（CSP3 的 `sha256-...`）能保留同样的 importmap + module 启动效果而不放开整体 inline。本次没做是为保住 quick-feature 的范围
+  3. Home handler 走默认 CSP 时不再覆写 `Content-Security-Policy` 响应头，galaxy 路径才主动 `w.Header().Set(...)` 覆盖。中间件只负责注入默认值，handler 按需"覆盖"是新的契约扩展点——意味着将来还会有别的"按页面动态调 CSP"的诱惑（比如富文本编辑器、外链 OG 抓取）
+- **建议处理方式**：
+  1. 把 galaxy 模板里那块大脚本抽到 `internal/assets/static/js/galaxy_home.js`，让 `基础构想/galaxy.html` 的预览也 import 同一份；模板里只剩 importmap + `<script src=".../galaxy_home.js">` 一行。`script-src 'self'` 即可，免再开 `'unsafe-inline'`
+  2. 沿 (1) 顺势把 importmap 改成 hash-CSP 形式（启动时一次 SHA-256 → 注入到 galaxy CSP 常量）
+  3. 在 architecture.md 增加一条："首页支持按 site_settings.home_style 切换 minimal / galaxy 模板，galaxy 模式下默认 CSP 会被放宽，运维侧需要意识到该路径的脚本来源"
+- **紧急程度**：中（galaxy 是实验功能、默认关闭，但只要管理员开了就有上述安全姿态变化）
+
+- 2026-04-29 快速功能 home_style 的反思其余项：
+  - #1 临时方案：是（CSP `'unsafe-inline'` + 内联 ~600 行脚本，理由见上，已建议处理方式）
+  - #2 能跑但不够好：是（同上）
+  - #3 上游问题：无
+  - #4 新理解：已归到架构洞察 (3)
+  - #5 范围外重构：是，已在建议处理方式中列出
+  - #6 测试/文档缺口：是，CSP 放宽这种安全相关的姿态变化没有进 architecture.md / README，新搭起来的运维不会立即意识到 home_style=galaxy 会自动触发一组放宽的响应头

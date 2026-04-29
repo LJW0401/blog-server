@@ -57,6 +57,19 @@
     <label><span>抖音</span><input name="media_douyin" value="{{ index .Values "media_douyin" }}" placeholder="https://..." /></label>
     <label><span>小红书</span><input name="media_xiaohongshu" value="{{ index .Values "media_xiaohongshu" }}" placeholder="https://..." /></label>
 
+    <h2>主页风格</h2>
+    {{ $hs := index .Values "home_style" }}
+    <div class="home-style-row" role="radiogroup" aria-label="主页风格">
+      <label class="radio-row">
+        <input type="radio" name="home_style" value="minimal" {{ if or (eq $hs "") (eq $hs "minimal") }}checked{{ end }} />
+        <span><b>简约风</b><em>（默认）</em> — 现行卡片式主页</span>
+      </label>
+      <label class="radio-row">
+        <input type="radio" name="home_style" value="galaxy" {{ if eq $hs "galaxy" }}checked{{ end }} />
+        <span><b>星系风</b> — 三维环形星系导航（实验性，启用后访问 <code>/</code> 立即切换）</span>
+      </label>
+    </div>
+
     <h2>关于我（主页第二页卡片区）</h2>
     <label class="block-label"><span>自我介绍段落</span>
       <textarea name="about_bio" rows="4" placeholder="支持 Markdown：**加粗** *斜体* [链接](url)，以及 &lt;span style=&quot;color:#c00&quot;&gt;自定义颜色&lt;/span&gt;。留空则使用默认文案。">{{ index .Values "about_bio" }}</textarea>
