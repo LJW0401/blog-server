@@ -161,6 +161,30 @@
     color: rgba(232, 236, 255, 0.7);
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
   }
+  /* 作品集行星：标题在上 + 下方一行（左封面 / 右两行简介） */
+  body.page-home-galaxy .galaxy-planet.is-portfolio {
+    display: inline-flex; flex-direction: column; align-items: stretch;
+    padding: 8px; gap: 6px; max-width: 280px; white-space: normal;
+  }
+  body.page-home-galaxy .galaxy-planet.is-portfolio .planet-title {
+    font-size: 12px; letter-spacing: 0.22em;
+    color: #ffe7c8; padding: 0 6px;
+  }
+  body.page-home-galaxy .galaxy-planet.is-portfolio .planet-row {
+    display: inline-flex; align-items: stretch; gap: 8px;
+  }
+  body.page-home-galaxy .galaxy-planet.is-portfolio .planet-cover {
+    width: 56px; height: 40px; flex-shrink: 0;
+    object-fit: cover; border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  body.page-home-galaxy .galaxy-planet.is-portfolio .planet-subtitle {
+    flex: 1 1 auto; align-self: center;
+    font-size: 11px; line-height: 1.4; letter-spacing: 0.03em;
+    color: rgba(232, 236, 255, 0.7);
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  }
 
   body.page-home-galaxy .galaxy-back {
     position: fixed; left: 22px; top: 22px; z-index: 4;
@@ -680,6 +704,17 @@ function buildSystem(section) {
         const ln = document.createElement('span'); ln.textContent = line; d.appendChild(ln);
       }
       pEl.append(t, sep, d);
+    } else if (typeof item === 'object' && item.title && item.image) {
+      // 作品集：标题在上，下面横排：左封面 + 右两行简介
+      pEl.classList.add('is-portfolio');
+      const t = document.createElement('span'); t.className = 'planet-title'; t.textContent = item.title;
+      const row = document.createElement('span'); row.className = 'planet-row';
+      const img = document.createElement('img'); img.className = 'planet-cover';
+      img.src = item.image; img.alt = ''; img.loading = 'lazy';
+      const s = document.createElement('span'); s.className = 'planet-subtitle';
+      s.textContent = item.subtitle || '';
+      row.append(img, s);
+      pEl.append(t, row);
     } else if (typeof item === 'object' && item.title && item.subtitle) {
       // 上下叠：标题在上，简介在下（开源项目卡片用）
       pEl.classList.add('is-stack');

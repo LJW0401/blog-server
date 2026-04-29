@@ -284,7 +284,7 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 		// 管理员关掉 galaxy 模式后下一次访问立即恢复严格 CSP。
 		w.Header().Set("Content-Security-Policy", galaxyCSP)
 		data["GalaxyConfigJSON"] = buildGalaxyConfig(settings, h.about(),
-			pickFeatured(projs, 6), pickFeatured(docs, 6))
+			pickFeatured(projs, 6), pickFeatured(docs, 6), homePortfolios)
 	}
 	if err := h.Tpl.Render(w, r, http.StatusOK, tpl, data); err != nil {
 		h.Logger.Error("home.render", slog.String("err", err.Error()))
@@ -301,6 +301,7 @@ type galaxySectionItem struct {
 	Title    string   `json:"title,omitempty"`
 	Subtitle string   `json:"subtitle,omitempty"`
 	Details  []string `json:"details,omitempty"`
+	Image    string   `json:"image,omitempty"`
 	URL      string   `json:"url,omitempty"`
 }
 
@@ -336,7 +337,7 @@ func linkURL(links []MediaLink, platform string) string {
 // 内部，html/template 默认会把 .HTML 值按 JS 字符串字面量再包一层引号 +
 // 反斜杠转义，导致 JSON.parse 拿到的是字符串而不是对象。template.JS 表示
 // 内容已是 JS 安全字面量，直接原样输出。
-func buildGalaxyConfig(s SiteSettings, a AboutData, openProjects, featuredDocs []*content.Entry) template.JS {
+func buildGalaxyConfig(s SiteSettings, a AboutData, openProjects, featuredDocs, featuredPortfolios []*content.Entry) template.JS {
 	contactItems := []galaxySectionItem{
 		{Label: "GitHub", URL: fallback(linkURL(s.OSSLinks, "GitHub"), "#")},
 		{Label: "Gitee", URL: fallback(linkURL(s.OSSLinks, "Gitee"), "#")},
@@ -363,9 +364,7 @@ func buildGalaxyConfig(s SiteSettings, a AboutData, openProjects, featuredDocs [
 			Items: entrySectionItems(openProjects, "/projects/", "全部项目 →", "/projects")},
 		{CN: "文档", EN: "Docs", Hue: 0.55, URL: "/docs",
 			Items: entrySectionItems(featuredDocs, "/docs/", "全部文档 →", "/docs")},
-		{CN: "作品集", EN: "Portfolio", Hue: 0.05, URL: "/portfolio", Items: []galaxySectionItem{
-			{Label: "全部作品"}, {Label: "精选"},
-		}},
+		{CN: "作品集", EN: "Portfolio", Hue: 0.05, URL: "/portfolio", Items: portfolioSectionItems(featuredPortfolios)},
 		{CN: "联系", EN: "Contact", Hue: 0.95, URL: "#", Items: contactItems},
 	}}
 	b, err := json.Marshal(cfg)
@@ -392,6 +391,32 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// portfolioSectionItems 把作品集首页卡片用的同一批 featured portfolios
+// 渲染成 galaxy 行星：标题在上 + 下面横排（左封面 / 右两行简介），末尾补
+// 一颗"全部作品 →"行星指向 /portfolio。Cover 字段留空时回退到默认 SVG。
+func portfolioSectionItems(entries []*content.Entry) []galaxySectionItem {
+	out := make([]galaxySectionItem, 0, len(entries)+1)
+	for _, e := range entries {
+		if e == nil {
+			continue
+		}
+		name := firstNonEmpty(e.DisplayName, e.Title, e.Slug)
+		desc := firstNonEmpty(e.Description, e.DisplayDesc, e.Excerpt)
+		cover := strings.TrimSpace(e.Cover)
+		if cover == "" {
+			cover = PortfolioDefaultCover
+		}
+		out = append(out, galaxySectionItem{
+			Title:    name,
+			Subtitle: desc,
+			Image:    cover,
+			URL:      "/portfolio/" + e.Slug,
+		})
+	}
+	out = append(out, galaxySectionItem{Label: "全部作品 →", URL: "/portfolio"})
+	return out
 }
 
 // entrySectionItems 把首页 featured 出来的内容条目渲染成 galaxy 行星：
