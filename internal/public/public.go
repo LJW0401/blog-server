@@ -283,7 +283,7 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 		// 默认 CSP `script-src 'self'` 会拦掉这些；这里只针对此路由放宽，
 		// 管理员关掉 galaxy 模式后下一次访问立即恢复严格 CSP。
 		w.Header().Set("Content-Security-Policy", galaxyCSP)
-		data["GalaxyConfigJSON"] = buildGalaxyConfig(settings, h.about())
+		data["GalaxyConfigJSON"] = buildGalaxyConfig(settings, h.about(), pickFeatured(projs, 6))
 	}
 	if err := h.Tpl.Render(w, r, http.StatusOK, tpl, data); err != nil {
 		h.Logger.Error("home.render", slog.String("err", err.Error()))
@@ -296,10 +296,11 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 // Label 是简单单行文本（开源/文档/作品集/联系等都用它）；当 Title + Details
 // 不为空时，前端会渲染成"标题居中 + 右侧多行详情"的双栏样式（简介板块用）。
 type galaxySectionItem struct {
-	Label   string   `json:"label,omitempty"`
-	Title   string   `json:"title,omitempty"`
-	Details []string `json:"details,omitempty"`
-	URL     string   `json:"url,omitempty"`
+	Label    string   `json:"label,omitempty"`
+	Title    string   `json:"title,omitempty"`
+	Subtitle string   `json:"subtitle,omitempty"`
+	Details  []string `json:"details,omitempty"`
+	URL      string   `json:"url,omitempty"`
 }
 
 // galaxySection 描述星系上的一个板块（中心恒星 + 行星）。
@@ -334,7 +335,7 @@ func linkURL(links []MediaLink, platform string) string {
 // 内部，html/template 默认会把 .HTML 值按 JS 字符串字面量再包一层引号 +
 // 反斜杠转义，导致 JSON.parse 拿到的是字符串而不是对象。template.JS 表示
 // 内容已是 JS 安全字面量，直接原样输出。
-func buildGalaxyConfig(s SiteSettings, a AboutData) template.JS {
+func buildGalaxyConfig(s SiteSettings, a AboutData, openProjects []*content.Entry) template.JS {
 	contactItems := []galaxySectionItem{
 		{Label: "GitHub", URL: fallback(linkURL(s.OSSLinks, "GitHub"), "#")},
 		{Label: "Gitee", URL: fallback(linkURL(s.OSSLinks, "Gitee"), "#")},
@@ -357,9 +358,7 @@ func buildGalaxyConfig(s SiteSettings, a AboutData) template.JS {
 			// 唯一显式带跳转 URL 的行星：进 /about 看详细的 markdown 页面。
 			{Label: "查看详情 →", URL: "/about"},
 		}},
-		{CN: "开源", EN: "Open", Hue: 0.13, URL: "/projects", Items: []galaxySectionItem{
-			{Label: "项目列表"}, {Label: "近期活跃"}, {Label: "归档"},
-		}},
+		{CN: "开源", EN: "Open", Hue: 0.13, URL: "/projects", Items: openSectionItems(openProjects)},
 		{CN: "文档", EN: "Docs", Hue: 0.55, URL: "/docs", Items: []galaxySectionItem{
 			{Label: "全部文档"}, {Label: "最近更新"}, {Label: "标签"},
 		}},
@@ -381,6 +380,33 @@ func fallback(s, def string) string {
 		return def
 	}
 	return s
+}
+
+// openSectionItems 把首页用的 featured projects 渲染成 galaxy 行星：
+// 每颗行星就是一个项目（点击进 /projects/<slug>），最后再补一个"全部项目 →"
+// 行星跳到列表页。projects 为空时退化为单颗"全部项目 →"。
+func openSectionItems(projects []*content.Entry) []galaxySectionItem {
+	out := make([]galaxySectionItem, 0, len(projects)+1)
+	for _, p := range projects {
+		if p == nil {
+			continue
+		}
+		name := strings.TrimSpace(p.DisplayName)
+		if name == "" {
+			name = p.Slug
+		}
+		desc := strings.TrimSpace(p.DisplayDesc)
+		if desc == "" {
+			desc = strings.TrimSpace(p.Description)
+		}
+		out = append(out, galaxySectionItem{
+			Title:    name,
+			Subtitle: desc,
+			URL:      "/projects/" + p.Slug,
+		})
+	}
+	out = append(out, galaxySectionItem{Label: "全部项目 →", URL: "/projects"})
+	return out
 }
 
 // detailItem 是直接拿现成的 details 切片去构造双栏行星，留给 a.Stack 这种

@@ -118,6 +118,21 @@
     color: rgba(232,236,255,0.85);
   }
   body.page-home-galaxy .galaxy-planet .planet-details span { white-space: nowrap; }
+  /* 上下叠行星：标题在上、简介在下，左对齐多行长描述（开源项目用） */
+  body.page-home-galaxy .galaxy-planet.is-stack {
+    display: inline-flex; flex-direction: column; align-items: flex-start;
+    padding: 7px 14px; gap: 3px;
+    max-width: 260px; white-space: normal;
+  }
+  body.page-home-galaxy .galaxy-planet.is-stack .planet-title {
+    font-size: 12px; letter-spacing: 0.22em;
+    color: #ffe7c8;
+  }
+  body.page-home-galaxy .galaxy-planet.is-stack .planet-subtitle {
+    font-size: 11px; line-height: 1.45; letter-spacing: 0.04em;
+    color: rgba(232, 236, 255, 0.7);
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  }
 
   body.page-home-galaxy .galaxy-back {
     position: fixed; left: 22px; top: 22px; z-index: 4;
@@ -637,6 +652,12 @@ function buildSystem(section) {
         const ln = document.createElement('span'); ln.textContent = line; d.appendChild(ln);
       }
       pEl.append(t, sep, d);
+    } else if (typeof item === 'object' && item.title && item.subtitle) {
+      // 上下叠：标题在上，简介在下（开源项目卡片用）
+      pEl.classList.add('is-stack');
+      const t = document.createElement('span'); t.className = 'planet-title'; t.textContent = item.title;
+      const s = document.createElement('span'); s.className = 'planet-subtitle'; s.textContent = item.subtitle;
+      pEl.append(t, s);
     } else if (typeof item === 'object' && item.title) {
       pEl.textContent = item.title;
     } else {
