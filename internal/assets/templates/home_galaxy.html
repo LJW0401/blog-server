@@ -27,9 +27,9 @@
     line-height: 1;
   }
   body.page-home-galaxy .galaxy-center .tag {
-    margin-top: 14px;
-    font-size: 11px; letter-spacing: 0.45em; text-transform: uppercase;
-    color: rgba(207, 211, 226, 0.55);
+    margin: 18px auto 0; max-width: min(560px, 80vw);
+    font-size: 13px; line-height: 1.6; letter-spacing: 0.04em;
+    color: rgba(207, 211, 226, 0.65);
   }
 
   body.page-home-galaxy .galaxy-label { pointer-events: auto; cursor: pointer; text-decoration: none; display: inline-block; }
@@ -157,7 +157,7 @@
 
 <div class="galaxy-center" id="galaxy-center">
   <div class="name">{{ if .Settings.Name }}{{ .Settings.Name }}{{ else }}Penguin{{ end }}</div>
-  <div class="tag">A Galaxy of Ideas</div>
+  <div class="tag">{{ if .Settings.Tagline }}{{ .Settings.Tagline }}{{ else }}A Galaxy of Ideas{{ end }}</div>
 </div>
 
 <button class="galaxy-back" id="galaxy-back" type="button">
