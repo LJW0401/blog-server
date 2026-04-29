@@ -283,7 +283,8 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 		// 默认 CSP `script-src 'self'` 会拦掉这些；这里只针对此路由放宽，
 		// 管理员关掉 galaxy 模式后下一次访问立即恢复严格 CSP。
 		w.Header().Set("Content-Security-Policy", galaxyCSP)
-		data["GalaxyConfigJSON"] = buildGalaxyConfig(settings, h.about(), pickFeatured(projs, 6))
+		data["GalaxyConfigJSON"] = buildGalaxyConfig(settings, h.about(),
+			pickFeatured(projs, 6), pickFeatured(docs, 6))
 	}
 	if err := h.Tpl.Render(w, r, http.StatusOK, tpl, data); err != nil {
 		h.Logger.Error("home.render", slog.String("err", err.Error()))
@@ -335,7 +336,7 @@ func linkURL(links []MediaLink, platform string) string {
 // 内部，html/template 默认会把 .HTML 值按 JS 字符串字面量再包一层引号 +
 // 反斜杠转义，导致 JSON.parse 拿到的是字符串而不是对象。template.JS 表示
 // 内容已是 JS 安全字面量，直接原样输出。
-func buildGalaxyConfig(s SiteSettings, a AboutData, openProjects []*content.Entry) template.JS {
+func buildGalaxyConfig(s SiteSettings, a AboutData, openProjects, featuredDocs []*content.Entry) template.JS {
 	contactItems := []galaxySectionItem{
 		{Label: "GitHub", URL: fallback(linkURL(s.OSSLinks, "GitHub"), "#")},
 		{Label: "Gitee", URL: fallback(linkURL(s.OSSLinks, "Gitee"), "#")},
@@ -358,10 +359,10 @@ func buildGalaxyConfig(s SiteSettings, a AboutData, openProjects []*content.Entr
 			// 唯一显式带跳转 URL 的行星：进 /about 看详细的 markdown 页面。
 			{Label: "查看详情 →", URL: "/about"},
 		}},
-		{CN: "开源", EN: "Open", Hue: 0.13, URL: "/projects", Items: openSectionItems(openProjects)},
-		{CN: "文档", EN: "Docs", Hue: 0.55, URL: "/docs", Items: []galaxySectionItem{
-			{Label: "全部文档"}, {Label: "最近更新"}, {Label: "标签"},
-		}},
+		{CN: "开源", EN: "Open", Hue: 0.13, URL: "/projects",
+			Items: entrySectionItems(openProjects, "/projects/", "全部项目 →", "/projects")},
+		{CN: "文档", EN: "Docs", Hue: 0.55, URL: "/docs",
+			Items: entrySectionItems(featuredDocs, "/docs/", "全部文档 →", "/docs")},
 		{CN: "作品集", EN: "Portfolio", Hue: 0.05, URL: "/portfolio", Items: []galaxySectionItem{
 			{Label: "全部作品"}, {Label: "精选"},
 		}},
@@ -382,30 +383,39 @@ func fallback(s, def string) string {
 	return s
 }
 
-// openSectionItems 把首页用的 featured projects 渲染成 galaxy 行星：
-// 每颗行星就是一个项目（点击进 /projects/<slug>），最后再补一个"全部项目 →"
-// 行星跳到列表页。projects 为空时退化为单颗"全部项目 →"。
-func openSectionItems(projects []*content.Entry) []galaxySectionItem {
-	out := make([]galaxySectionItem, 0, len(projects)+1)
-	for _, p := range projects {
-		if p == nil {
+// firstNonEmpty 返回第一个 trim 后非空的字符串；都空时返回空串。
+// 给 entrySectionItems 在多个候选字段间挑可显示文本用。
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if t := strings.TrimSpace(v); t != "" {
+			return t
+		}
+	}
+	return ""
+}
+
+// entrySectionItems 把首页 featured 出来的内容条目渲染成 galaxy 行星：
+// 每颗行星名字 + 简介上下叠并跳到 <urlPrefix><slug>，末尾再补一颗
+// "<allLabel>"行星指向 allURL。entries 为空时只剩 all 行星。
+// 开源 / 文档板块都用它，避免重复维护两份几乎一样的逻辑。
+func entrySectionItems(entries []*content.Entry, urlPrefix, allLabel, allURL string) []galaxySectionItem {
+	out := make([]galaxySectionItem, 0, len(entries)+1)
+	for _, e := range entries {
+		if e == nil {
 			continue
 		}
-		name := strings.TrimSpace(p.DisplayName)
-		if name == "" {
-			name = p.Slug
-		}
-		desc := strings.TrimSpace(p.DisplayDesc)
-		if desc == "" {
-			desc = strings.TrimSpace(p.Description)
-		}
+		// 项目用 DisplayName / DisplayDesc；文档主要靠 Title / Excerpt；
+		// portfolio 用 Title / Description。这里按优先级回落，让一份函数
+		// 能同时服务三种 Kind 而不需要分支。
+		name := firstNonEmpty(e.DisplayName, e.Title, e.Slug)
+		desc := firstNonEmpty(e.DisplayDesc, e.Description, e.Excerpt)
 		out = append(out, galaxySectionItem{
 			Title:    name,
 			Subtitle: desc,
-			URL:      "/projects/" + p.Slug,
+			URL:      urlPrefix + e.Slug,
 		})
 	}
-	out = append(out, galaxySectionItem{Label: "全部项目 →", URL: "/projects"})
+	out = append(out, galaxySectionItem{Label: allLabel, URL: allURL})
 	return out
 }
 
