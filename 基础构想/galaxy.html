@@ -265,10 +265,11 @@ function tween({ dur = 0.6, ease = (t)=> t<.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2
 }
 
 // -- background starfield --------------------------------------------------
-function makeStarfield(n = 4500, r = 80) {
+function makeStarfield(n = 6500, r = 80) {
   const g = new THREE.BufferGeometry();
   const pos = new Float32Array(n * 3);
   const col = new Float32Array(n * 3);
+  const sz  = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const u = Math.random(), v = Math.random();
     const theta = 2 * Math.PI * u, phi = Math.acos(2 * v - 1);
@@ -276,21 +277,121 @@ function makeStarfield(n = 4500, r = 80) {
     pos[i*3]   = rr * Math.sin(phi) * Math.cos(theta);
     pos[i*3+1] = rr * Math.sin(phi) * Math.sin(theta);
     pos[i*3+2] = rr * Math.cos(phi);
-    const t = Math.random();
-    col[i*3]   = 0.7 + t*0.3;
-    col[i*3+1] = 0.75 + t*0.2;
-    col[i*3+2] = 0.95;
+    // 颜色：大部分偏冷白，少部分偏暖（金 / 红），更接近真实星空
+    const tint = Math.random();
+    let cr, cg, cb;
+    if (tint < 0.7)      { cr = 0.85 + Math.random()*0.15; cg = 0.88 + Math.random()*0.12; cb = 1.0; }
+    else if (tint < 0.9) { cr = 1.0; cg = 0.82 + Math.random()*0.1;  cb = 0.6 + Math.random()*0.15; }
+    else                 { cr = 1.0; cg = 0.5 + Math.random()*0.2;   cb = 0.4 + Math.random()*0.15; }
+    col[i*3]=cr; col[i*3+1]=cg; col[i*3+2]=cb;
+    // 5% 是亮星
+    sz[i] = (Math.random() < 0.05) ? 1.6 + Math.random()*1.6 : 0.5 + Math.random()*0.9;
   }
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const m = new THREE.PointsMaterial({
-    size: 0.06, sizeAttenuation: true, vertexColors: true,
-    transparent: true, opacity: 0.85, depthWrite: false,
-    blending: THREE.AdditiveBlending,
+  g.setAttribute('color',    new THREE.BufferAttribute(col, 3));
+  g.setAttribute('aSize',    new THREE.BufferAttribute(sz, 1));
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uPx: { value: renderer.getPixelRatio() * 90 } },
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexColors: true,
+    vertexShader: `
+      attribute float aSize;
+      uniform float uPx;
+      varying vec3 vC;
+      void main(){
+        vec4 mv = modelViewMatrix * vec4(position,1.0);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = uPx * aSize / -mv.z;
+        vC = color;
+      }`,
+    fragmentShader: `
+      varying vec3 vC;
+      void main(){
+        vec2 p = gl_PointCoord - 0.5;
+        float d = length(p);
+        float core = exp(-d * 12.0);
+        float halo = exp(-d * 3.0) * 0.25;
+        float a = core + halo;
+        if (a < 0.01) discard;
+        gl_FragColor = vec4(vC * (1.4 + core * 0.8), a);
+      }`,
   });
   return new THREE.Points(g, m);
 }
 scene.add(makeStarfield());
+
+// 银河条带：沿一个倾斜大圆带状分布的星云粒子
+function makeMilkyWayBand(n = 26000, r = 92) {
+  const g = new THREE.BufferGeometry();
+  const pos = new Float32Array(n * 3);
+  const col = new Float32Array(n * 3);
+  const sz  = new Float32Array(n);
+
+  const tilt = 0.55;
+  const eAlong   = new THREE.Vector3(1, 0, 0);
+  const eInPlane = new THREE.Vector3(0,  Math.cos(tilt), -Math.sin(tilt));
+  const ePerp    = new THREE.Vector3(0,  Math.sin(tilt),  Math.cos(tilt));
+
+  const warm   = new THREE.Color(0xffc89c);
+  const accent = new THREE.Color(0xc77bff);
+  const cool   = new THREE.Color(0x4a6cd0);
+
+  for (let i = 0; i < n; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const u1 = Math.max(1e-6, Math.random()), u2 = Math.random();
+    const gauss = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    const bandWidth = 0.13;
+    const off = gauss * bandWidth;
+    const rr = r * (0.92 + Math.random() * 0.16);
+    const cosT = Math.cos(theta), sinT = Math.sin(theta);
+
+    pos[i*3]   = rr * (cosT * eAlong.x + sinT * eInPlane.x) + rr * off * ePerp.x;
+    pos[i*3+1] = rr * (cosT * eAlong.y + sinT * eInPlane.y) + rr * off * ePerp.y;
+    pos[i*3+2] = rr * (cosT * eAlong.z + sinT * eInPlane.z) + rr * off * ePerp.z;
+
+    const t = Math.min(1, Math.abs(off) / (bandWidth * 1.4));
+    const c = (t < 0.5)
+      ? warm.clone().lerp(accent, t * 2)
+      : accent.clone().lerp(cool, (t - 0.5) * 2);
+    // 沿环向加一些密度块状起伏，模拟星云团
+    const lump = 0.5 + 0.5 * Math.sin(theta * 5.0 + 0.7) * Math.sin(theta * 2.0 + 1.3);
+    const bright = (1.0 - t) * (0.7 + 0.6 * lump);
+    c.multiplyScalar(1.05 + bright * 0.7);
+    col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
+
+    sz[i] = 1.1 + Math.random() * 3.4;
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color',    new THREE.BufferAttribute(col, 3));
+  g.setAttribute('aSize',    new THREE.BufferAttribute(sz, 1));
+
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uPx: { value: renderer.getPixelRatio() * 160 } },
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexColors: true,
+    vertexShader: `
+      attribute float aSize;
+      uniform float uPx;
+      varying vec3 vC;
+      void main(){
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = uPx * aSize / -mv.z;
+        vC = color;
+      }`,
+    fragmentShader: `
+      varying vec3 vC;
+      void main(){
+        vec2 p = gl_PointCoord - 0.5;
+        float d = length(p);
+        float a = exp(-d * 3.2) * 0.7;
+        if (a < 0.01) discard;
+        gl_FragColor = vec4(vC * a * 2.1, a);
+      }`,
+  });
+  return new THREE.Points(g, m);
+}
+scene.add(makeMilkyWayBand());
 
 // =========================================================================
 // 1) 总览：环形星系
