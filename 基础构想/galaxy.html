@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Penguin · Galaxy</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #05060d; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+    color: #cfd3e2;
+  }
+  #app { position: fixed; inset: 0; }
+
+  /* 中心 name */
+  .center {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    z-index: 3; pointer-events: none; text-align: center;
+  }
+  .center .name {
+    font-size: clamp(56px, 9vw, 132px);
+    font-weight: 200; letter-spacing: 0.04em;
+    background: linear-gradient(180deg, #ffffff 0%, #c8cfff 55%, #6a78c8 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 0 60px rgba(138, 123, 255, 0.35);
+    line-height: 1;
+  }
+  .center .tag {
+    margin-top: 14px;
+    font-size: 11px; letter-spacing: 0.45em; text-transform: uppercase;
+    color: rgba(207, 211, 226, 0.55);
+  }
+
+  /* 圆环上的板块标签（CSS2DRenderer 渲染） */
+  /* CSS2DRenderer 会每帧改写 .label 的 transform 来定位，
+     所以缩放只能放在内层 .label-inner 上，不要碰 .label 的 transform */
+  .label {
+    pointer-events: auto; cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .label-inner {
+    display: inline-block;
+    user-select: none;
+    color: #e8ecff;
+    font-size: 13px; letter-spacing: 0.32em; text-transform: uppercase;
+    padding: 8px 14px;
+    background: rgba(12, 14, 26, 0.45);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    white-space: nowrap;
+    transform-origin: center center;
+    transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    box-shadow: 0 14px 40px -22px rgba(0, 0, 0, 0.9);
+  }
+  .label .cn { font-weight: 500; }
+  .label .en {
+    margin-left: 8px; font-size: 10px; opacity: 0.55; letter-spacing: 0.28em;
+  }
+  .label:hover .label-inner {
+    transform: scale(1.08);
+    background: linear-gradient(135deg, rgba(138,123,255,0.35), rgba(255,123,184,0.22));
+    border-color: rgba(255,255,255,0.25);
+    box-shadow: 0 18px 50px -18px rgba(138,123,255,0.55);
+  }
+
+  .hud {
+    position: fixed; left: 22px; bottom: 20px; z-index: 2;
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: rgba(207, 211, 226, 0.45); pointer-events: none;
+  }
+  .hud b { color: #e8ecff; font-weight: 600; letter-spacing: 0.28em; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div class="center">
+  <div class="name">name</div>
+  <div class="tag">A Galaxy of Ideas</div>
+</div>
+
+<div class="hud"><b>GALAXY</b> · drag to orbit · scroll to zoom</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const app = document.getElementById('app');
+
+// -- scene / camera / renderer --------------------------------------------
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x05060d, 0.018);
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(0, 3.5, 7.5);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+app.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(innerWidth, innerHeight);
+labelRenderer.domElement.style.position = 'fixed';
+labelRenderer.domElement.style.inset = '0';
+labelRenderer.domElement.style.pointerEvents = 'none';
+labelRenderer.domElement.style.zIndex = '2';
+document.body.appendChild(labelRenderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 4;
+controls.maxDistance = 16;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.autoRotate = false;
+
+// -- background starfield --------------------------------------------------
+function makeStarfield(n = 4500, r = 80) {
+  const g = new THREE.BufferGeometry();
+  const pos = new Float32Array(n * 3);
+  const col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const u = Math.random(), v = Math.random();
+    const theta = 2 * Math.PI * u, phi = Math.acos(2 * v - 1);
+    const rr = r * (0.55 + Math.random() * 0.45);
+    pos[i*3]   = rr * Math.sin(phi) * Math.cos(theta);
+    pos[i*3+1] = rr * Math.sin(phi) * Math.sin(theta);
+    pos[i*3+2] = rr * Math.cos(phi);
+    const t = Math.random();
+    col[i*3]   = 0.7 + t*0.3;
+    col[i*3+1] = 0.75 + t*0.2;
+    col[i*3+2] = 0.95;
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const m = new THREE.PointsMaterial({
+    size: 0.06, sizeAttenuation: true, vertexColors: true,
+    transparent: true, opacity: 0.85, depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  return new THREE.Points(g, m);
+}
+scene.add(makeStarfield());
+
+// -- ring galaxy -----------------------------------------------------------
+const RING = {
+  count: 90000,
+  radius: 3.8,       // 圆环主半径
+  thickness: 0.7,    // 圆环径向厚度（高斯）
+  height: 0.22,      // 圆环垂直厚度
+  insideColor: '#ffb37a',
+  outsideColor: '#7a8cff',
+};
+
+function buildRing() {
+  const { count, radius, thickness, height } = RING;
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const scales = new Float32Array(count);
+  const seeds = new Float32Array(count);
+
+  const cIn = new THREE.Color(RING.insideColor);
+  const cOut = new THREE.Color(RING.outsideColor);
+  const cMid = new THREE.Color('#c89bff');
+
+  // 生成在主半径附近高斯分布的环，并叠加几条细丝状起伏
+  for (let i = 0; i < count; i++) {
+    const i3 = i * 3;
+
+    // gaussian-like radial offset (Box–Muller)
+    const u1 = Math.max(1e-6, Math.random()), u2 = Math.random();
+    const gauss = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    const r = radius + gauss * thickness * 0.5;
+
+    const angle = Math.random() * Math.PI * 2;
+
+    // 垂直方向同样 gaussian，越靠环中心越薄
+    const u3 = Math.max(1e-6, Math.random()), u4 = Math.random();
+    const gh = Math.sqrt(-2 * Math.log(u3)) * Math.cos(2 * Math.PI * u4);
+    const y = gh * height * 0.5 * (1 - Math.min(1, Math.abs(r - radius) / (thickness)));
+
+    positions[i3]   = Math.cos(angle) * r;
+    positions[i3+1] = y;
+    positions[i3+2] = Math.sin(angle) * r;
+
+    // 颜色按到环中心的距离过渡：内缘暖 → 中线紫 → 外缘冷
+    const d = (r - (radius - thickness)) / (thickness * 2); // 0..1
+    const t = Math.min(1, Math.max(0, d));
+    let col;
+    if (t < 0.5) col = cIn.clone().lerp(cMid, t * 2);
+    else        col = cMid.clone().lerp(cOut, (t - 0.5) * 2);
+
+    colors[i3]   = col.r;
+    colors[i3+1] = col.g;
+    colors[i3+2] = col.b;
+
+    scales[i] = 0.3 + Math.random() * 1.5;
+    seeds[i]  = Math.random() * 1000;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
+  geo.setAttribute('aScale',   new THREE.BufferAttribute(scales, 1));
+  geo.setAttribute('aSeed',    new THREE.BufferAttribute(seeds, 1));
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uSize: { value: 0.022 * renderer.getPixelRatio() * 800 },
+    },
+    vertexShader: /* glsl */`
+      uniform float uTime;
+      uniform float uSize;
+      attribute float aScale;
+      attribute float aSeed;
+      varying vec3 vColor;
+      varying float vTwinkle;
+      void main() {
+        vec3 p = position;
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = uSize * aScale / -mv.z;
+        vColor = color;
+        vTwinkle = 0.6 + 0.4 * sin(uTime * 1.4 + aSeed);
+      }
+    `,
+    fragmentShader: /* glsl */`
+      varying vec3 vColor;
+      varying float vTwinkle;
+      void main() {
+        vec2 uv = gl_PointCoord - 0.5;
+        float d = length(uv);
+        float core = exp(-d * 14.0);
+        float halo = exp(-d * 4.0) * 0.35;
+        float alpha = (core + halo) * vTwinkle;
+        if (alpha < 0.01) discard;
+        vec3 col = vColor * (1.2 + core * 0.8);
+        gl_FragColor = vec4(col, alpha);
+      }
+    `,
+    transparent: true, depthWrite: false,
+    blending: THREE.AdditiveBlending, vertexColors: true,
+  });
+
+  return new THREE.Points(geo, mat);
+}
+const ring = buildRing();
+scene.add(ring);
+
+// -- 中心暖色光晕（让 name 区域更聚焦）-------------------------------------
+const glowGeo = new THREE.PlaneGeometry(4.2, 4.2);
+const glowMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);} `,
+  fragmentShader: `
+    varying vec2 vUv;
+    void main(){
+      vec2 p = vUv - 0.5;
+      float d = length(p);
+      float a = smoothstep(0.5, 0.0, d) * 0.55;
+      vec3 col = mix(vec3(0.55,0.45,0.95), vec3(1.0,0.7,0.55), 1.0 - smoothstep(0.0,0.4,d));
+      gl_FragColor = vec4(col * a, a);
+    }
+  `,
+});
+const centerGlow = new THREE.Mesh(glowGeo, glowMat);
+centerGlow.rotation.x = -Math.PI / 2;
+scene.add(centerGlow);
+
+// -- 圆环上方薄薄的盘状辉光 ------------------------------------------------
+const discGeo = new THREE.RingGeometry(RING.radius - RING.thickness, RING.radius + RING.thickness, 128);
+const discMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 } },
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  vertexShader: `varying vec2 vUv; varying vec3 vPos; void main(){ vUv = uv; vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);} `,
+  fragmentShader: `
+    varying vec3 vPos; uniform float uTime;
+    void main(){
+      float r = length(vPos.xz);
+      float ang = atan(vPos.z, vPos.x);
+      float band = exp(-pow((r - ${RING.radius.toFixed(2)})/0.9, 2.0));
+      float swirl = 0.5 + 0.5 * sin(ang * 6.0 + uTime * 0.3);
+      vec3 col = mix(vec3(1.0,0.6,0.4), vec3(0.55,0.6,1.0), smoothstep(${(RING.radius-RING.thickness).toFixed(2)}, ${(RING.radius+RING.thickness).toFixed(2)}, r));
+      float a = band * (0.18 + swirl * 0.08);
+      gl_FragColor = vec4(col * a * 1.4, a);
+    }
+  `,
+});
+const disc = new THREE.Mesh(discGeo, discMat);
+disc.rotation.x = -Math.PI / 2;
+scene.add(disc);
+
+// -- 板块标签（圆环上均匀分布）--------------------------------------------
+const SECTIONS = [
+  { cn: '首页', en: 'Home',     href: '#home' },
+  { cn: '项目', en: 'Projects', href: '#projects' },
+  { cn: '文档', en: 'Docs',     href: '#docs' },
+  { cn: '博客', en: 'Blog',     href: '#blog' },
+  { cn: '笔记', en: 'Notes',    href: '#notes' },
+  { cn: '开源', en: 'Open',     href: '#open' },
+  { cn: '关于', en: 'About',    href: '#about' },
+  { cn: '联系', en: 'Contact',  href: '#contact' },
+];
+
+const labelObjects = [];
+SECTIONS.forEach((s, i) => {
+  const angle = (i / SECTIONS.length) * Math.PI * 2 - Math.PI / 2; // 从顶部开始
+  const r = RING.radius + 0.4;
+  const x = Math.cos(angle) * r;
+  const z = Math.sin(angle) * r;
+
+  const el = document.createElement('a');
+  el.className = 'label';
+  el.href = s.href;
+  el.innerHTML = `<span class="label-inner"><span class="cn">${s.cn}</span><span class="en">${s.en}</span></span>`;
+
+  const obj = new CSS2DObject(el);
+  obj.position.set(x, 0.05, z);
+  obj.center.set(0.5, 0.5);
+  scene.add(obj);
+  labelObjects.push(obj);
+
+  // 标签上方放一颗稍亮的"锚点星" —— 让圆环上有视觉对位
+  const anchorGeo = new THREE.SphereGeometry(0.12, 12, 12);
+  const anchorMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color().setHSL(0.62 + (i/SECTIONS.length)*0.18, 0.7, 0.75),
+    transparent: true, opacity: 0.85,
+  });
+  const anchor = new THREE.Mesh(anchorGeo, anchorMat);
+  anchor.position.set(x, 0, z);
+  scene.add(anchor);
+});
+
+// -- post processing -------------------------------------------------------
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.7, 0.05);
+composer.addPass(bloom);
+
+// -- resize ----------------------------------------------------------------
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+  labelRenderer.setSize(innerWidth, innerHeight);
+});
+
+// -- loop ------------------------------------------------------------------
+const clock = new THREE.Clock();
+function tick() {
+  const t = clock.getElapsedTime();
+  ring.material.uniforms.uTime.value = t;
+  disc.material.uniforms.uTime.value = t;
+  controls.update();
+  composer.render();
+  labelRenderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
+</script>
+</body>
+</html>
