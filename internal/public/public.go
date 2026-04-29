@@ -283,7 +283,7 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 		// 默认 CSP `script-src 'self'` 会拦掉这些；这里只针对此路由放宽，
 		// 管理员关掉 galaxy 模式后下一次访问立即恢复严格 CSP。
 		w.Header().Set("Content-Security-Policy", galaxyCSP)
-		data["GalaxyConfigJSON"] = buildGalaxyConfig(settings)
+		data["GalaxyConfigJSON"] = buildGalaxyConfig(settings, h.about())
 	}
 	if err := h.Tpl.Render(w, r, http.StatusOK, tpl, data); err != nil {
 		h.Logger.Error("home.render", slog.String("err", err.Error()))
@@ -334,7 +334,7 @@ func linkURL(links []MediaLink, platform string) string {
 // 内部，html/template 默认会把 .HTML 值按 JS 字符串字面量再包一层引号 +
 // 反斜杠转义，导致 JSON.parse 拿到的是字符串而不是对象。template.JS 表示
 // 内容已是 JS 安全字面量，直接原样输出。
-func buildGalaxyConfig(s SiteSettings) template.JS {
+func buildGalaxyConfig(s SiteSettings, a AboutData) template.JS {
 	contactItems := []galaxySectionItem{
 		{Label: "GitHub", URL: fallback(linkURL(s.OSSLinks, "GitHub"), "#")},
 		{Label: "Gitee", URL: fallback(linkURL(s.OSSLinks, "Gitee"), "#")},
@@ -351,7 +351,11 @@ func buildGalaxyConfig(s SiteSettings) template.JS {
 			introItem("方向", s.Direction),
 		}},
 		{CN: "关于我", EN: "About", Hue: 0.72, URL: "/about", Items: []galaxySectionItem{
-			{Label: "技能栈"}, {Label: "经历"}, {Label: "兴趣"},
+			detailItem("技能栈", a.Stack),
+			detailItem("经历", experienceLines(a.Experience)),
+			detailItem("兴趣", a.Interests),
+			// 唯一显式带跳转 URL 的行星：进 /about 看详细的 markdown 页面。
+			{Label: "查看详情 →", URL: "/about"},
 		}},
 		{CN: "开源", EN: "Open", Hue: 0.13, URL: "/projects", Items: []galaxySectionItem{
 			{Label: "项目列表"}, {Label: "近期活跃"}, {Label: "归档"},
@@ -377,6 +381,40 @@ func fallback(s, def string) string {
 		return def
 	}
 	return s
+}
+
+// detailItem 是直接拿现成的 details 切片去构造双栏行星，留给 a.Stack 这种
+// 已经分好的 []string 用，避免再做一次 split。空切片 → 只保留标题。
+func detailItem(title string, details []string) galaxySectionItem {
+	cleaned := make([]string, 0, len(details))
+	for _, d := range details {
+		if t := strings.TrimSpace(d); t != "" {
+			cleaned = append(cleaned, t)
+		}
+	}
+	if len(cleaned) == 0 {
+		return galaxySectionItem{Title: title}
+	}
+	return galaxySectionItem{Title: title, Details: cleaned}
+}
+
+// experienceLines 把 AboutExperience 渲染成 "标题 · 年份" 字符串列表，
+// 用作经历行星的右侧多行详情。
+func experienceLines(xs []AboutExperience) []string {
+	out := make([]string, 0, len(xs))
+	for _, x := range xs {
+		t := strings.TrimSpace(x.Title)
+		y := strings.TrimSpace(x.Year)
+		switch {
+		case t != "" && y != "":
+			out = append(out, t+" · "+y)
+		case t != "":
+			out = append(out, t)
+		case y != "":
+			out = append(out, y)
+		}
+	}
+	return out
 }
 
 // introItem 把"标题 + 内容字符串"拆成 galaxy 行星的双栏数据。

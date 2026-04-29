@@ -92,6 +92,16 @@
     background: linear-gradient(135deg, rgba(255,180,120,0.35), rgba(255,123,184,0.2));
     border-color: rgba(255,200,160,0.4);
   }
+  /* 真链接行星：手势变指针，并稍微提亮一档让用户知道这颗能点 */
+  body.page-home-galaxy .galaxy-planet.is-link {
+    cursor: pointer;
+    color: #ffd9b0;
+    border-color: rgba(255, 200, 160, 0.35);
+    background: linear-gradient(135deg, rgba(255, 180, 120, 0.18), rgba(255, 123, 184, 0.12));
+  }
+  body.page-home-galaxy .galaxy-planet.is-link:hover {
+    color: #fff;
+  }
   /* 双栏行星：标题左侧居中，分隔线，右侧多行详情。简介板块用。 */
   body.page-home-galaxy .galaxy-planet.is-detail { padding: 6px 12px; display: inline-flex; align-items: center; gap: 10px; }
   body.page-home-galaxy .galaxy-planet .planet-title {
@@ -606,10 +616,17 @@ function buildSystem(section) {
       ringMesh.rotation.y = (i*0.13);
       planet.add(ringMesh);
     }
-    // 行星标签：纯展示，不跳转。`<span>` 比 `<a>` 语义更准确，CSS 还是给
-    // pointer-events:auto 让 hover 高亮生效。
-    const pEl = document.createElement('span');
+    // 行星标签默认是纯展示用 <span>；只有当 item 显式带了真实 URL（不是 "#" 占位）
+    // 才升级为 <a> 真链接，让"查看详情 →"那种行星可以跳转。
+    const itemUrl = (typeof item === 'object') ? (item.url || '') : '';
+    const isLink = itemUrl !== '' && itemUrl !== '#';
+    const pEl = document.createElement(isLink ? 'a' : 'span');
     pEl.className = 'galaxy-planet';
+    if (isLink) {
+      pEl.href = itemUrl;
+      pEl.classList.add('is-link');
+      if (itemUrl.startsWith('http')) { pEl.target = '_blank'; pEl.rel = 'noopener noreferrer'; }
+    }
     if (typeof item === 'object' && item.title && Array.isArray(item.details) && item.details.length) {
       // 双栏：标题居中 + 分隔线 + 右侧多行详情
       pEl.classList.add('is-detail');
