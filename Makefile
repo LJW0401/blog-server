@@ -3,7 +3,7 @@ GO ?= go
 PKG := ./...
 LINT_TIMEOUT ?= 3m
 
-.PHONY: all check release build dev clean fmt vet lint tidy test cover e2e vulncheck
+.PHONY: all check release build package dev clean fmt vet lint tidy test cover e2e vulncheck
 
 all: check
 
@@ -67,9 +67,12 @@ dev:
 check: fmt vet lint tidy test vulncheck
 	@echo "[OK] make check all green"
 
-release: check e2e build
+package: build
+	./scripts/package-release.sh
+
+release: check e2e build package
 	@sha256sum blog-server > blog-server.sha256
-	@echo "[OK] make release complete — ./blog-server + ./blog-server.sha256 ready"
+	@echo "[OK] make release complete — ./blog-server + ./blog-server.sha256 + tarball ready"
 	@echo "    next: start the binary then 'make smoke URL=http://...' for runtime gates"
 
 # smoke runs the runtime-only gates (lighthouse resource checks, header baseline,
@@ -83,3 +86,4 @@ smoke:
 
 clean:
 	rm -f blog-server blog-server.sha256 cover.out
+	rm -f blog-server-linux-amd64.tar.gz blog-server-linux-amd64.tar.gz.sha256
