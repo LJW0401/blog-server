@@ -359,29 +359,47 @@ function buildRing() {
       uTime: { value: 0 },
       uSize: { value: 0.022 * renderer.getPixelRatio() * 800 },
       uOpacity: { value: 1 },
+      uHoverSection: { value: -1 },
+      uHoverStrength: { value: 0 },
+      uSectionCount: { value: 8 }, // 后面会以 SECTIONS.length 覆盖
     },
     vertexShader: `
       uniform float uTime; uniform float uSize;
+      uniform float uHoverSection; uniform float uHoverStrength; uniform float uSectionCount;
       attribute float aScale; attribute float aSeed;
-      varying vec3 vColor; varying float vTwinkle;
+      varying vec3 vColor; varying float vTwinkle; varying float vHilite;
       void main() {
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         gl_Position = projectionMatrix * mv;
         gl_PointSize = uSize * aScale / -mv.z;
         vColor = color;
         vTwinkle = 0.6 + 0.4 * sin(uTime * 1.4 + aSeed);
+
+        float vh = 1.0;
+        if (uHoverSection >= 0.0 && uHoverStrength > 0.001) {
+          float ang = atan(position.z, position.x);
+          float hoverAng = (uHoverSection / uSectionCount) * 6.2831853 - 1.5707963;
+          float d = mod(ang - hoverAng + 3.1415927, 6.2831853) - 3.1415927;
+          float halfSector = 3.1415927 / uSectionCount;
+          float norm = abs(d) / halfSector;             // 0 = 板块中心，1 = 扇区边界
+          float k = 1.0 - smoothstep(0.0, 3.0, norm);    // 角向平滑衰减
+          float lo = mix(1.0, 0.32, uHoverStrength);     // 距离越近，对比越强
+          float hi = mix(1.0, 1.55, uHoverStrength);
+          vh = mix(lo, hi, k);
+        }
+        vHilite = vh;
       }`,
     fragmentShader: `
-      varying vec3 vColor; varying float vTwinkle;
+      varying vec3 vColor; varying float vTwinkle; varying float vHilite;
       uniform float uOpacity;
       void main() {
         vec2 uv = gl_PointCoord - 0.5;
         float d = length(uv);
         float core = exp(-d * 14.0);
         float halo = exp(-d * 4.0) * 0.35;
-        float alpha = (core + halo) * vTwinkle * uOpacity;
+        float alpha = (core + halo) * vTwinkle * uOpacity * vHilite;
         if (alpha < 0.01) discard;
-        gl_FragColor = vec4(vColor * (1.2 + core * 0.8), alpha);
+        gl_FragColor = vec4(vColor * (1.2 + core * 0.8) * vHilite, alpha);
       }`,
     transparent: true, depthWrite: false,
     blending: THREE.AdditiveBlending, vertexColors: true,
@@ -443,6 +461,7 @@ const SECTIONS = [
 
 const sectionLabels = [];
 const anchorMats = [];
+ring.material.uniforms.uSectionCount.value = SECTIONS.length;
 SECTIONS.forEach((s, i) => {
   const angle = (i / SECTIONS.length) * Math.PI * 2 - Math.PI / 2;
   const r = RING.radius + 0.4;
@@ -683,6 +702,39 @@ function disposeSystem() {
 // =========================================================================
 // 3) 进入 / 退出动画
 // =========================================================================
+// 鼠标到最近板块标签的距离驱动的 hover 强度（在 tick 里平滑跟随）
+let targetHoverSection = -1;
+let targetHoverStrength = 0;
+const _hoverRay = new THREE.Raycaster();
+const _hoverNDC = new THREE.Vector2();
+const _galacticPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const _hoverHit = new THREE.Vector3();
+const RING_INNER = (RING.radius - RING.thickness) * 0.5;
+addEventListener('mousemove', (e) => {
+  if (mode !== 'galaxy') { targetHoverStrength = 0; return; }
+
+  // 死区：光标落在星系平面上、世界半径小于内径时不触发高亮
+  _hoverNDC.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  _hoverRay.setFromCamera(_hoverNDC, camera);
+  if (_hoverRay.ray.intersectPlane(_galacticPlane, _hoverHit)) {
+    const worldR = Math.hypot(_hoverHit.x, _hoverHit.z);
+    if (worldR < RING_INNER) { targetHoverStrength = 0; return; }
+  }
+
+  let nearest = -1, nearestD = Infinity;
+  sectionLabels.forEach(({ el }, i) => {
+    const r = el.getBoundingClientRect();
+    if (!r.width) return;
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const d = Math.hypot(e.clientX - cx, e.clientY - cy);
+    if (d < nearestD) { nearestD = d; nearest = i; }
+  });
+  targetHoverSection = nearest;
+  // 60px 内强度最大、420px 外回到 0
+  targetHoverStrength = Math.max(0, Math.min(1, 1 - (nearestD - 60) / 360));
+});
+document.addEventListener('mouseleave', () => { targetHoverStrength = 0; });
+
 function setGalaxyOpacity(o) {
   ring.material.uniforms.uOpacity.value = o;
   disc.material.uniforms.uOpacity.value = o;
@@ -713,6 +765,10 @@ function enterSystem(idx) {
   systemGroup.position.copy(anchor);
   systemGroup.scale.setScalar(0.001);
   systemGroup.visible = true;
+  ring.material.uniforms.uHoverSection.value = -1;
+  ring.material.uniforms.uHoverStrength.value = 0;
+  targetHoverSection = -1;
+  targetHoverStrength = 0;
 
   centerEl.classList.add('hidden');
   hudEl.classList.add('hidden');
@@ -909,6 +965,15 @@ function tick() {
 
   ring.material.uniforms.uTime.value = t;
   disc.material.uniforms.uTime.value = t;
+
+  // hover 强度在帧间平滑插值，避免跳变
+  {
+    const u = ring.material.uniforms;
+    const k = 1 - Math.exp(-dt * 7);
+    u.uHoverStrength.value += (targetHoverStrength - u.uHoverStrength.value) * k;
+    if (targetHoverStrength > 0.01) u.uHoverSection.value = targetHoverSection;
+    else if (u.uHoverStrength.value < 0.01) u.uHoverSection.value = -1;
+  }
 
   if (activeSystem) {
     activeSystem.materials[0].uniforms.uTime.value = t;
