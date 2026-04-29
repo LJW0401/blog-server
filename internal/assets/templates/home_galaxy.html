@@ -72,7 +72,7 @@
   }
 
   body.page-home-galaxy .galaxy-planet {
-    pointer-events: auto; cursor: pointer; user-select: none; text-decoration: none;
+    pointer-events: auto; cursor: default; user-select: none; text-decoration: none;
     color: #e8ecff;
     font-size: 12px; letter-spacing: 0.18em;
     padding: 5px 11px;
@@ -81,6 +81,9 @@
     -webkit-backdrop-filter: blur(8px) saturate(140%);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 999px; white-space: nowrap;
+    /* 让标签整体落在行星下方，露出星球本体（CSS2DObject center 已对齐顶边）。
+       16px 是经验值，足够躲开常见行星半径 + 留 4-6px 视觉间距。*/
+    margin-top: 16px;
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     box-shadow: 0 10px 28px -16px rgba(0,0,0,0.9);
   }
@@ -89,6 +92,22 @@
     background: linear-gradient(135deg, rgba(255,180,120,0.35), rgba(255,123,184,0.2));
     border-color: rgba(255,200,160,0.4);
   }
+  /* 双栏行星：标题左侧居中，分隔线，右侧多行详情。简介板块用。 */
+  body.page-home-galaxy .galaxy-planet.is-detail { padding: 6px 12px; display: inline-flex; align-items: center; gap: 10px; }
+  body.page-home-galaxy .galaxy-planet .planet-title {
+    font-weight: 500; letter-spacing: 0.22em;
+    color: #ffe7c8;
+  }
+  body.page-home-galaxy .galaxy-planet .planet-divider {
+    width: 1px; align-self: stretch;
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.35), rgba(255,255,255,0.05));
+  }
+  body.page-home-galaxy .galaxy-planet .planet-details {
+    display: inline-flex; flex-direction: column; gap: 2px;
+    font-size: 11px; letter-spacing: 0.08em;
+    color: rgba(232,236,255,0.85);
+  }
+  body.page-home-galaxy .galaxy-planet .planet-details span { white-space: nowrap; }
 
   body.page-home-galaxy .galaxy-back {
     position: fixed; left: 22px; top: 22px; z-index: 4;
@@ -587,16 +606,30 @@ function buildSystem(section) {
       ringMesh.rotation.y = (i*0.13);
       planet.add(ringMesh);
     }
-    const pEl = document.createElement('a');
+    // 行星标签：纯展示，不跳转。`<span>` 比 `<a>` 语义更准确，CSS 还是给
+    // pointer-events:auto 让 hover 高亮生效。
+    const pEl = document.createElement('span');
     pEl.className = 'galaxy-planet';
-    const itemUrl = (typeof item === 'object' && item.url) ? item.url : (section.url || '#');
-    const itemLabel = (typeof item === 'object') ? item.label : item;
-    pEl.href = itemUrl;
-    pEl.textContent = itemLabel;
-    if (itemUrl.startsWith('http')) { pEl.target = '_blank'; pEl.rel = 'noopener noreferrer'; }
+    if (typeof item === 'object' && item.title && Array.isArray(item.details) && item.details.length) {
+      // 双栏：标题居中 + 分隔线 + 右侧多行详情
+      pEl.classList.add('is-detail');
+      const t = document.createElement('span'); t.className = 'planet-title'; t.textContent = item.title;
+      const sep = document.createElement('span'); sep.className = 'planet-divider';
+      const d = document.createElement('span'); d.className = 'planet-details';
+      for (const line of item.details) {
+        const ln = document.createElement('span'); ln.textContent = line; d.appendChild(ln);
+      }
+      pEl.append(t, sep, d);
+    } else if (typeof item === 'object' && item.title) {
+      pEl.textContent = item.title;
+    } else {
+      pEl.textContent = (typeof item === 'object') ? item.label : item;
+    }
     const pLabel = new CSS2DObject(pEl);
-    pLabel.position.set(0, 0.18, 0);
-    pLabel.center.set(0.5, 0.5);
+    // 锚点在行星中心，center.y=0 让元素顶边对齐 3D 点；CSS 再用 margin-top
+    // 把整块标签往下挪一点，给行星本体留出可见空间。
+    pLabel.position.set(0, 0, 0);
+    pLabel.center.set(0.5, 0);
     planet.add(pLabel);
     const spin = 0.25 + (i%5)*0.08;
     planets.push({ mesh: planet, material: pMat, angle: baseAngle, speed, radius: orbitR, spin });

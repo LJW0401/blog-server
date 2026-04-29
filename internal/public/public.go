@@ -292,9 +292,14 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 }
 
 // galaxySectionItem 是一个行星标签：可点击，附带跳转 URL（外链或站内）。
+//
+// Label 是简单单行文本（开源/文档/作品集/联系等都用它）；当 Title + Details
+// 不为空时，前端会渲染成"标题居中 + 右侧多行详情"的双栏样式（简介板块用）。
 type galaxySectionItem struct {
-	Label string `json:"label"`
-	URL   string `json:"url,omitempty"`
+	Label   string   `json:"label,omitempty"`
+	Title   string   `json:"title,omitempty"`
+	Details []string `json:"details,omitempty"`
+	URL     string   `json:"url,omitempty"`
 }
 
 // galaxySection 描述星系上的一个板块（中心恒星 + 行星）。
@@ -341,7 +346,9 @@ func buildGalaxyConfig(s SiteSettings) template.JS {
 	}
 	cfg := galaxyConfig{Sections: []galaxySection{
 		{CN: "简介", EN: "Intro", Hue: 0.62, URL: "/about", Items: []galaxySectionItem{
-			{Label: "坐标"}, {Label: "现状"}, {Label: "方向"},
+			introItem("坐标", s.Location),
+			introItem("现状", s.Status),
+			introItem("方向", s.Direction),
 		}},
 		{CN: "关于我", EN: "About", Hue: 0.72, URL: "/about", Items: []galaxySectionItem{
 			{Label: "技能栈"}, {Label: "经历"}, {Label: "兴趣"},
@@ -370,6 +377,34 @@ func fallback(s, def string) string {
 		return def
 	}
 	return s
+}
+
+// introItem 把"标题 + 内容字符串"拆成 galaxy 行星的双栏数据。
+// 内容按常见分隔符（中英逗号 / 顿号 / 中英分号 / 斜杠 / 换行）切，留给前端
+// 渲染成右侧多行详情；空内容时只剩标题，提示用户去 /manage/settings 填值。
+func introItem(title, value string) galaxySectionItem {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return galaxySectionItem{Title: title}
+	}
+	parts := strings.FieldsFunc(value, func(r rune) bool {
+		switch r {
+		case ',', '，', ';', '；', '/', '、', '\n':
+			return true
+		}
+		return false
+	})
+	cleaned := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if t := strings.TrimSpace(p); t != "" {
+			cleaned = append(cleaned, t)
+		}
+	}
+	if len(cleaned) == 0 {
+		// 整段都是分隔符，回退为原值。
+		cleaned = []string{value}
+	}
+	return galaxySectionItem{Title: title, Details: cleaned}
 }
 
 // galaxyCSP 是首页 galaxy 风格专用的放宽 CSP：
