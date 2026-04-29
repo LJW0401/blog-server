@@ -301,8 +301,10 @@ scene.add(galaxyGroup);
 const RING = {
   count: 90000,
   radius: 3.8,
-  thickness: 0.7,
+  thickness: 1.2,
   height: 0.22,
+  waveCount: 3,
+  waveAmp: 0.22,
   insideColor: '#ffb37a',
   outsideColor: '#7a8cff',
 };
@@ -326,7 +328,10 @@ function buildRing() {
     const angle = Math.random() * Math.PI * 2;
     const u3 = Math.max(1e-6, Math.random()), u4 = Math.random();
     const gh = Math.sqrt(-2 * Math.log(u3)) * Math.cos(2 * Math.PI * u4);
-    const y = gh * height * 0.5 * (1 - Math.min(1, Math.abs(r - radius) / thickness));
+    const radialFalloff = 1 - Math.min(1, Math.abs(r - radius) / thickness);
+    const yNoise = gh * height * 0.5 * radialFalloff;
+    const yWave  = Math.sin(angle * RING.waveCount) * RING.waveAmp * (0.4 + 0.6 * radialFalloff);
+    const y = yNoise + yWave;
 
     positions[i3]   = Math.cos(angle) * r;
     positions[i3+1] = y;
@@ -387,25 +392,6 @@ function buildRing() {
 const ring = buildRing();
 galaxyGroup.add(ring);
 
-// 中心暖色光晕
-const glowMat = new THREE.ShaderMaterial({
-  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-  uniforms: { uOpacity: { value: 1 } },
-  vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-  fragmentShader: `
-    varying vec2 vUv;
-    uniform float uOpacity;
-    void main(){
-      vec2 p=vUv-0.5; float d=length(p);
-      float a = smoothstep(0.5, 0.0, d) * 0.55 * uOpacity;
-      vec3 col = mix(vec3(0.55,0.45,0.95), vec3(1.0,0.7,0.55), 1.0 - smoothstep(0.0,0.4,d));
-      gl_FragColor = vec4(col*a, a);
-    }`,
-});
-const centerGlow = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.2), glowMat);
-centerGlow.rotation.x = -Math.PI / 2;
-galaxyGroup.add(centerGlow);
-
 // 圆环薄盘辉光
 const discMat = new THREE.ShaderMaterial({
   uniforms: { uTime: { value: 0 }, uOpacity: { value: 1 } },
@@ -424,10 +410,22 @@ const discMat = new THREE.ShaderMaterial({
       gl_FragColor = vec4(col * a * 1.4, a);
     }`,
 });
-const disc = new THREE.Mesh(
-  new THREE.RingGeometry(RING.radius - RING.thickness, RING.radius + RING.thickness, 128),
-  discMat
-);
+const discGeo = new THREE.RingGeometry(RING.radius - RING.thickness, RING.radius + RING.thickness, 256, 6);
+{
+  const dpos = discGeo.attributes.position;
+  for (let i = 0; i < dpos.count; i++) {
+    const x = dpos.getX(i), y = dpos.getY(i);
+    const ang = Math.atan2(y, x);
+    const r = Math.sqrt(x*x + y*y);
+    const radialFalloff = 1 - Math.min(1, Math.abs(r - RING.radius) / RING.thickness);
+    const w = Math.sin(ang * RING.waveCount) * RING.waveAmp * (0.4 + 0.6 * radialFalloff);
+    // 几何体在 XY 平面，rotation.x = -π/2 时 z_local 映射到 -y_world，故取负号
+    dpos.setZ(i, -w);
+  }
+  dpos.needsUpdate = true;
+  discGeo.computeVertexNormals();
+}
+const disc = new THREE.Mesh(discGeo, discMat);
 disc.rotation.x = -Math.PI / 2;
 galaxyGroup.add(disc);
 
@@ -450,6 +448,9 @@ SECTIONS.forEach((s, i) => {
   const r = RING.radius + 0.4;
   const x = Math.cos(angle) * r;
   const z = Math.sin(angle) * r;
+  // 让锚点 / 标签骑在星环波浪上，公式与粒子环 / disc 保持一致
+  const radialFalloff = 1 - Math.min(1, Math.abs(r - RING.radius) / RING.thickness);
+  const yWave = Math.sin(angle * RING.waveCount) * RING.waveAmp * (0.4 + 0.6 * radialFalloff);
 
   const el = document.createElement('a');
   el.className = 'label';
@@ -459,14 +460,14 @@ SECTIONS.forEach((s, i) => {
   el.addEventListener('click', (e) => { e.preventDefault(); enterSystem(i); });
 
   const obj = new CSS2DObject(el);
-  obj.position.set(x, 0.05, z);
+  obj.position.set(x, yWave + 0.05, z);
   obj.center.set(0.5, 0.5);
   galaxyGroup.add(obj);
   sectionLabels.push({ obj, el });
 
   const anchorMat = new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(s.hue, 0.7, 0.7), transparent: true, opacity: 0.9 });
   const anchor = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), anchorMat);
-  anchor.position.set(x, 0, z);
+  anchor.position.set(x, yWave, z);
   galaxyGroup.add(anchor);
   anchorMats.push(anchorMat);
 });
@@ -685,7 +686,6 @@ function disposeSystem() {
 function setGalaxyOpacity(o) {
   ring.material.uniforms.uOpacity.value = o;
   disc.material.uniforms.uOpacity.value = o;
-  glowMat.uniforms.uOpacity.value = o;
   for (const m of anchorMats) m.opacity = 0.9 * o;
 }
 
