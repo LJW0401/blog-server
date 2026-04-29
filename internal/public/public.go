@@ -267,13 +267,14 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	settings := h.Settings()
+	about := h.about()
 	data := map[string]any{
 		"Settings":         settings,
 		"FeaturedDocs":     pickFeatured(docs, 4),
 		"FeaturedProjects": pickFeatured(projs, 3),
 		// Recently Active is a derived view merging content + github cache.
 		"RecentRepos":        h.RecentlyActiveProjects(r.Context(), 3),
-		"About":              h.about(),
+		"About":              about,
 		"FeaturedPortfolios": homeCards,
 	}
 	tpl := "home.html"
@@ -283,7 +284,7 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 		// 默认 CSP `script-src 'self'` 会拦掉这些；这里只针对此路由放宽，
 		// 管理员关掉 galaxy 模式后下一次访问立即恢复严格 CSP。
 		w.Header().Set("Content-Security-Policy", galaxyCSP)
-		data["GalaxyConfigJSON"] = buildGalaxyConfig(settings, h.about(),
+		data["GalaxyConfigJSON"] = buildGalaxyConfig(settings, about,
 			pickFeatured(projs, 6), pickFeatured(docs, 6), homePortfolios)
 	}
 	if err := h.Tpl.Render(w, r, http.StatusOK, tpl, data); err != nil {
@@ -374,13 +375,6 @@ func buildGalaxyConfig(s SiteSettings, a AboutData, openProjects, featuredDocs, 
 		return template.JS(`{"sections":[]}`)
 	}
 	return template.JS(b)
-}
-
-func fallback(s, def string) string {
-	if s == "" {
-		return def
-	}
-	return s
 }
 
 // firstNonEmpty 返回第一个 trim 后非空的字符串；都空时返回空串。
