@@ -16,7 +16,9 @@
   .center {
     position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
     z-index: 3; pointer-events: none; text-align: center;
+    transition: opacity 0.5s ease;
   }
+  .center.hidden { opacity: 0; }
   .center .name {
     font-size: clamp(56px, 9vw, 132px);
     font-weight: 200; letter-spacing: 0.04em;
@@ -31,17 +33,13 @@
     color: rgba(207, 211, 226, 0.55);
   }
 
-  /* 圆环上的板块标签（CSS2DRenderer 渲染） */
-  /* CSS2DRenderer 会每帧改写 .label 的 transform 来定位，
-     所以缩放只能放在内层 .label-inner 上，不要碰 .label 的 transform */
+  /* 圆环上的板块标签 */
   .label {
     pointer-events: auto; cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
+    text-decoration: none; display: inline-block;
   }
   .label-inner {
-    display: inline-block;
-    user-select: none;
+    display: inline-block; user-select: none;
     color: #e8ecff;
     font-size: 13px; letter-spacing: 0.32em; text-transform: uppercase;
     padding: 8px 14px;
@@ -49,16 +47,13 @@
     backdrop-filter: blur(10px) saturate(140%);
     -webkit-backdrop-filter: blur(10px) saturate(140%);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 999px;
-    white-space: nowrap;
+    border-radius: 999px; white-space: nowrap;
     transform-origin: center center;
     transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
     box-shadow: 0 14px 40px -22px rgba(0, 0, 0, 0.9);
   }
   .label .cn { font-weight: 500; }
-  .label .en {
-    margin-left: 8px; font-size: 10px; opacity: 0.55; letter-spacing: 0.28em;
-  }
+  .label .en { margin-left: 8px; font-size: 10px; opacity: 0.55; letter-spacing: 0.28em; }
   .label:hover .label-inner {
     transform: scale(1.08);
     background: linear-gradient(135deg, rgba(138,123,255,0.35), rgba(255,123,184,0.22));
@@ -66,23 +61,136 @@
     box-shadow: 0 18px 50px -18px rgba(138,123,255,0.55);
   }
 
+  /* 子星系：主序星名字 */
+  .star-name {
+    pointer-events: none; user-select: none;
+    text-align: center; white-space: nowrap;
+    transform: translateY(-2px);
+  }
+  .star-name .cn {
+    display: block;
+    font-size: clamp(36px, 5.6vw, 76px);
+    font-weight: 200; letter-spacing: 0.06em;
+    background: linear-gradient(180deg, #ffffff 0%, #ffd9b0 55%, #ff8a4a 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 0 50px rgba(255, 160, 90, 0.55);
+    line-height: 1;
+  }
+  .star-name .en {
+    margin-top: 8px;
+    font-size: 11px; letter-spacing: 0.4em; text-transform: uppercase;
+    color: rgba(255, 220, 200, 0.6);
+  }
+
+  /* 子星系：行星标签 */
+  .planet {
+    pointer-events: auto; cursor: pointer;
+    user-select: none; text-decoration: none;
+    color: #e8ecff;
+    font-size: 12px; letter-spacing: 0.18em;
+    padding: 5px 11px;
+    background: rgba(12, 14, 26, 0.55);
+    backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px; white-space: nowrap;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    box-shadow: 0 10px 28px -16px rgba(0,0,0,0.9);
+  }
+  .planet:hover {
+    color: #fff;
+    background: linear-gradient(135deg, rgba(255,180,120,0.35), rgba(255,123,184,0.2));
+    border-color: rgba(255,200,160,0.4);
+  }
+
+  /* 返回按钮 */
+  .back {
+    position: fixed; left: 22px; top: 22px; z-index: 4;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 14px 9px 12px;
+    background: rgba(12, 14, 26, 0.55);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    color: #e8ecff; font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase;
+    cursor: pointer; opacity: 0; pointer-events: none;
+    transition: opacity 0.4s ease, background 0.2s ease, transform 0.2s ease;
+  }
+  .back.show { opacity: 1; pointer-events: auto; }
+  .back:hover { background: rgba(30, 34, 56, 0.7); transform: translateY(-1px); }
+  .back svg { width: 14px; height: 14px; }
+
+  /* 子星系左右切换 */
+  .nav {
+    position: fixed; top: 50%; transform: translateY(-50%);
+    z-index: 4; width: 46px; height: 46px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(12, 14, 26, 0.55);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e8ecff; cursor: pointer;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.4s ease, background 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 14px 36px -22px rgba(0,0,0,0.9);
+  }
+  .nav.show { opacity: 1; pointer-events: auto; }
+  .nav:hover { background: rgba(30, 34, 56, 0.75); }
+  .nav.prev { left: 22px; }
+  .nav.next { right: 22px; }
+  .nav.prev:hover { transform: translateY(-50%) translateX(-2px); }
+  .nav.next:hover { transform: translateY(-50%) translateX(2px); }
+  .nav svg { width: 18px; height: 18px; }
+  .nav-label {
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    margin-top: 8px; font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase;
+    color: rgba(207,211,226,0.55); white-space: nowrap; pointer-events: none;
+  }
+
   .hud {
     position: fixed; left: 22px; bottom: 20px; z-index: 2;
     font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
     color: rgba(207, 211, 226, 0.45); pointer-events: none;
+    transition: opacity 0.4s ease;
   }
+  .hud.hidden { opacity: 0; }
   .hud b { color: #e8ecff; font-weight: 600; letter-spacing: 0.28em; }
+
+  /* 黑场过渡 */
+  .fader {
+    position: fixed; inset: 0; z-index: 10; background: #05060d;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+  .fader.on { opacity: 1; pointer-events: auto; }
 </style>
 </head>
 <body>
 <div id="app"></div>
 
-<div class="center">
+<div class="center" id="center">
   <div class="name">name</div>
   <div class="tag">A Galaxy of Ideas</div>
 </div>
 
-<div class="hud"><b>GALAXY</b> · drag to orbit · scroll to zoom</div>
+<button class="back" id="back" type="button">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  Back
+</button>
+
+<button class="nav prev" id="navPrev" type="button" aria-label="上一个板块">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  <span class="nav-label" id="prevLabel"></span>
+</button>
+<button class="nav next" id="navNext" type="button" aria-label="下一个板块">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  <span class="nav-label" id="nextLabel"></span>
+</button>
+
+<div class="hud" id="hud"><b>GALAXY</b> · drag to orbit · scroll to zoom · click a section to enter</div>
+
+<div class="fader" id="fader"></div>
 
 <script type="importmap">
 {
@@ -102,13 +210,23 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 const app = document.getElementById('app');
+const centerEl = document.getElementById('center');
+const hudEl = document.getElementById('hud');
+const backEl = document.getElementById('back');
+const faderEl = document.getElementById('fader');
+const navPrevEl = document.getElementById('navPrev');
+const navNextEl = document.getElementById('navNext');
+const prevLabelEl = document.getElementById('prevLabel');
+const nextLabelEl = document.getElementById('nextLabel');
 
 // -- scene / camera / renderer --------------------------------------------
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x05060d, 0.018);
 
 const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 200);
-camera.position.set(0, 3.5, 7.5);
+const GALAXY_CAM = new THREE.Vector3(0, 3.5, 7.5);
+const SYSTEM_CAM = new THREE.Vector3(0, 1.6, 6.0);
+camera.position.copy(GALAXY_CAM);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -133,6 +251,18 @@ controls.minDistance = 4;
 controls.maxDistance = 16;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.autoRotate = false;
+
+// -- 工具：tween ----------------------------------------------------------
+function tween({ dur = 0.6, ease = (t)=> t<.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2, onUpdate, onDone }) {
+  const t0 = performance.now();
+  function loop() {
+    const t = Math.min(1, (performance.now() - t0) / (dur * 1000));
+    onUpdate(ease(t), t);
+    if (t < 1) requestAnimationFrame(loop);
+    else onDone && onDone();
+  }
+  loop();
+}
 
 // -- background starfield --------------------------------------------------
 function makeStarfield(n = 4500, r = 80) {
@@ -162,12 +292,17 @@ function makeStarfield(n = 4500, r = 80) {
 }
 scene.add(makeStarfield());
 
-// -- ring galaxy -----------------------------------------------------------
+// =========================================================================
+// 1) 总览：环形星系
+// =========================================================================
+const galaxyGroup = new THREE.Group();
+scene.add(galaxyGroup);
+
 const RING = {
   count: 90000,
-  radius: 3.8,       // 圆环主半径
-  thickness: 0.7,    // 圆环径向厚度（高斯）
-  height: 0.22,      // 圆环垂直厚度
+  radius: 3.8,
+  thickness: 0.7,
+  height: 0.22,
   insideColor: '#ffb37a',
   outsideColor: '#7a8cff',
 };
@@ -183,33 +318,23 @@ function buildRing() {
   const cOut = new THREE.Color(RING.outsideColor);
   const cMid = new THREE.Color('#c89bff');
 
-  // 生成在主半径附近高斯分布的环，并叠加几条细丝状起伏
   for (let i = 0; i < count; i++) {
     const i3 = i * 3;
-
-    // gaussian-like radial offset (Box–Muller)
     const u1 = Math.max(1e-6, Math.random()), u2 = Math.random();
     const gauss = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
     const r = radius + gauss * thickness * 0.5;
-
     const angle = Math.random() * Math.PI * 2;
-
-    // 垂直方向同样 gaussian，越靠环中心越薄
     const u3 = Math.max(1e-6, Math.random()), u4 = Math.random();
     const gh = Math.sqrt(-2 * Math.log(u3)) * Math.cos(2 * Math.PI * u4);
-    const y = gh * height * 0.5 * (1 - Math.min(1, Math.abs(r - radius) / (thickness)));
+    const y = gh * height * 0.5 * (1 - Math.min(1, Math.abs(r - radius) / thickness));
 
     positions[i3]   = Math.cos(angle) * r;
     positions[i3+1] = y;
     positions[i3+2] = Math.sin(angle) * r;
 
-    // 颜色按到环中心的距离过渡：内缘暖 → 中线紫 → 外缘冷
-    const d = (r - (radius - thickness)) / (thickness * 2); // 0..1
+    const d = (r - (radius - thickness)) / (thickness * 2);
     const t = Math.min(1, Math.max(0, d));
-    let col;
-    if (t < 0.5) col = cIn.clone().lerp(cMid, t * 2);
-    else        col = cMid.clone().lerp(cOut, (t - 0.5) * 2);
-
+    const col = t < 0.5 ? cIn.clone().lerp(cMid, t * 2) : cMid.clone().lerp(cOut, (t - 0.5) * 2);
     colors[i3]   = col.r;
     colors[i3+1] = col.g;
     colors[i3+2] = col.b;
@@ -229,25 +354,19 @@ function buildRing() {
       uTime: { value: 0 },
       uSize: { value: 0.022 * renderer.getPixelRatio() * 800 },
     },
-    vertexShader: /* glsl */`
-      uniform float uTime;
-      uniform float uSize;
-      attribute float aScale;
-      attribute float aSeed;
-      varying vec3 vColor;
-      varying float vTwinkle;
+    vertexShader: `
+      uniform float uTime; uniform float uSize;
+      attribute float aScale; attribute float aSeed;
+      varying vec3 vColor; varying float vTwinkle;
       void main() {
-        vec3 p = position;
-        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
         gl_Position = projectionMatrix * mv;
         gl_PointSize = uSize * aScale / -mv.z;
         vColor = color;
         vTwinkle = 0.6 + 0.4 * sin(uTime * 1.4 + aSeed);
-      }
-    `,
-    fragmentShader: /* glsl */`
-      varying vec3 vColor;
-      varying float vTwinkle;
+      }`,
+    fragmentShader: `
+      varying vec3 vColor; varying float vTwinkle;
       void main() {
         vec2 uv = gl_PointCoord - 0.5;
         float d = length(uv);
@@ -255,10 +374,8 @@ function buildRing() {
         float halo = exp(-d * 4.0) * 0.35;
         float alpha = (core + halo) * vTwinkle;
         if (alpha < 0.01) discard;
-        vec3 col = vColor * (1.2 + core * 0.8);
-        gl_FragColor = vec4(col, alpha);
-      }
-    `,
+        gl_FragColor = vec4(vColor * (1.2 + core * 0.8), alpha);
+      }`,
     transparent: true, depthWrite: false,
     blending: THREE.AdditiveBlending, vertexColors: true,
   });
@@ -266,34 +383,30 @@ function buildRing() {
   return new THREE.Points(geo, mat);
 }
 const ring = buildRing();
-scene.add(ring);
+galaxyGroup.add(ring);
 
-// -- 中心暖色光晕（让 name 区域更聚焦）-------------------------------------
-const glowGeo = new THREE.PlaneGeometry(4.2, 4.2);
+// 中心暖色光晕
 const glowMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);} `,
+  vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
   fragmentShader: `
     varying vec2 vUv;
     void main(){
-      vec2 p = vUv - 0.5;
-      float d = length(p);
+      vec2 p=vUv-0.5; float d=length(p);
       float a = smoothstep(0.5, 0.0, d) * 0.55;
       vec3 col = mix(vec3(0.55,0.45,0.95), vec3(1.0,0.7,0.55), 1.0 - smoothstep(0.0,0.4,d));
-      gl_FragColor = vec4(col * a, a);
-    }
-  `,
+      gl_FragColor = vec4(col*a, a);
+    }`,
 });
-const centerGlow = new THREE.Mesh(glowGeo, glowMat);
+const centerGlow = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.2), glowMat);
 centerGlow.rotation.x = -Math.PI / 2;
-scene.add(centerGlow);
+galaxyGroup.add(centerGlow);
 
-// -- 圆环上方薄薄的盘状辉光 ------------------------------------------------
-const discGeo = new THREE.RingGeometry(RING.radius - RING.thickness, RING.radius + RING.thickness, 128);
+// 圆环薄盘辉光
 const discMat = new THREE.ShaderMaterial({
   uniforms: { uTime: { value: 0 } },
   transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-  vertexShader: `varying vec2 vUv; varying vec3 vPos; void main(){ vUv = uv; vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);} `,
+  vertexShader: `varying vec3 vPos; void main(){ vPos=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
   fragmentShader: `
     varying vec3 vPos; uniform float uTime;
     void main(){
@@ -301,55 +414,411 @@ const discMat = new THREE.ShaderMaterial({
       float ang = atan(vPos.z, vPos.x);
       float band = exp(-pow((r - ${RING.radius.toFixed(2)})/0.9, 2.0));
       float swirl = 0.5 + 0.5 * sin(ang * 6.0 + uTime * 0.3);
-      vec3 col = mix(vec3(1.0,0.6,0.4), vec3(0.55,0.6,1.0), smoothstep(${(RING.radius-RING.thickness).toFixed(2)}, ${(RING.radius+RING.thickness).toFixed(2)}, r));
+      vec3 col = mix(vec3(1.0,0.6,0.4), vec3(0.55,0.6,1.0),
+        smoothstep(${(RING.radius-RING.thickness).toFixed(2)}, ${(RING.radius+RING.thickness).toFixed(2)}, r));
       float a = band * (0.18 + swirl * 0.08);
       gl_FragColor = vec4(col * a * 1.4, a);
-    }
-  `,
+    }`,
 });
-const disc = new THREE.Mesh(discGeo, discMat);
+const disc = new THREE.Mesh(
+  new THREE.RingGeometry(RING.radius - RING.thickness, RING.radius + RING.thickness, 128),
+  discMat
+);
 disc.rotation.x = -Math.PI / 2;
-scene.add(disc);
+galaxyGroup.add(disc);
 
-// -- 板块标签（圆环上均匀分布）--------------------------------------------
+// 板块定义 + 子项目（行星）
 const SECTIONS = [
-  { cn: '首页', en: 'Home',     href: '#home' },
-  { cn: '项目', en: 'Projects', href: '#projects' },
-  { cn: '文档', en: 'Docs',     href: '#docs' },
-  { cn: '博客', en: 'Blog',     href: '#blog' },
-  { cn: '笔记', en: 'Notes',    href: '#notes' },
-  { cn: '开源', en: 'Open',     href: '#open' },
-  { cn: '关于', en: 'About',    href: '#about' },
-  { cn: '联系', en: 'Contact',  href: '#contact' },
+  { cn: '首页', en: 'Home',     hue: 0.62, items: ['简介', '动态', '关注', '留言'] },
+  { cn: '项目', en: 'Projects', hue: 0.05, items: ['Penguin Blog', 'Galaxy UI', 'Doc Engine', 'Lark Bot', 'Note Sync'] },
+  { cn: '文档', en: 'Docs',     hue: 0.55, items: ['入门指南', 'API 参考', '部署手册', '常见问题', '更新日志'] },
+  { cn: '博客', en: 'Blog',     hue: 0.85, items: ['最近的写作', '工程随笔', '产品思考', '读书笔记'] },
+  { cn: '笔记', en: 'Notes',    hue: 0.42, items: ['Three.js', 'Shader', 'Rust', '系统设计', '碎片想法'] },
+  { cn: '开源', en: 'Open',     hue: 0.13, items: ['仓库列表', '贡献记录', 'Star 推荐', 'Issue 看板'] },
+  { cn: '关于', en: 'About',    hue: 0.72, items: ['履历', '技能', '兴趣', '时间线'] },
+  { cn: '联系', en: 'Contact',  hue: 0.95, items: ['邮箱', 'GitHub', 'Twitter', 'RSS'] },
 ];
 
-const labelObjects = [];
+const sectionLabels = [];
 SECTIONS.forEach((s, i) => {
-  const angle = (i / SECTIONS.length) * Math.PI * 2 - Math.PI / 2; // 从顶部开始
+  const angle = (i / SECTIONS.length) * Math.PI * 2 - Math.PI / 2;
   const r = RING.radius + 0.4;
   const x = Math.cos(angle) * r;
   const z = Math.sin(angle) * r;
 
   const el = document.createElement('a');
   el.className = 'label';
-  el.href = s.href;
+  el.href = 'javascript:void(0)';
+  el.dataset.idx = i;
   el.innerHTML = `<span class="label-inner"><span class="cn">${s.cn}</span><span class="en">${s.en}</span></span>`;
+  el.addEventListener('click', (e) => { e.preventDefault(); enterSystem(i); });
 
   const obj = new CSS2DObject(el);
   obj.position.set(x, 0.05, z);
   obj.center.set(0.5, 0.5);
-  scene.add(obj);
-  labelObjects.push(obj);
+  galaxyGroup.add(obj);
+  sectionLabels.push({ obj, el });
 
-  // 标签上方放一颗稍亮的"锚点星" —— 让圆环上有视觉对位
-  const anchorGeo = new THREE.SphereGeometry(0.12, 12, 12);
-  const anchorMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color().setHSL(0.62 + (i/SECTIONS.length)*0.18, 0.7, 0.75),
-    transparent: true, opacity: 0.85,
-  });
-  const anchor = new THREE.Mesh(anchorGeo, anchorMat);
+  const anchor = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 12, 12),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(s.hue, 0.7, 0.7), transparent: true, opacity: 0.9 })
+  );
   anchor.position.set(x, 0, z);
-  scene.add(anchor);
+  galaxyGroup.add(anchor);
+});
+
+// =========================================================================
+// 2) 子星系（点击板块后构建）
+// =========================================================================
+const systemGroup = new THREE.Group();
+systemGroup.visible = false;
+scene.add(systemGroup);
+
+let activeSystem = null; // { star, planets:[{mesh, label, angle, speed, radius, tilt}], disposers:[] }
+
+function buildSystem(section) {
+  // 主序星：发光球
+  const starGeo = new THREE.SphereGeometry(0.4, 48, 48);
+  const starMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color().setHSL(section.hue, 0.85, 0.62) } },
+    vertexShader: `varying vec3 vN; void main(){ vN=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);} `,
+    fragmentShader: `
+      varying vec3 vN; uniform vec3 uColor; uniform float uTime;
+      void main(){
+        float fres = pow(1.0 - max(0.0, vN.z), 2.0);
+        float pulse = 0.85 + 0.15 * sin(uTime * 1.4);
+        vec3 hot = mix(uColor, vec3(1.0), 0.6);
+        gl_FragColor = vec4(mix(uColor, hot, fres) * (1.2 + fres) * pulse, 1.0);
+      }`,
+  });
+  const star = new THREE.Mesh(starGeo, starMat);
+  systemGroup.add(star);
+
+  // 主序星辉光
+  const haloMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    uniforms: { uColor: { value: new THREE.Color().setHSL(section.hue, 0.85, 0.55) } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);} `,
+    fragmentShader: `
+      varying vec2 vUv; uniform vec3 uColor;
+      void main(){
+        vec2 p=vUv-0.5; float d=length(p);
+        float a = smoothstep(0.5, 0.0, d);
+        gl_FragColor = vec4(uColor * a * 1.6, a * 0.7);
+      }`,
+  });
+  const halo = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2), haloMat);
+  halo.userData.isHalo = true;
+  systemGroup.add(halo);
+
+  // 中心星名字（贴在 star 上）
+  const nameEl = document.createElement('div');
+  nameEl.className = 'star-name';
+  nameEl.innerHTML = `<span class="cn">${section.cn}</span><span class="en">${section.en}</span>`;
+  const nameObj = new CSS2DObject(nameEl);
+  nameObj.position.set(0, 0, 0);
+  systemGroup.add(nameObj);
+
+  // 行星
+  const planets = [];
+  const N = section.items.length;
+  section.items.forEach((item, i) => {
+    const orbitR = 1.6 + i * 0.55;
+    const baseAngle = (i / N) * Math.PI * 2;
+    const speed = 0.18 - i * 0.018;
+    // 基准让 orbitGroup 的局部 XY 平面贴在黄道（场景 XZ 平面）上，
+    // 再叠正负随机倾角 / 进动，让各行星轨道有明显的高低起伏
+    const signX = (i % 2 === 0 ? 1 : -1);
+    const signZ = ((i + 1) % 2 === 0 ? 1 : -1);
+    const tiltX = signX * (0.12 + (i % 3) * 0.06);
+    const tiltZ = signZ * (0.08 + ((i * 47) % 5) * 0.025);
+    const yaw   = (i / N) * Math.PI * 2 * 0.2;
+
+    const orbitGroup = new THREE.Group();
+    orbitGroup.rotation.set(-Math.PI / 2 + tiltX, yaw, tiltZ);
+    systemGroup.add(orbitGroup);
+
+    // 轨道线（默认在 XY 平面，正好就是轨道平面）
+    const ringG = new THREE.RingGeometry(orbitR - 0.005, orbitR + 0.005, 96);
+    const ringM = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false,
+    });
+    orbitGroup.add(new THREE.Mesh(ringG, ringM));
+
+    // 行星本体：自带光照 / 噪声纹理 / 大气边缘辉光的 ShaderMaterial
+    const baseHue = (section.hue + i * 0.07) % 1;
+    const colA = new THREE.Color().setHSL(baseHue, 0.55, 0.55);
+    const colB = new THREE.Color().setHSL((baseHue + 0.08) % 1, 0.7, 0.78);
+    const pMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uColorA: { value: colA },
+        uColorB: { value: colB },
+        uSeed:   { value: i * 13.37 + 0.7 },
+      },
+      vertexShader: `
+        varying vec3 vNormalW;
+        varying vec3 vWorldPos;
+        varying vec3 vLocalPos;
+        void main(){
+          vec4 wp = modelMatrix * vec4(position, 1.0);
+          vWorldPos = wp.xyz;
+          vNormalW  = normalize(mat3(modelMatrix) * normal);
+          vLocalPos = position;
+          gl_Position = projectionMatrix * viewMatrix * wp;
+        }`,
+      fragmentShader: `
+        uniform vec3 uColorA; uniform vec3 uColorB; uniform float uSeed;
+        varying vec3 vNormalW; varying vec3 vWorldPos; varying vec3 vLocalPos;
+        float hash(vec3 p){ return fract(sin(dot(p, vec3(17.1,113.5,71.7))) * 43758.5453); }
+        float vnoise(vec3 p){
+          vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+          return mix(
+            mix(mix(hash(i+vec3(0,0,0)),hash(i+vec3(1,0,0)),f.x),
+                mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
+            mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),
+                mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y), f.z);
+        }
+        float fbm(vec3 p){ float v=0.0,a=0.5; for(int k=0;k<4;k++){ v+=a*vnoise(p); p*=2.03; a*=0.5; } return v; }
+        void main(){
+          vec3 N = normalize(vNormalW);
+          vec3 L = normalize(-vWorldPos);                 // 中心恒星在系统原点
+          vec3 V = normalize(cameraPosition - vWorldPos);
+          float n = fbm(vLocalPos * 4.0 + uSeed);
+          float band = 0.5 + 0.5 * sin(vLocalPos.y * 9.0 + n * 3.0 + uSeed);
+          vec3 surf = mix(uColorA, uColorB, smoothstep(0.32, 0.72, mix(n, band, 0.35)));
+          float diff = max(dot(N, L), 0.0);
+          float ambient = 0.22;
+          float spec = pow(max(dot(reflect(-L, N), V), 0.0), 28.0) * 0.35;
+          float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);
+          vec3 atmo = mix(uColorB, vec3(1.0), 0.35) * fres * 0.7;
+          vec3 color = surf * (ambient + diff * 1.05) + spec + atmo;
+          gl_FragColor = vec4(color, 1.0);
+        }`,
+    });
+    const pSize = 0.09 + (i % 4) * 0.022;
+    const planet = new THREE.Mesh(new THREE.SphereGeometry(pSize, 36, 36), pMat);
+    // 自转轴随机倾斜 + 公转（rotation.order=ZYX 让倾角先施加，再绕本地 Y 自转）
+    planet.rotation.order = 'ZYX';
+    planet.rotation.z = ((i * 0.37) % 1.0) * 0.6 - 0.3;
+    orbitGroup.add(planet);
+
+    // 给约 1/3 的行星加一个土星式光环
+    if (i % 3 === 1) {
+      const rInner = pSize * 1.6;
+      const rOuter = pSize * 2.6;
+      const ringGeo = new THREE.RingGeometry(rInner, rOuter, 80);
+      // 给 ring 几何体重做 uv，让 fragment 知道径向位置
+      const uv = ringGeo.attributes.uv;
+      const pos = ringGeo.attributes.position;
+      for (let k = 0; k < pos.count; k++) {
+        const x = pos.getX(k), y = pos.getY(k);
+        const rr = Math.sqrt(x*x + y*y);
+        const t = (rr - rInner) / (rOuter - rInner);
+        uv.setXY(k, t, 0.5);
+      }
+      uv.needsUpdate = true;
+      const ringMat = new THREE.ShaderMaterial({
+        transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        uniforms: { uColor: { value: colB.clone() } },
+        vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);} `,
+        fragmentShader: `
+          varying vec2 vUv; uniform vec3 uColor;
+          float h(float x){ return fract(sin(x*73.13)*43758.5); }
+          void main(){
+            float t = vUv.x;
+            float bands = 0.6 + 0.4 * sin(t * 38.0) * sin(t * 11.0 + 1.3);
+            float gap = smoothstep(0.0,0.04,t) * smoothstep(1.0,0.96,t);
+            float alpha = bands * gap * 0.55;
+            gl_FragColor = vec4(uColor * (0.8 + bands*0.4), alpha);
+          }`,
+      });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      // 光环平面相对行星赤道做点倾斜
+      ringMesh.rotation.x = Math.PI / 2 + (i * 0.21);
+      ringMesh.rotation.y = (i * 0.13);
+      planet.add(ringMesh);
+    }
+
+    // 行星标签
+    const pEl = document.createElement('a');
+    pEl.className = 'planet';
+    pEl.href = 'javascript:void(0)';
+    pEl.textContent = item;
+    const pLabel = new CSS2DObject(pEl);
+    pLabel.position.set(0, 0.18, 0);
+    pLabel.center.set(0.5, 0.5);
+    planet.add(pLabel);
+
+    const spin = 0.25 + (i % 5) * 0.08;
+    planets.push({ mesh: planet, angle: baseAngle, speed, radius: orbitR, spin });
+  });
+
+  activeSystem = { star, halo, nameObj, planets, materials: [starMat, haloMat] };
+}
+
+function disposeSystem() {
+  if (!activeSystem) return;
+  // 移除所有 children 并 dispose 几何/材质
+  while (systemGroup.children.length) {
+    const c = systemGroup.children[0];
+    systemGroup.remove(c);
+    c.traverse?.((o) => {
+      o.geometry?.dispose?.();
+      if (o.material) {
+        Array.isArray(o.material) ? o.material.forEach(m => m.dispose()) : o.material.dispose();
+      }
+      if (o instanceof CSS2DObject && o.element?.parentNode) o.element.parentNode.removeChild(o.element);
+    });
+    if (c instanceof CSS2DObject && c.element?.parentNode) c.element.parentNode.removeChild(c.element);
+  }
+  activeSystem = null;
+}
+
+// =========================================================================
+// 3) 进入 / 退出动画
+// =========================================================================
+let mode = 'galaxy'; // 'galaxy' | 'system'
+let transitioning = false;
+let currentIdx = -1;
+
+function updateNavLabels() {
+  const N = SECTIONS.length;
+  const prev = SECTIONS[(currentIdx - 1 + N) % N];
+  const next = SECTIONS[(currentIdx + 1) % N];
+  prevLabelEl.textContent = prev.cn;
+  nextLabelEl.textContent = next.cn;
+}
+
+function enterSystem(idx) {
+  if (transitioning || mode !== 'galaxy') return;
+  transitioning = true;
+  controls.enabled = false;
+
+  const section = SECTIONS[idx];
+  const targetWorld = sectionLabels[idx].obj.position.clone(); // 标签位置
+  const camStart = camera.position.clone();
+  const targetStart = controls.target.clone();
+  // 摄像机往标签位置冲刺并放大
+  const camMid = camStart.clone().lerp(targetWorld, 0.85);
+
+  // 同时淡黑
+  faderEl.classList.add('on');
+  centerEl.classList.add('hidden');
+  hudEl.classList.add('hidden');
+
+  tween({
+    dur: 0.55,
+    onUpdate: (t) => {
+      camera.position.lerpVectors(camStart, camMid, t);
+      controls.target.lerpVectors(targetStart, targetWorld, t);
+    },
+    onDone: () => {
+      // 切换场景
+      galaxyGroup.visible = false;
+      systemGroup.visible = true;
+      buildSystem(section);
+      mode = 'system';
+
+      // 摄像机重置到子星系视角
+      camera.position.copy(SYSTEM_CAM);
+      controls.target.set(0, 0, 0);
+
+      // 重置 controls 限制（子星系下允许更近 / 更远视角）
+      controls.minDistance = 3;
+      controls.maxDistance = 18;
+
+      currentIdx = idx;
+      updateNavLabels();
+      // 板块按钮在子星系内彻底从场景图移除，并把 DOM 也藏掉
+      sectionLabels.forEach(({ obj, el }) => {
+        if (obj.parent) obj.parent.remove(obj);
+        el.style.display = 'none';
+        if (el.parentNode) el.parentNode.removeChild(el);
+      });
+
+      // 揭幕
+      requestAnimationFrame(() => {
+        faderEl.classList.remove('on');
+        backEl.classList.add('show');
+        navPrevEl.classList.add('show');
+        navNextEl.classList.add('show');
+      });
+      setTimeout(() => {
+        controls.enabled = true;
+        transitioning = false;
+      }, 380);
+    },
+  });
+}
+
+function switchSystem(delta) {
+  if (transitioning || mode !== 'system') return;
+  const N = SECTIONS.length;
+  const next = (currentIdx + delta + N) % N;
+  transitioning = true;
+  controls.enabled = false;
+  faderEl.classList.add('on');
+
+  setTimeout(() => {
+    disposeSystem();
+    buildSystem(SECTIONS[next]);
+    currentIdx = next;
+    updateNavLabels();
+    // 重置摄像机回到子星系基准
+    camera.position.copy(SYSTEM_CAM);
+    controls.target.set(0, 0, 0);
+    requestAnimationFrame(() => faderEl.classList.remove('on'));
+    setTimeout(() => {
+      controls.enabled = true;
+      transitioning = false;
+    }, 380);
+  }, 320);
+}
+
+function exitSystem() {
+  if (transitioning || mode !== 'system') return;
+  transitioning = true;
+  controls.enabled = false;
+  backEl.classList.remove('show');
+  navPrevEl.classList.remove('show');
+  navNextEl.classList.remove('show');
+  faderEl.classList.add('on');
+
+  setTimeout(() => {
+    disposeSystem();
+    systemGroup.visible = false;
+    galaxyGroup.visible = true;
+    sectionLabels.forEach(({ obj, el }) => {
+      el.style.display = '';
+      if (!obj.parent) galaxyGroup.add(obj);
+    });
+    currentIdx = -1;
+    mode = 'galaxy';
+
+    camera.position.copy(GALAXY_CAM);
+    controls.target.set(0, 0, 0);
+    controls.minDistance = 4;
+    controls.maxDistance = 16;
+
+    requestAnimationFrame(() => {
+      faderEl.classList.remove('on');
+      centerEl.classList.remove('hidden');
+      hudEl.classList.remove('hidden');
+    });
+    setTimeout(() => {
+      controls.enabled = true;
+      transitioning = false;
+    }, 380);
+  }, 360);
+}
+
+backEl.addEventListener('click', exitSystem);
+navPrevEl.addEventListener('click', () => switchSystem(-1));
+navNextEl.addEventListener('click', () => switchSystem(1));
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') exitSystem();
+  else if (e.key === 'ArrowLeft')  switchSystem(-1);
+  else if (e.key === 'ArrowRight') switchSystem(1);
 });
 
 // -- post processing -------------------------------------------------------
@@ -369,10 +838,26 @@ addEventListener('resize', () => {
 
 // -- loop ------------------------------------------------------------------
 const clock = new THREE.Clock();
+let last = 0;
 function tick() {
   const t = clock.getElapsedTime();
+  const dt = t - last; last = t;
+
   ring.material.uniforms.uTime.value = t;
   disc.material.uniforms.uTime.value = t;
+
+  if (activeSystem) {
+    activeSystem.materials[0].uniforms.uTime.value = t;
+    // 行星公转：在自己 orbitGroup 的 XY 局部平面内做圆周运动
+    for (const p of activeSystem.planets) {
+      p.angle += dt * p.speed;
+      p.mesh.position.set(Math.cos(p.angle) * p.radius, Math.sin(p.angle) * p.radius, 0);
+      p.mesh.rotation.y += dt * p.spin;
+    }
+    // halo 始终面向相机
+    activeSystem.halo.lookAt(camera.position);
+  }
+
   controls.update();
   composer.render();
   labelRenderer.render(scene, camera);
