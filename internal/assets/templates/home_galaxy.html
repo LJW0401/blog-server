@@ -238,12 +238,6 @@
   body.page-home-galaxy .galaxy-hud.hidden { opacity: 0; }
   body.page-home-galaxy .galaxy-hud b { color: #e8ecff; font-weight: 600; letter-spacing: 0.28em; }
 
-  body.page-home-galaxy .galaxy-admin-tip {
-    position: fixed; right: 22px; bottom: 20px; z-index: 2;
-    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
-    color: rgba(207, 211, 226, 0.4); pointer-events: auto; text-decoration: none;
-  }
-  body.page-home-galaxy .galaxy-admin-tip:hover { color: rgba(207, 211, 226, 0.85); }
 </style>
 {{ end }}
 
@@ -271,7 +265,6 @@
 </button>
 
 <div class="galaxy-hud" id="galaxy-hud"><b>GALAXY</b> · drag to orbit · scroll to zoom · click a section to enter</div>
-<a class="galaxy-admin-tip" href="/manage/settings">/manage/settings</a>
 
 <script id="galaxy-config" type="application/json">{{ .GalaxyConfigJSON }}</script>
 
