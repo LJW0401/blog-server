@@ -1071,3 +1071,23 @@
   - #4 新理解：已归到架构洞察 (3)
   - #5 范围外重构：是，已在建议处理方式中列出
   - #6 测试/文档缺口：是，CSP 放宽这种安全相关的姿态变化没有进 architecture.md / README，新搭起来的运维不会立即意识到 home_style=galaxy 会自动触发一组放宽的响应头
+
+
+## 2026-05-06
+
+### 快速功能：主页 featured 开关（取消数量上限 + admin 切换）
+- **类型**：架构洞察 + 测试缺口
+- **描述**：把首页"开源项目 / 文档"的展示策略从 `pickFeatured(limit)` 的"前 N 条 featured 优先 + 非 featured 填充"改为"只展示 featured，不限数量"。两条值得记录：
+  1. 旧 `pickFeatured` 的"非 featured 填充"是隐式默认值，多份测试用例（`TestHome_Smoke_FeaturedDocExcerptRendered` 等）写 fixture 时都没显式标 `featured: true`，依赖填充行为才把它们带上首页。这种"测试通过=语义正确"的耦合是回归坑——下次引入类似"显式开关"语义时，需要先 grep `featured: true` 在测试 fixture 里的覆盖率，不能默认旧 fixtures 仍合规
+  2. 三个 entry kind（doc / project / portfolio）的 frontmatter 形状几乎一致，但"是否 featured 决定主页展示"以前只在 portfolio 一处实现。Project 和 doc 现在补齐后，三者的"主页展示开关"语义统一到 `featured` 字段。这暴露了 `setFrontmatterField` 是真正的可复用原子，但 ToggleFeatured 端点本身几乎是模板化的（鉴权 / CSRF / extractSlug / Reload）——目前在 `featured.go` 里通过 `toggleFeaturedFile` 抽了底盘，但 handler 外壳仍重复
+- **建议处理方式**：
+  1. 在 `architecture.md` 加一条 "主页展示开关 = entry.Featured"，明确三类 entry 共享该语义；同时记入 docs/projects 的 frontmatter 字段表
+  2. 如果将来再加第四种 kind（如"摄影"）需要重复 ToggleFeatured 外壳，再考虑提一个 `featuredToggleHandler(kind, getEntry, listURL)` 工厂；目前两份代码可读性比抽象更重要
+- **紧急程度**：低
+
+- 2026-05-06 快速功能 home-featured-toggle 反思清单其余项：
+  - #1 临时方案：无
+  - #2 能跑但不够好：无（toggle 表单只是隐藏输入 + 按钮，没有 ajax 也未做乐观 UI；与 portfolio 现有形态一致，足够）
+  - #3 上游问题：无
+  - #5 范围外重构：无
+  - #6 测试/文档缺口：见 (1) 文档缺口

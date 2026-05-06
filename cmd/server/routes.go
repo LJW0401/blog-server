@@ -62,6 +62,8 @@ func buildAdminMux(
 			docs.SaveDoc(w, r)
 		case strings.HasSuffix(r.URL.Path, "/delete") && r.Method == http.MethodPost:
 			docs.DeleteDoc(w, r)
+		case strings.HasSuffix(r.URL.Path, "/featured") && r.Method == http.MethodPost:
+			docs.ToggleFeatured(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -116,6 +118,8 @@ func buildAdminMux(
 			projects.SaveProject(w, r)
 		case strings.HasSuffix(r.URL.Path, "/delete") && r.Method == http.MethodPost:
 			projects.ReposDelete(w, r)
+		case strings.HasSuffix(r.URL.Path, "/featured") && r.Method == http.MethodPost:
+			projects.ToggleFeatured(w, r)
 		default:
 			http.NotFound(w, r)
 		}
