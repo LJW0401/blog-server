@@ -38,7 +38,7 @@
           <td><code>{{ .Slug }}</code></td>
           <td>{{ .Category }}</td>
           <td>
-            <form method="POST" action="/manage/docs/{{ .Slug }}/featured" style="display:inline;">
+            <form method="POST" action="/manage/docs/{{ .Slug }}/featured" style="display:inline;" data-featured-toggle>
               <input type="hidden" name="csrf" value="{{ $csrf }}" />
               <input type="hidden" name="featured" value="{{ if .Featured }}false{{ else }}true{{ end }}" />
               <button type="submit" class="link-{{ if .Featured }}primary{{ else }}danger{{ end }}" title="切换首页展示">{{ if .Featured }}是{{ else }}否{{ end }}</button>
@@ -63,4 +63,5 @@
 </div>
 {{ end }}
 <script defer src="/static/js/confirm_submit.js"></script>
+<script defer src="/static/js/featured_toggle.js"></script>
 {{ end }}

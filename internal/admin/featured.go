@@ -66,6 +66,9 @@ func (d *DocHandlers) ToggleFeatured(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// 不要带 #row-<slug> anchor：列表后段的行被滚到视口顶端时浏览器会把
+	// 整页推到文档底部（"跳到底部"现象）。原地保留 scroll 由前端 JS fetch
+	// 拦截负责；这里的回退路径只保证返回管理页本身。
 	http.Redirect(w, r, "/manage/docs", http.StatusSeeOther)
 }
 

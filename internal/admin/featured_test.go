@@ -179,6 +179,40 @@ func TestProjectsToggleFeatured_Smoke_RoundTrip(t *testing.T) {
 	}
 }
 
+// 回归：toggle 端点的 Location 不应携带 `#row-<slug>` fragment。anchor 会让
+// 浏览器在原生表单回退路径下把目标行拖到视口顶端，列表末尾的行因此把页面
+// 滚到文档最大值（"跳到底部"，issue 复现）。fix 是不再带 anchor，浏览器
+// 退化路径最差也只跳到 /manage/docs 顶端。JS fetch 路径不受影响。
+func TestDocsToggleFeatured_Regression_RedirectHasNoFragment(t *testing.T) {
+	b := crudSetup(t)
+	seedDocFile(t, b.DataDir, "doca", docFeaturedFalseMD)
+	if err := b.Content.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	w := b.authedPost(t, "/manage/docs/doca/featured",
+		url.Values{"csrf": {b.CSRF}, "featured": {"true"}},
+		b.Docs.ToggleFeatured)
+	loc := w.Header().Get("Location")
+	if strings.Contains(loc, "#") {
+		t.Errorf("docs toggle redirect must not carry a fragment, got %q", loc)
+	}
+}
+
+func TestProjectsToggleFeatured_Regression_RedirectHasNoFragment(t *testing.T) {
+	b := crudSetup(t)
+	seedProjectFile(t, b.DataDir, "proja", projFeaturedFalseMD)
+	if err := b.Content.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	w := b.authedPost(t, "/manage/projects/proja/featured",
+		url.Values{"csrf": {b.CSRF}, "featured": {"true"}},
+		b.Projects.ToggleFeatured)
+	loc := w.Header().Get("Location")
+	if strings.Contains(loc, "#") {
+		t.Errorf("projects toggle redirect must not carry a fragment, got %q", loc)
+	}
+}
+
 // Exception 类别：边界 — 项目 slug 未知时 404。
 func TestProjectsToggleFeatured_Exception_UnknownSlug(t *testing.T) {
 	b := crudSetup(t)
