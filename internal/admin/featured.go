@@ -1,38 +1,69 @@
-// 文档/项目"主页展示"开关：复用 portfolio 已经验证过的
-// setFrontmatterField 写盘流程，把开关状态映射到 entry 的 featured 字段。
-// 仅做 frontmatter 改写、文件回写、内容仓重建三步；与 portfolio 的差异
-// 在于 docs/projects 没有 order 字段，主页排序沿用 content 仓自带的
-// updated 倒序。
+// 文档/项目"主页展示"开关：复用 portfolio 已经验证过的 frontmatter 改写
+// 流程，把开关状态映射到 entry 的 featured 字段。read-modify-write + reload；
+// 与 portfolio 的差异在于 docs/projects 没有 order 字段，主页排序沿用 content
+// 仓自带的 updated 倒序。
 package admin
 
 import (
+	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/penguin/blog-server/internal/auth"
 	"github.com/penguin/blog-server/internal/content"
 	"github.com/penguin/blog-server/internal/storage"
 )
 
-// toggleFeaturedFile 在指定 path 对应的 MD 文件里把 featured 改为 want；
-// 写完调 reload 让 content 仓刷新。任一步失败返回非 nil error，调用方
-// 自己回 5xx，避免在这里直接污染 ResponseWriter。
-func toggleFeaturedFile(path string, want bool, reload func() error) error {
+// toggleFeaturedFile 仅负责把 path 对应文件的 featured 字段写成 want。
+// reload 留给 handler 层，handler 知道自己用哪个 logger 报警。
+func toggleFeaturedFile(path string, want bool) error {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
-	updated, err := setFrontmatterField(string(raw), "featured", boolYAML(want))
+	updated, err := setOrAddFrontmatterField(string(raw), "featured", boolYAML(want))
 	if err != nil {
 		return err
 	}
-	if err := storage.AtomicWrite(path, []byte(updated), 0o644); err != nil {
-		return err
+	return storage.AtomicWrite(path, []byte(updated), 0o644)
+}
+
+// setOrAddFrontmatterField 改写既有 key 行；缺失时在 frontmatter 末尾追加。
+// 用于"老手写 md 可能没填 featured 字段"的兼容写入：setFrontmatterField 把
+// 缺字段当作硬错（avatar/settings 等端点期望字段必存），不能直接复用。
+func setOrAddFrontmatterField(body, key, value string) (string, error) {
+	s := body
+	if !strings.HasPrefix(strings.TrimLeft(s, " \t\r\n"), "---") {
+		return "", newFMError("frontmatter missing")
 	}
-	if reload != nil {
-		_ = reload()
+	nl := strings.Index(s, "\n")
+	if nl < 0 {
+		return "", newFMError("frontmatter not closed")
 	}
-	return nil
+	rest := s[nl+1:]
+	end := strings.Index(rest, "\n---")
+	if end < 0 {
+		return "", newFMError("frontmatter not closed")
+	}
+	fm := rest[:end]
+	tail := rest[end:]
+	lines := strings.Split(fm, "\n")
+	out := make([]string, 0, len(lines)+1)
+	found := false
+	for _, line := range lines {
+		trim := strings.TrimSpace(line)
+		if !found && strings.HasPrefix(trim, key+":") {
+			out = append(out, key+": "+value)
+			found = true
+			continue
+		}
+		out = append(out, line)
+	}
+	if !found {
+		out = append(out, key+": "+value)
+	}
+	return s[:nl+1] + strings.Join(out, "\n") + tail, nil
 }
 
 // ToggleFeatured handles POST /manage/docs/:slug/featured.
@@ -62,9 +93,12 @@ func (d *DocHandlers) ToggleFeatured(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	want := r.Form.Get("featured") == "true"
-	if err := toggleFeaturedFile(e.Path, want, d.Content.Reload); err != nil {
+	if err := toggleFeaturedFile(e.Path, want); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	if err := d.Content.Reload(); err != nil {
+		d.Parent.Logger.Warn("admin.docs.featured.reload", slog.String("err", err.Error()))
 	}
 	// 不要带 #row-<slug> anchor：列表后段的行被滚到视口顶端时浏览器会把
 	// 整页推到文档底部（"跳到底部"现象）。原地保留 scroll 由前端 JS fetch
@@ -98,9 +132,12 @@ func (ph *ProjectHandlers) ToggleFeatured(w http.ResponseWriter, r *http.Request
 		return
 	}
 	want := r.Form.Get("featured") == "true"
-	if err := toggleFeaturedFile(e.Path, want, ph.Content.Reload); err != nil {
+	if err := toggleFeaturedFile(e.Path, want); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	if err := ph.Content.Reload(); err != nil {
+		ph.Parent.Logger.Warn("admin.projects.featured.reload", slog.String("err", err.Error()))
 	}
 	http.Redirect(w, r, "/manage/repos", http.StatusSeeOther)
 }

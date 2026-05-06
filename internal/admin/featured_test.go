@@ -149,6 +149,41 @@ func TestDocsToggleFeatured_Exception_UnknownSlug(t *testing.T) {
 	}
 }
 
+// 回归：旧手写的 md 可能根本没写 featured: 字段，第一次点开关不能直接
+// 500。toggleFeaturedFile 走 setOrAddFrontmatterField 时应当在 frontmatter
+// 末尾补一行 featured: <bool> 而不是把缺字段当硬错。
+func TestDocsToggleFeatured_Regression_LegacyFrontmatterWithoutField(t *testing.T) {
+	b := crudSetup(t)
+	legacy := `---
+title: Legacy
+slug: legacy
+status: published
+created: 2026-01-01
+updated: 2026-01-01
+---
+
+正文。
+`
+	seedDocFile(t, b.DataDir, "legacy", legacy)
+	if err := b.Content.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	w := b.authedPost(t, "/manage/docs/legacy/featured",
+		url.Values{"csrf": {b.CSRF}, "featured": {"true"}},
+		b.Docs.ToggleFeatured)
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303, got %d body=%s", w.Code, w.Body.String())
+	}
+	body, _ := os.ReadFile(filepath.Join(b.DataDir, "content", "docs", "legacy.md"))
+	if !strings.Contains(string(body), "featured: true") {
+		t.Errorf("featured field not backfilled: %s", string(body))
+	}
+	e, _ := b.Content.Docs().Get(content.KindDoc, "legacy")
+	if e == nil || !e.Featured {
+		t.Errorf("doc not featured after backfill toggle: %+v", e)
+	}
+}
+
 // Smoke: 项目 featured 开关同样可以双向切换。
 func TestProjectsToggleFeatured_Smoke_RoundTrip(t *testing.T) {
 	b := crudSetup(t)
