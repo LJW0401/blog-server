@@ -43,7 +43,7 @@
     {{ if .Projects }}
     <table class="admin-table">
       <thead>
-        <tr><th>状态</th><th>展示名</th><th>repo</th><th>slug</th><th>更新</th><th>操作</th></tr>
+        <tr><th>状态</th><th>展示名</th><th>repo</th><th>slug</th><th>主页</th><th>更新</th><th>操作</th></tr>
       </thead>
       <tbody>
         {{ range .Projects }}
@@ -52,6 +52,13 @@
           <td><a href="/projects/{{ .Slug }}">{{ .DisplayName }}</a></td>
           <td><code>{{ .Repo }}</code></td>
           <td><code>{{ .Slug }}</code></td>
+          <td>
+            <form method="POST" action="/manage/projects/{{ .Slug }}/featured" style="display:inline;" data-featured-toggle>
+              <input type="hidden" name="csrf" value="{{ $csrf }}" />
+              <input type="hidden" name="featured" value="{{ if .Featured }}false{{ else }}true{{ end }}" />
+              <button type="submit" class="link-{{ if .Featured }}primary{{ else }}danger{{ end }}" title="切换首页展示">{{ if .Featured }}是{{ else }}否{{ end }}</button>
+            </form>
+          </td>
           <td>{{ formatDate .Updated "2006-01-02" }}</td>
           <td>
             <a href="/manage/projects/{{ .Slug }}/edit">编辑</a>
@@ -71,4 +78,5 @@
 </div>
 {{ end }}
 <script defer src="/static/js/confirm_submit.js"></script>
+<script defer src="/static/js/featured_toggle.js"></script>
 {{ end }}

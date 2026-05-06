@@ -9,7 +9,7 @@ import (
 // Smoke: 个人总结文档 卡片现在渲染摘要。
 func TestHome_Smoke_FeaturedDocExcerptRendered(t *testing.T) {
 	h := setup(t, map[string]string{
-		"a": "---\ntitle: A\nslug: a\nupdated: 2026-04-10\nstatus: published\nexcerpt: 一段精心写过的摘要\n---\nbody\n",
+		"a": "---\ntitle: A\nslug: a\nupdated: 2026-04-10\nstatus: published\nfeatured: true\nexcerpt: 一段精心写过的摘要\n---\nbody\n",
 	}, nil)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
@@ -28,7 +28,7 @@ func TestHome_Smoke_FeaturedDocExcerptRendered(t *testing.T) {
 // （content 包会用 body 前 120 字自动补 excerpt，所以这里必须连 body 也留空。）
 func TestHome_Edge_FeaturedDocNoExcerptNoEmptyElement(t *testing.T) {
 	h := setup(t, map[string]string{
-		"a": "---\ntitle: A\nslug: a\nupdated: 2026-04-10\nstatus: published\n---\n",
+		"a": "---\ntitle: A\nslug: a\nupdated: 2026-04-10\nstatus: published\nfeatured: true\n---\n",
 	}, nil)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)

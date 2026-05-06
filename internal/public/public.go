@@ -183,33 +183,19 @@ func (h *Handlers) resolveSettings() SiteSettings {
 
 // --- Helpers ---------------------------------------------------------------
 
-// pickFeatured returns up to `limit` entries following the Mixed rule:
-// featured=true first (sorted by updated desc), then non-featured fill. The
-// "visible" filter differs per kind — docs require status=published; projects
-// are visible for active/developing (archived hidden); other kinds pass by
-// default. Archived / draft are always excluded.
-func pickFeatured(all []*content.Entry, limit int) []*content.Entry {
-	var featured, rest []*content.Entry
+// pickFeatured returns every visible entry whose Featured flag is set —
+// 主页是否展示由管理端 featured 开关控制，不再做数量截断或非置顶填充。
+// "visible" 过滤随 kind 变化：docs 要求 status=published；projects 接受
+// active/developing（archived 隐藏）；其它 kind 默认通过。Archived / draft
+// 一律剔除。入参顺序由调用方保证（content.Store 已按 updated 倒序排）。
+func pickFeatured(all []*content.Entry) []*content.Entry {
+	out := make([]*content.Entry, 0, len(all))
 	for _, e := range all {
 		if !isFrontpageVisible(e) {
 			continue
 		}
-		if e.Featured {
-			featured = append(featured, e)
-		} else {
-			rest = append(rest, e)
-		}
-	}
-	out := make([]*content.Entry, 0, limit)
-	for _, e := range featured {
-		if len(out) == limit {
-			return out
-		}
-		out = append(out, e)
-	}
-	for _, e := range rest {
-		if len(out) == limit {
-			return out
+		if !e.Featured {
+			continue
 		}
 		out = append(out, e)
 	}
@@ -270,8 +256,8 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 	about := h.about()
 	data := map[string]any{
 		"Settings":         settings,
-		"FeaturedDocs":     pickFeatured(docs, 4),
-		"FeaturedProjects": pickFeatured(projs, 3),
+		"FeaturedDocs":     pickFeatured(docs),
+		"FeaturedProjects": pickFeatured(projs),
 		// Recently Active is a derived view merging content + github cache.
 		"RecentRepos":        h.RecentlyActiveProjects(r.Context(), 3),
 		"About":              about,
@@ -285,7 +271,7 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 		// 管理员关掉 galaxy 模式后下一次访问立即恢复严格 CSP。
 		w.Header().Set("Content-Security-Policy", galaxyCSP)
 		data["GalaxyConfigJSON"] = buildGalaxyConfig(settings, about,
-			pickFeatured(projs, 6), pickFeatured(docs, 6), homePortfolios)
+			pickFeatured(projs), pickFeatured(docs), homePortfolios)
 	}
 	if err := h.Tpl.Render(w, r, http.StatusOK, tpl, data); err != nil {
 		h.Logger.Error("home.render", slog.String("err", err.Error()))

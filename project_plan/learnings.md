@@ -1071,3 +1071,42 @@
   - #4 新理解：已归到架构洞察 (3)
   - #5 范围外重构：是，已在建议处理方式中列出
   - #6 测试/文档缺口：是，CSP 放宽这种安全相关的姿态变化没有进 architecture.md / README，新搭起来的运维不会立即意识到 home_style=galaxy 会自动触发一组放宽的响应头
+
+
+## 2026-05-06
+
+### 快速功能：主页 featured 开关（取消数量上限 + admin 切换）
+- **类型**：架构洞察 + 测试缺口
+- **描述**：把首页"开源项目 / 文档"的展示策略从 `pickFeatured(limit)` 的"前 N 条 featured 优先 + 非 featured 填充"改为"只展示 featured，不限数量"。两条值得记录：
+  1. 旧 `pickFeatured` 的"非 featured 填充"是隐式默认值，多份测试用例（`TestHome_Smoke_FeaturedDocExcerptRendered` 等）写 fixture 时都没显式标 `featured: true`，依赖填充行为才把它们带上首页。这种"测试通过=语义正确"的耦合是回归坑——下次引入类似"显式开关"语义时，需要先 grep `featured: true` 在测试 fixture 里的覆盖率，不能默认旧 fixtures 仍合规
+  2. 三个 entry kind（doc / project / portfolio）的 frontmatter 形状几乎一致，但"是否 featured 决定主页展示"以前只在 portfolio 一处实现。Project 和 doc 现在补齐后，三者的"主页展示开关"语义统一到 `featured` 字段。这暴露了 `setFrontmatterField` 是真正的可复用原子，但 ToggleFeatured 端点本身几乎是模板化的（鉴权 / CSRF / extractSlug / Reload）——目前在 `featured.go` 里通过 `toggleFeaturedFile` 抽了底盘，但 handler 外壳仍重复
+- **建议处理方式**：
+  1. 在 `architecture.md` 加一条 "主页展示开关 = entry.Featured"，明确三类 entry 共享该语义；同时记入 docs/projects 的 frontmatter 字段表
+  2. 如果将来再加第四种 kind（如"摄影"）需要重复 ToggleFeatured 外壳，再考虑提一个 `featuredToggleHandler(kind, getEntry, listURL)` 工厂；目前两份代码可读性比抽象更重要
+- **紧急程度**：低
+
+- 2026-05-06 快速功能 home-featured-toggle 反思清单其余项：
+  - #1 临时方案：无
+  - #2 能跑但不够好：无（toggle 表单只是隐藏输入 + 按钮，没有 ajax 也未做乐观 UI；与 portfolio 现有形态一致，足够）
+  - #3 上游问题：无
+  - #5 范围外重构：无
+  - #6 测试/文档缺口：见 (1) 文档缺口
+
+
+### Bug 修复：主页展示开关切换后页面跳到底部
+- **发现于**：用户手动测试
+- **现象**：在 /manage/docs 或 /manage/repos 点击"是/否"按钮，原本期望停在原位，实际页面被滚到了文档底部
+- **根因**：ToggleFeatured 端点 `http.Redirect` 的目标 URL 带 `#row-<slug>` fragment。浏览器收到 303 跳转后会把对应行滚到视口顶端；当目标行靠近列表末尾时，文档剩余高度不足以让该行真正落到顶端，浏览器只能停在 scroll 上限，也就是文档底部
+- **修复**：服务端去掉 fragment，仅返回 `/manage/docs` / `/manage/repos`。前端 fetch 拦截层负责"原地不动"的体验；fetch 没生效时回退路径最差也只是跳到列表顶部，不再被推到底部。同时清掉 `<tr id="row-<slug>">` 这个失去用途的 id
+- **回归测试**：
+  - `internal/admin/featured_test.go::TestDocsToggleFeatured_Regression_RedirectHasNoFragment`
+  - `internal/admin/featured_test.go::TestProjectsToggleFeatured_Regression_RedirectHasNoFragment`
+- **为什么原测试没覆盖**：早期的 ToggleFeatured 测试只断言"切换成功"语义（response 303 + 内存索引刷新），没有把 Location 字符串本身列入断言。fragment 是"额外信息"，回归之外的字段被默认放过了。教训是：当 fix 涉及"重定向到带 anchor 的 URL"这种用户可见的导航姿态变化时，下一次提交里就该把 Location 完整断言进测试，而不是只看状态码
+- **紧急程度**：中（影响管理员日常操作，不阻断功能）
+- **衍生改进建议**（不在本次修复内）：
+  1. portfolio 的 ToggleFeatured 也走"重定向回列表"的流程，可以考虑统一让所有 admin form 提交都用同一种 JS 拦截层（目前是 portfolio + docs/projects 三处独立写法）
+  2. 想真正"原地不动"应让服务端返回 204 No Content（fetch 路径足够），但要给非 JS 客户端保留 303 fallback；当前实现走 303 是简单妥协，未来如果切到 SPA 化的 admin 可以重做
+- **后续补救**：仅去掉 anchor 让降级路径从"跳到底"变成"跳到顶"，但这其实还不是用户期望（"原地不动"）。原因是依赖 fetch 拦截 + defer 脚本，遇到 HTML/JS 缓存或时序问题时拦截会失效。补救把 `featured_toggle.js` 改成两层保险：
+  1. capture 阶段在 `document` 上一次性挂监听，不再依赖具体 form 节点是否带 `data-featured-toggle`，旧 HTML 缓存里只要 action 以 `/featured` 结尾就能识别
+  2. 提交瞬间把 `window.scrollY` 写进 sessionStorage；即便 fetch 拦截没生效、浏览器走了原生 303 重定向，重新加载页面时脚本顶部那段 restore 会把 scroll 还原回去
+- **再次反思**：客户端"无感切换"如果只靠拦截一条腿，遇到任何让脚本未跑或拦截失败的环境就会立刻退化到"跳页"。下次再做类似的 admin 切换时，scroll 持久化应当默认就放在第一版里，而不是等用户报"还是跳"才补

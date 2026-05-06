@@ -194,28 +194,31 @@ func TestProjectDetail_Edge_RemoteGone(t *testing.T) {
 	}
 }
 
-// Regression: projects with status=active/developing must appear in the
-// homepage's "主要开源项目" (pickFeatured) slot. Earlier code only accepted
-// status=published, which silently filtered every project out.
+// Regression: featured 主页展示开关同时支持 active 与 developing 状态——
+// 以前 pickFeatured 只接受 published，把所有项目都过滤掉。新语义下主页
+// 只展示 featured=true 的条目；archived 即使 featured 也要剔除。
 func TestHome_Edge_FeaturedProjectsIncludeActiveAndDeveloping(t *testing.T) {
 	h := setup(t, nil, map[string]string{
 		"a": proj("a", "2026-04-10", "active", "true"),
-		"b": proj("b", "2026-04-09", "developing", ""),
-		"c": proj("c", "2026-04-08", "archived", ""), // must NOT appear
+		"b": proj("b", "2026-04-09", "developing", "true"),
+		"c": proj("c", "2026-04-08", "archived", "true"), // featured 也要被状态过滤
+		"d": proj("d", "2026-04-07", "active", ""),       // 非 featured，主页不展示
 	})
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 	h.Home(w, req)
 	body := w.Body.String()
-	// The project cards in "主要开源项目" use .Slug in href=/projects/<slug>.
 	if !strings.Contains(body, `class="project-card" href="/projects/a"`) {
 		t.Errorf("active featured project a missing")
 	}
 	if !strings.Contains(body, `class="project-card" href="/projects/b"`) {
-		t.Errorf("developing project b missing")
+		t.Errorf("developing featured project b missing")
 	}
 	if strings.Contains(body, `class="project-card" href="/projects/c"`) {
-		t.Error("archived project c should not appear")
+		t.Error("archived project c should not appear even when featured")
+	}
+	if strings.Contains(body, `class="project-card" href="/projects/d"`) {
+		t.Error("non-featured project d should not appear on home")
 	}
 }
 
