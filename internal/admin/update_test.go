@@ -124,6 +124,46 @@ func TestUpdateTrigger_Smoke_Runs(t *testing.T) {
 	}
 }
 
+func TestUpdateCheck_Smoke_RunsAndRedirects(t *testing.T) {
+	b := crudSetup(t)
+	calls := 0
+	c := update.NewChecker("v1.0.0", func(context.Context, string) (string, string, bool, error) {
+		calls++
+		return "v1.0.0", "e", false, nil
+	}, time.Hour, nil)
+	uh := newUpdateHandlers(b, c, update.NewUpdater("", filepath.Join(b.DataDir, "u.log"), nil))
+
+	w := b.authedPost(t, "/manage/update/check", url.Values{"csrf": {b.CSRF}}, uh.Check)
+	if w.Code != 303 {
+		t.Fatalf("check want 303, got %d", w.Code)
+	}
+	if loc := w.Header().Get("Location"); loc != "/manage" {
+		t.Errorf("redirect want /manage, got %q", loc)
+	}
+	if calls != 1 {
+		t.Errorf("CheckNow should run exactly once, got %d", calls)
+	}
+}
+
+func TestUpdateCheck_Edge_CSRFMissing(t *testing.T) {
+	// 权限/认证：缺 CSRF → 403，且不得触发任何检查
+	b := crudSetup(t)
+	calls := 0
+	c := update.NewChecker("v1.0.0", func(context.Context, string) (string, string, bool, error) {
+		calls++
+		return "v1.0.0", "e", false, nil
+	}, time.Hour, nil)
+	uh := newUpdateHandlers(b, c, update.NewUpdater("", filepath.Join(b.DataDir, "u.log"), nil))
+
+	w := b.authedPost(t, "/manage/update/check", url.Values{}, uh.Check)
+	if w.Code != 403 {
+		t.Fatalf("missing CSRF want 403, got %d", w.Code)
+	}
+	if calls != 0 {
+		t.Errorf("check must not run when CSRF rejected, got %d", calls)
+	}
+}
+
 func waitForFile(timeout time.Duration, path string) bool {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {

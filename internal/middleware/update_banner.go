@@ -6,13 +6,20 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"time"
 )
 
-// UpdateBannerState is the data layout.html needs to render the update banner.
+// UpdateBannerState is the data the admin layout/dashboard need to render the
+// update banner and the dashboard's version bar.
 type UpdateBannerState struct {
 	Available bool
 	Current   string
 	Latest    string
+	// Enabled reports whether one-click update is configured (update_command
+	// set) — the dashboard shows an update button only when true.
+	Enabled bool
+	// CheckedAt is the time of the last successful release check; zero if never.
+	CheckedAt time.Time
 }
 
 // WithUpdateBanner stores the result of fn() in the request context. fn is

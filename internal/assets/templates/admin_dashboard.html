@@ -35,8 +35,33 @@
       <li><a href="/manage/settings">基本信息 / 联系方式</a></li>
       <li><a href="/manage/password">修改密码</a></li>
       <li><a href="/manage/sessions">登陆设备</a></li>
-      <li><a href="/manage/update">系统更新</a></li>
     </ul>
+  </section>
+
+  <section class="admin-section version-bar">
+    <h2>系统版本</h2>
+    <div class="version-row">
+      <div class="version-info">
+        当前 <strong>{{ $.Update.Current }}</strong>
+        {{ if $.Update.Latest }}<span class="version-sep">·</span> 最新 <strong>{{ $.Update.Latest }}</strong>{{ end }}
+        {{ if $.Update.Available }}<span class="badge badge-new">有新版本</span>
+        {{ else if $.Update.Latest }}<span class="badge badge-ok">已是最新</span>{{ end }}
+      </div>
+      <div class="version-actions">
+        <form method="POST" action="/manage/update/check" style="display:inline;">
+          <input type="hidden" name="csrf" value="{{ .CSRF }}" />
+          <button class="btn btn-ghost" type="submit">检测新版本</button>
+        </form>
+        {{ if $.Update.Available }}
+          {{ if $.Update.Enabled }}
+          <a class="btn btn-primary" href="/manage/update">更新到 {{ $.Update.Latest }}</a>
+          {{ else }}
+          <a class="btn btn-ghost" href="/manage/update">查看升级方式</a>
+          {{ end }}
+        {{ end }}
+      </div>
+    </div>
+    {{ if not $.Update.CheckedAt.IsZero }}<p class="note">上次检查：{{ formatDate $.Update.CheckedAt "2006-01-02 15:04:05" }}</p>{{ end }}
   </section>
 
   <section class="admin-section">
