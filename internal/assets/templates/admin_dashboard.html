@@ -38,6 +38,14 @@
     </ul>
   </section>
 
+  <section class="admin-section">
+    <h2>数据迁移</h2>
+    <p class="note">导出含文章、图片与数据库（站点设置、统计）的完整备份，可在另一台服务器上导入以迁移整站。</p>
+    <p><a class="btn btn-primary" href="/manage/export" download>导出全部数据</a></p>
+    <p class="note">导入：将下载的 <code>blog-export-*.tar.gz</code> 拷贝到新服务器，停止服务后执行
+      <code>./blog-server -import blog-export-xxx.tar.gz -config config.yaml</code>，再启动服务即可。</p>
+  </section>
+
   {{ if .Changed }}
   <section class="admin-section">
     <div class="note">密码上次修改于 {{ formatDate .Changed "2006-01-02 15:04:05" }}</div>

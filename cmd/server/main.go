@@ -30,6 +30,7 @@ import (
 	"github.com/penguin/blog-server/internal/settings"
 	"github.com/penguin/blog-server/internal/stats"
 	"github.com/penguin/blog-server/internal/storage"
+	"github.com/penguin/blog-server/internal/transfer"
 )
 
 // version is injected at build time via -ldflags="-X main.version=..."
@@ -69,9 +70,38 @@ func resolveVersion() string {
 	return "dev"
 }
 
+// runImport unpacks a full-site export bundle into dataDir. Run with the server
+// stopped; on success the bundle's content/, images/ and data.sqlite replace
+// the target's. Refuses a populated data_dir unless force is set.
+func runImport(bundlePath, dataDir string, force bool, logger *slog.Logger) error {
+	f, err := os.Open(bundlePath)
+	if err != nil {
+		return fmt.Errorf("open bundle: %w", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	manifest, err := transfer.ImportBundle(f, dataDir, force)
+	if err != nil {
+		if errors.Is(err, transfer.ErrTargetNotEmpty) {
+			return fmt.Errorf("%w (pass -import-force to overwrite)", err)
+		}
+		return err
+	}
+	logger.Info("import.done",
+		slog.String("bundle", bundlePath),
+		slog.String("data_dir", dataDir),
+		slog.String("created_at", manifest.CreatedAt),
+		slog.String("app_version", manifest.AppVersion),
+		slog.Any("entries", manifest.Entries),
+	)
+	return nil
+}
+
 func main() {
 	cfgPath := flag.String("config", "config.yaml", "path to config.yaml")
 	showVersion := flag.Bool("version", false, "print version and exit")
+	importPath := flag.String("import", "", "import a full-site export bundle into data_dir, then exit")
+	importForce := flag.Bool("import-force", false, "allow -import to overwrite an already-populated data_dir")
 	flag.Parse()
 
 	if *showVersion {
@@ -87,6 +117,17 @@ func main() {
 	if err != nil {
 		logger.Error("config.load", slog.String("err", err.Error()))
 		os.Exit(1)
+	}
+
+	// Import runs before any DB/storage is opened so the live process never
+	// holds the data.sqlite inode it is about to replace. It is a one-shot
+	// maintenance action: do it, then exit.
+	if *importPath != "" {
+		if err := runImport(*importPath, cfg.DataDir, *importForce, logger); err != nil {
+			logger.Error("import", slog.String("err", err.Error()))
+			os.Exit(1)
+		}
+		return
 	}
 
 	store, err := storage.Open(cfg.DataDir)
@@ -176,6 +217,9 @@ func main() {
 		Parent: adminH, DataDir: cfg.DataDir,
 		Settings: settingsStore, Invalidate: ph.InvalidateSettings,
 	}
+	exportH := &admin.ExportHandlers{
+		DataDir: cfg.DataDir, DB: store.DB, Logger: logger, AppVersion: resolveVersion(),
+	}
 
 	mux := http.NewServeMux()
 	healthzBody := fmt.Sprintf("ok blog-server %s\n", resolveVersion())
@@ -225,7 +269,7 @@ func main() {
 	})
 	mux.HandleFunc("/manage/logout", adminH.Logout)
 
-	protected := buildAdminMux(adminH, docsAdmin, imagesAdmin, settingsAdmin, projectsAdmin, trashAdmin, aboutAdmin, avatarAdmin, portfolioAdmin, portfolioCoverAdmin)
+	protected := buildAdminMux(adminH, docsAdmin, imagesAdmin, settingsAdmin, projectsAdmin, trashAdmin, aboutAdmin, avatarAdmin, portfolioAdmin, portfolioCoverAdmin, exportH)
 	// /images/* static file serving (uploaded content).
 	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(filepath.Join(cfg.DataDir, "images")))))
 
