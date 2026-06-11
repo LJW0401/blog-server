@@ -32,6 +32,7 @@ func buildAdminMux(
 	avatar *admin.AvatarHandlers,
 	portfolio *admin.PortfolioHandlers,
 	portfolioCover *admin.PortfolioCoverHandlers,
+	export *admin.ExportHandlers,
 ) *http.ServeMux {
 	mux := http.NewServeMux()
 
@@ -49,6 +50,7 @@ func buildAdminMux(
 	mux.HandleFunc("/manage/password", postOrGet(adm.PasswordSubmit, adm.PasswordPage))
 	mux.HandleFunc("/manage/sessions", adm.SessionsPage)
 	mux.HandleFunc("/manage/sessions/revoke", adm.SessionsRevoke)
+	mux.HandleFunc("/manage/export", export.Download)
 
 	// Docs
 	mux.HandleFunc("/manage/docs", docs.DocsList)
