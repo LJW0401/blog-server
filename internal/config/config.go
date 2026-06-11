@@ -24,6 +24,16 @@ type Config struct {
 	DataDir               string     `yaml:"data_dir"`
 	GitHubToken           string     `yaml:"github_token"`
 	GitHubSyncIntervalMin int        `yaml:"github_sync_interval_min"`
+	// UpdateRepo is the "owner/name" of the release repo polled for newer
+	// versions. Empty disables update checking (no banner).
+	UpdateRepo string `yaml:"update_repo"`
+	// UpdateCheckIntervalMin is minutes between release checks (default 10).
+	UpdateCheckIntervalMin int `yaml:"update_check_interval_min"`
+	// UpdateCommand is the shell command run for in-app one-click update.
+	// Empty disables the update button (banner still informs). The command must
+	// detach from this service's systemd cgroup (e.g. via systemd-run) so the
+	// restart it triggers does not kill the updater. See config.yaml.example.
+	UpdateCommand string `yaml:"update_command"`
 }
 
 // Error types returned by Load. Tests rely on these being comparable via errors.Is.
@@ -43,7 +53,9 @@ func Load(path string) (*Config, error) {
 
 	// Enforce strict decoding: reject unknown fields so typos surface early.
 	cfg := &Config{
-		GitHubSyncIntervalMin: 30, // default before unmarshal
+		GitHubSyncIntervalMin:  30,                    // default before unmarshal
+		UpdateRepo:             "LJW0401/blog-server", // default release source
+		UpdateCheckIntervalMin: 10,
 	}
 	dec := yaml.NewDecoder(strings.NewReader(string(data)))
 	dec.KnownFields(true)
@@ -83,6 +95,9 @@ func (c *Config) validate() error {
 	}
 	if c.GitHubSyncIntervalMin < 1 {
 		return fmt.Errorf("%w: github_sync_interval_min must be >= 1", ErrFieldInvalid)
+	}
+	if c.UpdateCheckIntervalMin < 1 {
+		return fmt.Errorf("%w: update_check_interval_min must be >= 1", ErrFieldInvalid)
 	}
 	return nil
 }
