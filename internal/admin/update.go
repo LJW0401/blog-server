@@ -63,6 +63,36 @@ func (h *UpdateHandlers) Page(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Check handles POST /manage/update/check — the dashboard "检测新版本" button.
+// It forces a synchronous release check (instead of waiting for the 10-minute
+// poll) then redirects back to the dashboard, where the version bar reflects
+// the refreshed state. CSRF-protected; a fetch failure is logged inside
+// CheckNow and leaves prior state intact (fail-soft).
+func (h *UpdateHandlers) Check(w http.ResponseWriter, r *http.Request) {
+	// POST-only: this mutates checker state, and r.ParseForm() would otherwise
+	// fold a GET query into r.Form, letting GET ...?csrf=<token> trigger a
+	// check. Mirrors the postOrGet gating on Trigger.
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	sess, ok := h.Parent.Auth.ParseSession(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	if !auth.CSRFValid(sess, r.Form.Get("csrf")) {
+		http.Error(w, "csrf", http.StatusForbidden)
+		return
+	}
+	h.Checker.CheckNow(r.Context())
+	http.Redirect(w, r, "/manage", http.StatusSeeOther)
+}
+
 // Trigger handles POST /manage/update — validates CSRF, launches the update,
 // and renders a "restarting" page. The command runs detached; this process may
 // be restarted out from under the response, so the page meta-refreshes back to

@@ -304,7 +304,10 @@ func main() {
 	// pages never carry it. AuthGate stays outermost.
 	updateBanner := middleware.WithUpdateBanner(func() middleware.UpdateBannerState {
 		st := updateChecker.State()
-		return middleware.UpdateBannerState{Available: st.Available, Current: st.Current, Latest: st.Latest}
+		return middleware.UpdateBannerState{
+			Available: st.Available, Current: st.Current, Latest: st.Latest,
+			Enabled: updater.Enabled(), CheckedAt: st.CheckedAt,
+		}
 	})
 	gate := middleware.AuthGate(authStore)(updateBanner(protected))
 	mux.Handle("/manage", gate)

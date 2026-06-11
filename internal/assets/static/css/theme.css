@@ -503,6 +503,14 @@ body.page-admin { background: var(--bg-alt); }
 .admin-nav a { text-decoration: none; color: var(--accent); }
 .admin-section .note { font-size: 13px; color: var(--ink-soft); }
 
+.version-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.version-info { font-size: 14px; }
+.version-sep { color: var(--ink-faint); margin: 0 2px; }
+.version-actions { display: flex; align-items: center; gap: 10px; }
+.badge { font-size: 12px; padding: 2px 9px; border-radius: 20px; margin-left: 8px; }
+.badge-new { background: #cfe2ff; color: #084298; }
+.badge-ok { background: #d1e7dd; color: #0a3622; }
+
 .admin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .admin-table th, .admin-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid rgba(0,0,0,0.06); vertical-align: middle; }
 .admin-table th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); font-weight: 500; }
