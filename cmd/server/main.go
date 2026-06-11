@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 	"syscall"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/penguin/blog-server/internal/stats"
 	"github.com/penguin/blog-server/internal/storage"
 	"github.com/penguin/blog-server/internal/transfer"
+	"github.com/penguin/blog-server/internal/update"
 )
 
 // version is injected at build time via -ldflags="-X main.version=..."
@@ -171,6 +173,28 @@ func main() {
 	)
 	syncStop := syncer.Start(rootCtx)
 
+	// Self-update checker: poll the release repo for newer versions. A fetch
+	// closure wraps the GitHub client so the update package stays decoupled and
+	// testable. An unset update_repo leaves fetch nil → checker never fires.
+	var updateFetch update.FetchFunc
+	if owner, name, ok := splitRepo(cfg.UpdateRepo); ok {
+		updateFetch = func(ctx context.Context, priorETag string) (string, string, bool, error) {
+			res, err := ghClient.GetLatestRelease(ctx, owner, name, priorETag)
+			if err != nil {
+				return "", "", false, err
+			}
+			return res.TagName, res.ETag, res.NotModified, nil
+		}
+	} else if cfg.UpdateRepo != "" {
+		logger.Warn("update.repo.invalid", slog.String("update_repo", cfg.UpdateRepo))
+	}
+	updateChecker := update.NewChecker(
+		resolveVersion(), updateFetch,
+		time.Duration(cfg.UpdateCheckIntervalMin)*time.Minute, logger,
+	)
+	updateStop := updateChecker.Start(rootCtx)
+	updater := update.NewUpdater(cfg.UpdateCommand, filepath.Join(cfg.DataDir, "update.log"), logger)
+
 	settingsStore := settings.New(store.DB)
 	statsStore := stats.New(store.DB, logger)
 
@@ -219,6 +243,9 @@ func main() {
 	}
 	exportH := &admin.ExportHandlers{
 		DataDir: cfg.DataDir, DB: store.DB, Logger: logger, AppVersion: resolveVersion(),
+	}
+	updateAdmin := &admin.UpdateHandlers{
+		Parent: adminH, Checker: updateChecker, Updater: updater, Repo: cfg.UpdateRepo,
 	}
 
 	mux := http.NewServeMux()
@@ -269,11 +296,17 @@ func main() {
 	})
 	mux.HandleFunc("/manage/logout", adminH.Logout)
 
-	protected := buildAdminMux(adminH, docsAdmin, imagesAdmin, settingsAdmin, projectsAdmin, trashAdmin, aboutAdmin, avatarAdmin, portfolioAdmin, portfolioCoverAdmin, exportH)
+	protected := buildAdminMux(adminH, docsAdmin, imagesAdmin, settingsAdmin, projectsAdmin, trashAdmin, aboutAdmin, avatarAdmin, portfolioAdmin, portfolioCoverAdmin, exportH, updateAdmin)
 	// /images/* static file serving (uploaded content).
 	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(filepath.Join(cfg.DataDir, "images")))))
 
-	gate := middleware.AuthGate(authStore)(protected)
+	// Update banner state is injected only on the /manage subtree, so public
+	// pages never carry it. AuthGate stays outermost.
+	updateBanner := middleware.WithUpdateBanner(func() middleware.UpdateBannerState {
+		st := updateChecker.State()
+		return middleware.UpdateBannerState{Available: st.Available, Current: st.Current, Latest: st.Latest}
+	})
+	gate := middleware.AuthGate(authStore)(updateBanner(protected))
 	mux.Handle("/manage", gate)
 	mux.Handle("/manage/", gate)
 
@@ -307,8 +340,19 @@ func main() {
 	stopRoot()
 	watchStop()
 	syncStop()
+	updateStop()
 	backupStop()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(ctx)
+}
+
+// splitRepo parses an "owner/name" string. It returns ok=false for empty input
+// or anything that isn't exactly two non-empty, slash-free segments.
+func splitRepo(repo string) (owner, name string, ok bool) {
+	parts := strings.Split(repo, "/")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", false
+	}
+	return parts[0], parts[1], true
 }

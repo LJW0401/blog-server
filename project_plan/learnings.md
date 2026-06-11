@@ -1110,3 +1110,28 @@
   1. capture 阶段在 `document` 上一次性挂监听，不再依赖具体 form 节点是否带 `data-featured-toggle`，旧 HTML 缓存里只要 action 以 `/featured` 结尾就能识别
   2. 提交瞬间把 `window.scrollY` 写进 sessionStorage；即便 fetch 拦截没生效、浏览器走了原生 303 重定向，重新加载页面时脚本顶部那段 restore 会把 scroll 还原回去
 - **再次反思**：客户端"无感切换"如果只靠拦截一条腿，遇到任何让脚本未跑或拦截失败的环境就会立刻退化到"跳页"。下次再做类似的 admin 切换时，scroll 持久化应当默认就放在第一版里，而不是等用户报"还是跳"才补
+
+## 2026-06-12
+
+### 快速功能：自更新（版本检测 + 横幅 + 一键更新）
+本功能为 L 规模，经用户明确同意后在快速通道内谨慎实现，记录几处需要后续关注的点。
+
+- **类型**：架构洞察 / 技术债
+- **描述（systemd cgroup 自杀问题）**：网页一键更新本质是「一个 HTTP 请求触发自身进程重启」。在 systemd 默认 `KillMode=control-group` 下，`systemctl restart` 会杀掉本 unit cgroup 内的所有进程，包括用 `Setsid` 派生的子进程。因此服务端只负责 `sh -c <update_command>` detached 派生，真正脱离 cgroup 的责任放在了**运维配置**里（推荐 `sudo systemd-run --collect --unit=... manage.sh update`，用瞬态 unit 承载更新）。这是一个「正确性依赖运维把 config 配对」的妥协：若管理员把 update_command 配成裸命令，重启会在更新中途杀掉更新进程。
+- **建议处理方式**：未来若要把这条腿做硬，可在服务端内置 systemd-run 包装（检测到 systemd 时自动套用），而不是靠文档约定；或提供一个 `manage.sh self-update-daemon` 由外部常驻进程接管，彻底与被更新进程解耦。
+- **紧急程度**：中（默认 update_command 为空即禁用按钮，未配置者不受影响；配置者若不照推荐写法会踩坑）
+
+- **类型**：技术债（UX）
+- **描述（更新中页面）**：触发更新后的「更新中」页用固定 25s `<meta refresh>` 跳回 /manage，而非真正轮询 `/__healthz` 版本号确认新版起来。受 CSP `script-src 'self'` 限制不能内联 JS，故用了 meta-refresh 这个无 JS 方案。若重启超过 25s 或更新失败，用户体验较糙（只能手动重试）。
+- **建议处理方式**：加一个 `/static/js/update-poll.js`（CSP 允许 self 脚本）轮询 `/__healthz`，版本变化即跳转、失败给出明确提示。
+- **紧急程度**：低
+
+- **类型**：重构机会
+- **描述（横幅机制重复）**：现在有两个几乎同构的横幅注入中间件（`WithDefaultPasswordBanner`、`WithUpdateBanner`）和两套近似的 CSS（`.default-password-banner` / `.update-banner`）。再加第三种横幅就该抽象成一个「banner 栈」统一注入与渲染。
+- **建议处理方式**：范围外，等出现第三个横幅需求时再统一。
+- **紧急程度**：低
+
+- **类型**：测试/文档缺口
+- **描述**：(1) systemd-run detached 在重启下是否真能存活，无法在 CI（无 systemd 会话）中自动化验证，目前只测了「命令被 detached 派生并执行」这一层。(2) README 尚未记录 self-update 三个 config 项与 sudoers 配置步骤。
+- **建议处理方式**：在 README 部署章节补 self-update 配置说明与最小 sudoers 例子；systemd 存活验证列为一次性手动验收项写进 release checklist。
+- **紧急程度**：中（文档缺失会让使用者配不对一键更新）

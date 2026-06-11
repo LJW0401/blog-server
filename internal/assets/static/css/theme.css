@@ -51,6 +51,13 @@ a { color: inherit; }
 }
 .default-password-banner a { color: #664d03; text-decoration: underline; }
 
+.update-banner {
+  background: #cfe2ff; color: #084298;
+  text-align: center; padding: 10px 16px; font-size: 13px;
+  border-bottom: 1px solid #9ec5fe;
+}
+.update-banner a { color: #084298; text-decoration: underline; }
+
 /* Nav */
 .nav {
   position: fixed; top: 0; left: 0; right: 0; height: 48px;
@@ -1086,6 +1093,8 @@ body.page-diary { background: var(--bg); }
     color: var(--ink);
   }
   .default-password-banner { background: #332b00; color: #ffd280; border-bottom-color: #664d00; }
+  .update-banner { background: #06243f; color: #9ec5fe; border-bottom-color: #0a4275; }
+  .update-banner a { color: #9ec5fe; }
   .draft-banner { background: #332b00; color: #ffd280; }
   .archived-banner { background: #2c2c2e; color: #a1a1a6; }
 }

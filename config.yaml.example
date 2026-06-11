@@ -19,3 +19,19 @@ github_token: ""
 
 # Minutes between GitHub sync runs (default 30).
 github_sync_interval_min: 30
+
+# Self-update: the release repo polled for newer versions ("owner/name").
+# Empty disables update checking entirely.
+update_repo: "LJW0401/blog-server"
+
+# Minutes between release checks (default 10).
+update_check_interval_min: 10
+
+# Command run by the in-app one-click update button. Empty disables the button
+# (the "new version" banner still appears). SECURITY: this command runs with
+# whatever privileges the service account has — a logged-in admin can execute
+# it. It must also detach from this service's systemd cgroup, otherwise the
+# restart it triggers will kill the updater mid-flight. Recommended form:
+#   update_command: "sudo systemd-run --collect --unit=blog-server-self-update /opt/blog-server/manage.sh update"
+# (grant the service user a sudoers entry limited to exactly that command.)
+update_command: ""

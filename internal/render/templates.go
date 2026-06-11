@@ -91,6 +91,7 @@ func (t *Templates) Render(w http.ResponseWriter, r *http.Request, status int, p
 	payload := map[string]any{
 		"Data":      data,
 		"Banner":    middleware.DefaultPasswordBannerFrom(r.Context()),
+		"Update":    middleware.UpdateBannerFrom(r.Context()),
 		"RequestID": middleware.RequestIDFrom(r.Context()),
 		"Now":       time.Now(),
 	}

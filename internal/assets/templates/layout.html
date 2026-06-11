@@ -19,6 +19,11 @@
   ⚠ 默认密码未修改，请尽快进入 <a href="/manage">管理后台</a> 修改密码。
 </div>
 {{ end }}
+{{ if .Update.Available }}
+<div class="update-banner" role="alert">
+  🆕 发现新版本 <strong>{{ .Update.Latest }}</strong>（当前 {{ .Update.Current }}）。<a href="/manage/update">前往更新</a>
+</div>
+{{ end }}
 
 <nav class="nav">
   <div class="nav-inner">

@@ -18,6 +18,7 @@ type ctxKey int
 const (
 	ctxRequestID ctxKey = iota
 	ctxDefaultPasswordBanner
+	ctxUpdateBanner
 )
 
 // Default CSP compatible with CodeMirror 6 (requires inline styles).
