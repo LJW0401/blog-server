@@ -69,6 +69,13 @@ func (h *UpdateHandlers) Page(w http.ResponseWriter, r *http.Request) {
 // the refreshed state. CSRF-protected; a fetch failure is logged inside
 // CheckNow and leaves prior state intact (fail-soft).
 func (h *UpdateHandlers) Check(w http.ResponseWriter, r *http.Request) {
+	// POST-only: this mutates checker state, and r.ParseForm() would otherwise
+	// fold a GET query into r.Form, letting GET ...?csrf=<token> trigger a
+	// check. Mirrors the postOrGet gating on Trigger.
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	sess, ok := h.Parent.Auth.ParseSession(r)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
