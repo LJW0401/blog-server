@@ -139,8 +139,8 @@ func TestUpdateCheck_Smoke_RunsAndRedirects(t *testing.T) {
 	if w.Code != 303 {
 		t.Fatalf("check want 303, got %d", w.Code)
 	}
-	if loc := w.Header().Get("Location"); loc != "/manage" {
-		t.Errorf("redirect want /manage, got %q", loc)
+	if loc := w.Header().Get("Location"); loc != "/manage#version" {
+		t.Errorf("redirect want /manage#version, got %q", loc)
 	}
 	if calls != 1 {
 		t.Errorf("CheckNow should run exactly once, got %d", calls)

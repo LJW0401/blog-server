@@ -1150,3 +1150,15 @@
 - **描述**：新增的 `.badge-new` / `.badge-ok` 徽章只有浅色版，admin 暗色模式下是浅底深字，可读但与暗色主题略不协调，未补暗色变体。「检测新版本」按钮为同步请求，最坏阻塞到 github 客户端的 10s 超时。
 - **建议处理方式**：暗色徽章变体可在下次顺手补；同步检测对手动按钮可接受，若要更顺滑可改异步 + 轮询。
 - **紧急程度**：低
+
+## 2026-06-12
+
+### Bug 修复：检测版本按钮点击后跳回页面顶部
+- **发现于**：用户报告
+- **现象**：在 dashboard 滚动到中部的「系统版本」栏，点击「检测新版本」后页面跳回顶部
+- **根因**：该按钮是纯服务端渲染的整页表单 POST，`UpdateHandlers.Check` 处理完后 `http.Redirect` 到无锚点的 `/manage`，浏览器整页重新加载、滚动位置归零落到顶部
+- **修复**：重定向目标改为 `/manage#version`，并给版本栏 section 加 `id="version"` 锚点，刷新后浏览器滚回版本栏
+- **回归测试**：`internal/admin/update_check_anchor_regression_test.go` — `TestUpdateCheck_Regression_RedirectKeepsScrollAnchor`（断言重定向带 `#version`）+ `TestDashboard_Regression_VersionBarHasAnchorTarget`（断言页面有 `id="version"` 落点）
+- **为什么原测试没覆盖**：原 `TestUpdateCheck_Smoke_RunsAndRedirects` 只断言「重定向到 /manage」即视为正确，把 PRG 跳转当成纯后端状态正确性来测，完全没有把「滚动位置 / 用户视觉落点」纳入正确性定义——整页表单提交的 UX 副作用（scroll reset）不在测试视野内。该断言反而把 bug 行为固化了
+- **紧急程度**：低
+- **衍生改进建议**（不在本次范围内）：dashboard 上所有「操作后 redirect 回 /manage」的整页表单（如退出、密码修改后返回等）都有同类潜在跳顶问题；若后续要彻底消除整页刷新，可统一改为 fetch + 局部更新，但与当前纯 SSR + CSRF 表单的架构范式冲突，需整体评估
