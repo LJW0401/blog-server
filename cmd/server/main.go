@@ -193,7 +193,12 @@ func main() {
 		time.Duration(cfg.UpdateCheckIntervalMin)*time.Minute, logger,
 	)
 	updateStop := updateChecker.Start(rootCtx)
-	updater := update.NewUpdater(cfg.UpdateCommand, filepath.Join(cfg.DataDir, "update.log"), logger)
+	// Manual-upgrade link shown by the version bar when a newer release exists;
+	// empty when no release repo is configured.
+	updateReleaseURL := ""
+	if cfg.UpdateRepo != "" {
+		updateReleaseURL = "https://github.com/" + cfg.UpdateRepo + "/releases/latest"
+	}
 
 	settingsStore := settings.New(store.DB)
 	statsStore := stats.New(store.DB, logger)
@@ -245,7 +250,7 @@ func main() {
 		DataDir: cfg.DataDir, DB: store.DB, Logger: logger, AppVersion: resolveVersion(),
 	}
 	updateAdmin := &admin.UpdateHandlers{
-		Parent: adminH, Checker: updateChecker, Updater: updater, Repo: cfg.UpdateRepo,
+		Parent: adminH, Checker: updateChecker,
 	}
 
 	mux := http.NewServeMux()
@@ -306,7 +311,7 @@ func main() {
 		st := updateChecker.State()
 		return middleware.UpdateBannerState{
 			Available: st.Available, Current: st.Current, Latest: st.Latest,
-			Enabled: updater.Enabled(), CheckedAt: st.CheckedAt,
+			ReleaseURL: updateReleaseURL, CheckedAt: st.CheckedAt,
 		}
 	})
 	gate := middleware.AuthGate(authStore)(updateBanner(protected))

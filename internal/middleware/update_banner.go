@@ -15,9 +15,10 @@ type UpdateBannerState struct {
 	Available bool
 	Current   string
 	Latest    string
-	// Enabled reports whether one-click update is configured (update_command
-	// set) — the dashboard shows an update button only when true.
-	Enabled bool
+	// ReleaseURL is the GitHub release page for manual upgrade, derived from
+	// update_repo; empty when no repo is configured. The dashboard links to it
+	// when a newer version is available.
+	ReleaseURL string
 	// CheckedAt is the time of the last successful release check; zero if never.
 	CheckedAt time.Time
 }

@@ -23,7 +23,7 @@ func TestUpdateCheck_Regression_RedirectKeepsScrollAnchor(t *testing.T) {
 	c := update.NewChecker("v1.0.0", func(context.Context, string) (string, string, bool, error) {
 		return "v1.0.0", "e", false, nil
 	}, time.Hour, nil)
-	uh := newUpdateHandlers(b, c, update.NewUpdater("", b.DataDir+"/u.log", nil))
+	uh := newUpdateHandlers(b, c)
 
 	w := b.authedPost(t, "/manage/update/check", url.Values{"csrf": {b.CSRF}}, uh.Check)
 	loc := w.Header().Get("Location")
@@ -36,7 +36,7 @@ func TestDashboard_Regression_VersionBarHasAnchorTarget(t *testing.T) {
 	// 回归：版本栏必须有 id="version" 作为锚点落点，否则 #version 重定向无处可落。
 	b := crudSetup(t)
 	body := dashboardWith(t, b, middleware.UpdateBannerState{
-		Available: false, Current: "v1.0.0", Latest: "v1.0.0", Enabled: false, CheckedAt: time.Now(),
+		Available: false, Current: "v1.0.0", Latest: "v1.0.0", CheckedAt: time.Now(),
 	})
 	if !strings.Contains(body, `id="version"`) {
 		t.Error(`version bar must expose id="version" so the #version redirect lands on it`)

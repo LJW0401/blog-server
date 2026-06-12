@@ -52,7 +52,6 @@ func buildAdminMux(
 	mux.HandleFunc("/manage/sessions", adm.SessionsPage)
 	mux.HandleFunc("/manage/sessions/revoke", adm.SessionsRevoke)
 	mux.HandleFunc("/manage/export", export.Download)
-	mux.HandleFunc("/manage/update", postOrGet(update.Trigger, update.Page))
 	mux.HandleFunc("/manage/update/check", update.Check)
 
 	// Docs

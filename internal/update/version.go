@@ -1,8 +1,8 @@
-// Package update implements self-update support: a periodic checker that polls
-// the project's latest GitHub release and compares it against the running
-// version, and an updater that launches an operator-configured update command
-// in a detached process. version.go holds a dependency-free semantic-version
-// comparison used to decide whether upstream is newer.
+// Package update implements version-check support: a periodic checker that
+// polls the project's latest GitHub release and compares it against the running
+// version, surfacing "a newer release is available" to the admin UI. version.go
+// holds a dependency-free semantic-version comparison used to decide whether
+// upstream is newer.
 package update
 
 import (

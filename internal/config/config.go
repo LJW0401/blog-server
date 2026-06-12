@@ -29,11 +29,6 @@ type Config struct {
 	UpdateRepo string `yaml:"update_repo"`
 	// UpdateCheckIntervalMin is minutes between release checks (default 10).
 	UpdateCheckIntervalMin int `yaml:"update_check_interval_min"`
-	// UpdateCommand is the shell command run for in-app one-click update.
-	// Empty disables the update button (banner still informs). The command must
-	// detach from this service's systemd cgroup (e.g. via systemd-run) so the
-	// restart it triggers does not kill the updater. See config.yaml.example.
-	UpdateCommand string `yaml:"update_command"`
 }
 
 // Error types returned by Load. Tests rely on these being comparable via errors.Is.

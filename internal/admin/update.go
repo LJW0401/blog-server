@@ -1,77 +1,33 @@
-// update.go backs the /manage/update page: it shows the running vs latest
-// version and, when a one-click update command is configured, exposes a
-// CSRF-protected POST that launches it. The dangerous action (privileged
-// self-update) is deliberately two-step — a GET confirmation page precedes the
-// POST — and never takes any request-derived data into the command.
+// update.go backs the dashboard's "检测新版本" button: a CSRF-protected POST that
+// forces a synchronous release check, then redirects back to the version bar.
+// Version detection only — the in-app one-click self-update was removed; when a
+// newer release exists the dashboard links out to the GitHub release page.
 package admin
 
 import (
-	"errors"
-	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/penguin/blog-server/internal/auth"
 	"github.com/penguin/blog-server/internal/update"
 )
 
-// UpdateHandlers serves the self-update page. Repo is "owner/name", used only to
-// build the human-facing releases link.
+// UpdateHandlers serves the dashboard's force-check endpoint. It holds only the
+// release Checker; rendering of the version bar happens in the dashboard via the
+// UpdateBanner state injected by middleware.
 type UpdateHandlers struct {
 	Parent  *Handlers
 	Checker *update.Checker
-	Updater *update.Updater
-	Repo    string
-}
-
-// releaseURL returns the GitHub latest-release page for the configured repo, or
-// "" when no repo is set.
-func (h *UpdateHandlers) releaseURL() string {
-	if h.Repo == "" {
-		return ""
-	}
-	return fmt.Sprintf("https://github.com/%s/releases/latest", h.Repo)
-}
-
-// viewData assembles the template payload shared by GET and POST renders.
-func (h *UpdateHandlers) viewData(sess auth.Session) map[string]any {
-	st := h.Checker.State()
-	return map[string]any{
-		"Current":    st.Current,
-		"Latest":     st.Latest,
-		"Available":  st.Available,
-		"CheckedAt":  st.CheckedAt,
-		"Enabled":    h.Updater.Enabled(),
-		"Running":    h.Updater.Running(),
-		"ReleaseURL": h.releaseURL(),
-		"CSRF":       sess.CSRF,
-		"Updating":   false,
-		"Error":      "",
-	}
-}
-
-// Page renders GET /manage/update — the status + confirmation view.
-func (h *UpdateHandlers) Page(w http.ResponseWriter, r *http.Request) {
-	sess, ok := h.Parent.Auth.ParseSession(r)
-	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	if err := h.Parent.Tpl.Render(w, r, http.StatusOK, "admin_update.html", h.viewData(sess)); err != nil {
-		h.Parent.Logger.Error("admin.update.render", slog.String("err", err.Error()))
-		http.Error(w, "internal error", http.StatusInternalServerError)
-	}
 }
 
 // Check handles POST /manage/update/check — the dashboard "检测新版本" button.
-// It forces a synchronous release check (instead of waiting for the 10-minute
-// poll) then redirects back to the dashboard, where the version bar reflects
-// the refreshed state. CSRF-protected; a fetch failure is logged inside
-// CheckNow and leaves prior state intact (fail-soft).
+// It forces a synchronous release check (instead of waiting for the poll) then
+// redirects back to the dashboard, where the version bar reflects the refreshed
+// state. CSRF-protected; a fetch failure is logged inside CheckNow and leaves
+// prior state intact (fail-soft).
 func (h *UpdateHandlers) Check(w http.ResponseWriter, r *http.Request) {
 	// POST-only: this mutates checker state, and r.ParseForm() would otherwise
 	// fold a GET query into r.Form, letting GET ...?csrf=<token> trigger a
-	// check. Mirrors the postOrGet gating on Trigger.
+	// check.
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -93,47 +49,4 @@ func (h *UpdateHandlers) Check(w http.ResponseWriter, r *http.Request) {
 	// Redirect to the #version anchor so the full-page reload lands back on the
 	// version bar instead of scrolling to the top of the dashboard.
 	http.Redirect(w, r, "/manage#version", http.StatusSeeOther)
-}
-
-// Trigger handles POST /manage/update — validates CSRF, launches the update,
-// and renders a "restarting" page. The command runs detached; this process may
-// be restarted out from under the response, so the page meta-refreshes back to
-// /manage rather than relying on a follow-up request to this handler.
-func (h *UpdateHandlers) Trigger(w http.ResponseWriter, r *http.Request) {
-	sess, ok := h.Parent.Auth.ParseSession(r)
-	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
-		return
-	}
-	if !auth.CSRFValid(sess, r.Form.Get("csrf")) {
-		http.Error(w, "csrf", http.StatusForbidden)
-		return
-	}
-
-	data := h.viewData(sess)
-	status := http.StatusOK
-	switch err := h.Updater.Trigger(); {
-	case err == nil, errors.Is(err, update.ErrInProgress):
-		// Already running counts as success for the user's intent.
-		data["Updating"] = true
-		h.Parent.Logger.Info("admin.update.trigger",
-			slog.String("by", sess.Username),
-			slog.String("latest", h.Checker.State().Latest),
-		)
-	case errors.Is(err, update.ErrDisabled):
-		status = http.StatusForbidden
-		data["Error"] = "未配置 update_command，无法在线更新。"
-	default:
-		status = http.StatusInternalServerError
-		data["Error"] = "启动更新失败：" + err.Error()
-		h.Parent.Logger.Error("admin.update.trigger", slog.String("err", err.Error()))
-	}
-
-	if rerr := h.Parent.Tpl.Render(w, r, status, "admin_update.html", data); rerr != nil {
-		h.Parent.Logger.Error("admin.update.render", slog.String("err", rerr.Error()))
-	}
 }
