@@ -1,5 +1,5 @@
 // release.go fetches the latest published release tag for a repository. Used
-// by the self-update checker to compare the running version against upstream.
+// by the release checker to compare the running version against upstream.
 // Reuses the Client's ETag-conditional do() so steady-state polling stays well
 // under the unauthenticated rate limit.
 package github
