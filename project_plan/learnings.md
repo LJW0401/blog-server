@@ -1162,3 +1162,11 @@
 - **为什么原测试没覆盖**：原 `TestUpdateCheck_Smoke_RunsAndRedirects` 只断言「重定向到 /manage」即视为正确，把 PRG 跳转当成纯后端状态正确性来测，完全没有把「滚动位置 / 用户视觉落点」纳入正确性定义——整页表单提交的 UX 副作用（scroll reset）不在测试视野内。该断言反而把 bug 行为固化了
 - **紧急程度**：低
 - **衍生改进建议**（不在本次范围内）：dashboard 上所有「操作后 redirect 回 /manage」的整页表单（如退出、密码修改后返回等）都有同类潜在跳顶问题；若后续要彻底消除整页刷新，可统一改为 fetch + 局部更新，但与当前纯 SSR + CSRF 表单的架构范式冲突，需整体评估
+
+## 2026-06-12
+
+### 快速功能：删除自助更新，仅保留版本检测
+- **类型**：架构洞察 + 破坏变更
+- **描述**：移除一键网页自助更新（Updater / `/manage/update` 页 / `update_command` 配置 / `admin_update.html`），仅保留版本检测（Checker + 检测按钮 + 版本栏）；有新版时版本栏改为外链 GitHub 发行页。`internal/config` 用 `dec.KnownFields(true)` 严格解析——删除任何**已发布**的配置字段（此处 `update_command`）都是破坏变更：现有部署的 config.yaml 残留该键会导致服务启动直接报错。已与用户确认走「干净删除」，须在升级须知中明确：升级前从 config.yaml 删掉 `update_command` 那一行。
+- **建议处理方式**：发 release 时在 notes 的破坏性变更小节标注「删除 config.yaml 中的 update_command」；后续若再删已发布配置字段，同样按破坏变更处理并提前告知运维。
+- **紧急程度**：中（影响在跑部署的升级）

@@ -52,12 +52,8 @@
           <input type="hidden" name="csrf" value="{{ .CSRF }}" />
           <button class="btn btn-ghost" type="submit">检测新版本</button>
         </form>
-        {{ if $.Update.Available }}
-          {{ if $.Update.Enabled }}
-          <a class="btn btn-primary" href="/manage/update">更新到 {{ $.Update.Latest }}</a>
-          {{ else }}
-          <a class="btn btn-ghost" href="/manage/update">查看升级方式</a>
-          {{ end }}
+        {{ if and $.Update.Available $.Update.ReleaseURL }}
+        <a class="btn btn-ghost" href="{{ $.Update.ReleaseURL }}" target="_blank" rel="noopener">查看发行说明 ↗</a>
         {{ end }}
       </div>
     </div>
