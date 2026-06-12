@@ -2,6 +2,7 @@
 /blog-server.sha256
 /blog-server-linux-amd64.tar.gz
 /blog-server-linux-amd64.tar.gz.sha256
+/manage.sh
 /cover.out
 /config.yaml
 /data.sqlite
