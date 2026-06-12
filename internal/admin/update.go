@@ -90,7 +90,9 @@ func (h *UpdateHandlers) Check(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.Checker.CheckNow(r.Context())
-	http.Redirect(w, r, "/manage", http.StatusSeeOther)
+	// Redirect to the #version anchor so the full-page reload lands back on the
+	// version bar instead of scrolling to the top of the dashboard.
+	http.Redirect(w, r, "/manage#version", http.StatusSeeOther)
 }
 
 // Trigger handles POST /manage/update — validates CSRF, launches the update,
