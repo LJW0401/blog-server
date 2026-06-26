@@ -148,6 +148,10 @@
       if (!data.ok) throw new Error(data.error || 'unknown');
       dirty = false;
       setStatus('saved', '已保存于 ' + nowStamp());
+      // 即时同步月视图小绿点：服务端 SSR 时才按 .HasEntry 渲染绿点，
+      // 不刷新页面就看不到新写一天的点。这里在当前格子按内容补/去点，
+      // 与服务端"空内容等同删除"（store.go Put: TrimSpace=="" → Delete）一致。
+      syncDot(currentDate, textarea.value.trim().length > 0);
     } catch (err) {
       setStatus('error', '保存失败，点击重试');
       console.error('[diary] saveDay', err);
@@ -156,6 +160,24 @@
 
   function flushIfDirty() {
     if (dirty) saveDay();
+  }
+
+  // 保存/清空后即时更新某日格子的小绿点，与服务端 SSR 渲染结果对齐。
+  // hasEntry 为 true 时补点（幂等：已有则不重复），为 false 时去点。
+  function syncDot(date, hasEntry) {
+    if (!calendar || !date) return;
+    const cell = calendar.querySelector(`.diary-cell[data-date="${date}"]`);
+    if (!cell) return;
+    const existing = cell.querySelector('.diary-dot');
+    if (hasEntry) {
+      if (existing) return;
+      const dot = document.createElement('span');
+      dot.className = 'diary-dot';
+      dot.setAttribute('aria-label', '当天有日记');
+      cell.appendChild(dot);
+    } else if (existing) {
+      existing.remove();
+    }
   }
 
   // --- 输入事件 ---------------------------------------------------------

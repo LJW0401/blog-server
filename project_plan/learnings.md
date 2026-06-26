@@ -1170,3 +1170,15 @@
 - **描述**：移除一键网页自助更新（Updater / `/manage/update` 页 / `update_command` 配置 / `admin_update.html`），仅保留版本检测（Checker + 检测按钮 + 版本栏）；有新版时版本栏改为外链 GitHub 发行页。`internal/config` 用 `dec.KnownFields(true)` 严格解析——删除任何**已发布**的配置字段（此处 `update_command`）都是破坏变更：现有部署的 config.yaml 残留该键会导致服务启动直接报错。已与用户确认走「干净删除」，须在升级须知中明确：升级前从 config.yaml 删掉 `update_command` 那一行。
 - **建议处理方式**：发 release 时在 notes 的破坏性变更小节标注「删除 config.yaml 中的 update_command」；后续若再删已发布配置字段，同样按破坏变更处理并提前告知运维。
 - **紧急程度**：中（影响在跑部署的升级）
+
+## 2026-06-27
+
+### Bug 修复：日记保存后月视图小绿点不即时显示
+- **发现于**：用户报告
+- **现象**：编辑并保存某天日记后，该日期格子不立刻出现小绿点，需整页刷新才显示
+- **根因**：小绿点只在服务端 SSR 时按 `.HasEntry` 渲染（`diary.html:38`），前端无任何客户端绿点逻辑。`saveDay()`（`diary.js`）成功分支只更新状态文案，从不动日历 DOM。对照之下删除走 `window.location.reload()` 重算绿点——保存与删除处理不对称，正是 bug 所在。
+- **修复**：`diary.js` 新增 `syncDot(date, hasEntry)` 辅助函数（按内容补/去 `.diary-dot`，幂等），并在 `saveDay()` 成功后调用 `syncDot(currentDate, textarea.value.trim().length > 0)`。用 `trim()` 判定对齐服务端"空内容等同删除"（`store.go:76-80` Put 中 `TrimSpace=="" → Delete`），保证空保存时绿点同步消失。未沿用删除那种整页 reload，避免保存这种高频操作每次抖动整页。
+- **回归测试**：`internal/assets/diary_dot_after_save_test.go`——`TestDiaryJS_Smoke_HasDotSyncLogic` / `TestDiaryJS_Smoke_SaveSyncsDot` / `TestDiaryJS_Edge_EmptyContentRemovesDot`
+- **为什么原测试没覆盖**：项目对前端行为只有"读嵌入资源做字符串断言"的 Go 测试（无 JS 运行时），且这类测试是按 UI 元素/CSS 逐个补的，没人为"保存后日历状态同步"这条客户端交互写断言；纯 SSR 渲染的绿点天然只在整页加载时正确，客户端局部更新这条路径属于测试盲区。根因还在于保存/删除两条路径的"刷新策略"没有统一的约束来挡住不对称。
+- **紧急程度**：中（功能可用但体验明显割裂）
+- **衍生改进建议**（不在本次范围）：前端缺少真正的 JS 行为测试手段，字符串断言易写成同义反复；若日记交互继续增多，可考虑引入最小化的 headless JS 测试。另：`promoteDay()` 会先 `saveDay()` 再跳转 `/manage/docs/new`，跳转后回到 `/diary` 是整页重载所以绿点正确，无需额外处理，但属同类"保存后状态同步"应留意。
