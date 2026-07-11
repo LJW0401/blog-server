@@ -22,6 +22,20 @@ func readWorkflow(t *testing.T, name string) string {
 	return string(b)
 }
 
+func readRepoFile(t *testing.T, name string) string {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("resolve test file path")
+	}
+	path := filepath.Join(filepath.Dir(file), "..", "..", name)
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read repository file %s: %v", name, err)
+	}
+	return string(b)
+}
+
 // Smoke: CI runs the repository-owned quality gate for PRs and main pushes.
 func TestCIWorkflow_Smoke_UsesProjectGate(t *testing.T) {
 	workflow := readWorkflow(t, "ci.yml")
@@ -55,9 +69,30 @@ func TestReleaseWorkflow_Boundary_CoversSupportedArchitectures(t *testing.T) {
 		"manage.sh",
 		`ARCHIVE="blog-server-linux-${{ matrix.goarch }}.tar.gz"`,
 		"blog-server-linux-${{ matrix.goarch }}.tar.gz.sha256",
+		"body_path: release.md",
 	} {
 		if !strings.Contains(workflow, want) {
 			t.Errorf("release workflow missing %q", want)
+		}
+	}
+}
+
+// Smoke: automated GitHub Releases use complete, user-facing release notes.
+func TestReleaseNotes_Smoke_ContainsRequiredSections(t *testing.T) {
+	notes := readRepoFile(t, "release.md")
+	for _, want := range []string{"## 安装与升级", "## 本次更新", "## 发布附件", "manage.sh", "blog-server-linux-arm64.tar.gz"} {
+		if !strings.Contains(notes, want) {
+			t.Errorf("release notes missing %q", want)
+		}
+	}
+}
+
+// Boundary: automatic notes must not publish unresolved template placeholders.
+func TestReleaseNotes_Boundary_HasNoTemplatePlaceholders(t *testing.T) {
+	notes := readRepoFile(t, "release.md")
+	for _, placeholder := range []string{"<VERSION>", "<PREV_VERSION>", "<功能标题", "<要点"} {
+		if strings.Contains(notes, placeholder) {
+			t.Errorf("release notes still contain template placeholder %q", placeholder)
 		}
 	}
 }
