@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build release archive
+        env:
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          make package \
+            VERSION="${GITHUB_REF_NAME}" \
+            VERIFY_BUILD=0 \
+            ARCHIVE="blog-server-linux-${{ matrix.goarch }}.tar.gz"
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release.md
+          prerelease: ${{ contains(github.ref_name, 'preview') }}
+          files: |
+            blog-server-linux-${{ matrix.goarch }}.tar.gz
+            blog-server-linux-${{ matrix.goarch }}.tar.gz.sha256
+
+      - name: Upload installer
+        if: matrix.goarch == 'amd64'
+        run: cp deploy/manage.sh manage.sh
+
+      - name: Add installer to Release
+        if: matrix.goarch == 'amd64'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: manage.sh
