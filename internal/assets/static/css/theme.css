@@ -284,6 +284,7 @@ body.page-doc-detail, body.page-about { background: var(--bg); }
 .doc-body h2, .portfolio-body h2 { font-size: 28px; }
 .doc-body h3, .portfolio-body h3 { font-size: 22px; }
 .doc-body p, .portfolio-body p { margin-bottom: 20px; }
+.doc-body img, .portfolio-body img { max-width: 100%; height: auto; }
 .doc-body ul, .doc-body ol,
 .portfolio-body ul, .portfolio-body ol { margin-bottom: 20px; padding-left: 24px; }
 .doc-body code, .portfolio-body code { background: #f0f0f2; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
