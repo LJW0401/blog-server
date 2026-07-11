@@ -2,6 +2,7 @@ SHELL := /bin/bash
 GO ?= go
 PKG := ./...
 LINT_TIMEOUT ?= 3m
+LINT_ARGS ?=
 
 .PHONY: all check release build package dev clean fmt vet lint tidy test cover e2e vulncheck
 
@@ -15,7 +16,7 @@ vet:
 
 lint:
 	@if command -v golangci-lint >/dev/null 2>&1; then \
-		golangci-lint run --timeout=$(LINT_TIMEOUT); \
+		golangci-lint run --timeout=$(LINT_TIMEOUT) $(LINT_ARGS); \
 	else \
 		echo "[WARN] golangci-lint not installed, skipping"; \
 	fi
@@ -56,10 +57,11 @@ vulncheck:
 # falls back to short sha + dirty marker; ultimately "dev" outside a git repo.
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
+VERIFY_BUILD ?= 1
 
 build:
 	CGO_ENABLED=0 $(GO) build -ldflags="$(LDFLAGS)" -o blog-server ./cmd/server
-	@./blog-server -version | sed 's/^/[OK] built /'
+	@if [[ "$(VERIFY_BUILD)" == "1" ]]; then ./blog-server -version | sed 's/^/[OK] built /'; fi
 
 dev:
 	$(GO) run ./cmd/server

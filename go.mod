@@ -1,11 +1,11 @@
 module github.com/penguin/blog-server
 
-go 1.26.2
+go 1.26.5
 
 require (
 	github.com/alecthomas/chroma/v2 v2.14.0
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/yuin/goldmark v1.7.8
+	github.com/yuin/goldmark v1.7.17
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
 	golang.org/x/crypto v0.50.0
 	gopkg.in/yaml.v3 v3.0.1
