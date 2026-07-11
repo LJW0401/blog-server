@@ -29,6 +29,30 @@ func TestStatic_Smoke_ThemeCSSReachable(t *testing.T) {
 	}
 }
 
+// Smoke: Markdown images share the same maximum content width as body text.
+func TestStatic_Smoke_ContentImagesMatchTextWidth(t *testing.T) {
+	b, err := fs.ReadFile(assets.Static(), "css/theme.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(b)
+	if !strings.Contains(css, ".doc-body img, .portfolio-body img { max-width: 100%;") {
+		t.Error("document and portfolio images must not exceed the text content width")
+	}
+}
+
+// Boundary: shrinking a large image must preserve its aspect ratio.
+func TestStatic_Boundary_ContentImagesPreserveAspectRatio(t *testing.T) {
+	b, err := fs.ReadFile(assets.Static(), "css/theme.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(b)
+	if !strings.Contains(css, ".doc-body img, .portfolio-body img { max-width: 100%; height: auto; }") {
+		t.Error("responsive content images must retain their intrinsic aspect ratio")
+	}
+}
+
 // Smoke (WI-2.21 surrogate): dark mode rules exist and adjust orbs as per
 // requirement 2.9 (降饱和/降亮度).
 func TestStatic_Smoke_DarkModeRulesPresent(t *testing.T) {
