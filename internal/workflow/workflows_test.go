@@ -80,7 +80,7 @@ func TestReleaseWorkflow_Boundary_CoversSupportedArchitectures(t *testing.T) {
 // Smoke: automated GitHub Releases use complete, user-facing release notes.
 func TestReleaseNotes_Smoke_ContainsRequiredSections(t *testing.T) {
 	notes := readRepoFile(t, "release.md")
-	for _, want := range []string{"## 安装与升级", "## 本次更新", "## 发布附件", "manage.sh", "blog-server-linux-arm64.tar.gz"} {
+	for _, want := range []string{"## 新功能与改进", "## 安装与升级", "## 发布附件", "manage.sh", "blog-server-linux-arm64.tar.gz"} {
 		if !strings.Contains(notes, want) {
 			t.Errorf("release notes missing %q", want)
 		}
